@@ -3,6 +3,12 @@
 # Copyright (c) Alexandre Gomes Gaigalas <alganet@gmail.com>
 # SPDX-License-Identifier: ISC
 
+shvr_targets_toybox ()
+{
+	cat <<-@
+	@
+}
+
 shvr_build_toybox ()
 {
 	version="$1"

@@ -3,6 +3,28 @@
 # Copyright (c) Alexandre Gomes Gaigalas <alganet@gmail.com>
 # SPDX-License-Identifier: ISC
 
+shvr_targets_busybox ()
+{
+	cat <<-@
+		busybox_1.36.0
+		busybox_1.35.0
+		busybox_1.34.1
+		busybox_1.33.2
+		busybox_1.32.1
+		busybox_1.31.1
+		busybox_1.30.1
+		busybox_1.29.3
+		busybox_1.28.4
+		busybox_1.27.2
+		busybox_1.26.2
+		busybox_1.25.1
+		busybox_1.24.2
+		busybox_1.23.2
+		busybox_1.22.1
+		busybox_1.21.1
+	@
+}
+
 shvr_build_busybox ()
 {
 	version="$1"

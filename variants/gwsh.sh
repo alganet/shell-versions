@@ -3,6 +3,13 @@
 # Copyright (c) Alexandre Gomes Gaigalas <alganet@gmail.com>
 # SPDX-License-Identifier: ISC
 
+shvr_targets_gwsh ()
+{
+	cat <<-@
+		gwsh_main
+	@
+}
+
 shvr_build_gwsh ()
 {
 	version="$1"

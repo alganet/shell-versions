@@ -3,6 +3,20 @@
 # Copyright (c) Alexandre Gomes Gaigalas <alganet@gmail.com>
 # SPDX-License-Identifier: ISC
 
+shvr_targets_oksh ()
+{
+	cat <<-@
+		oksh_7.2
+		oksh_7.1
+		oksh_7.0
+		oksh_6.9
+		oksh_6.8.1
+		oksh_6.7.1
+		oksh_6.6
+		oksh_6.5
+	@
+}
+
 shvr_build_oksh ()
 {
 	version="$1"
