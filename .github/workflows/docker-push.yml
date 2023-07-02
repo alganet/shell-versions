@@ -14,13 +14,10 @@
 # OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 # PERFORMANCE OF THIS SOFTWARE.
 
-name: Docker Build
+name: Docker Push Pipeline
 
 on:
   push:
-    branches:
-      - "main"
-  pull_request:
     branches:
       - "main"
 jobs:
