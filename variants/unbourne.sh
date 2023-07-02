@@ -3,6 +3,12 @@
 # Copyright (c) Alexandre Gomes Gaigalas <alganet@gmail.com>
 # SPDX-License-Identifier: ISC
 
+shvr_targets_unbourne ()
+{
+	cat <<-@
+	@
+}
+
 shvr_build_unbourne ()
 {
 	version="$1"

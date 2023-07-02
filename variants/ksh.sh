@@ -3,6 +3,33 @@
 # Copyright (c) Alexandre Gomes Gaigalas <alganet@gmail.com>
 # SPDX-License-Identifier: ISC
 
+shvr_targets_ksh ()
+{
+	cat <<-@
+		ksh_93u+m-v1.0.4
+		ksh_93u+m-v1.0.3
+		ksh_93u+m-v1.0.2
+		ksh_93u+m-v1.0.1
+		ksh_2020-2020.0.0
+		ksh_history-b_2016-01-10
+		ksh_history-b_2012-08-01
+		ksh_history-b_2011-03-10
+		ksh_history-b_2010-10-26
+		ksh_history-b_2010-06-21
+		ksh_history-b_2008-11-04
+		ksh_history-b_2008-06-08
+		ksh_history-b_2008-02-02
+		ksh_history-b_2007-01-11
+		ksh_history-b_2006-11-15
+		ksh_history-b_2006-07-24
+		ksh_history-b_2006-02-14
+		ksh_history-b_2005-09-16
+		ksh_history-b_2005-06-01
+		ksh_history-b_2005-02-02
+		ksh_history-b_2004-10-11
+	@
+}
+
 shvr_build_ksh ()
 {
 	version="$1"

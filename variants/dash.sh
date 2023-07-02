@@ -3,6 +3,20 @@
 # Copyright (c) Alexandre Gomes Gaigalas <alganet@gmail.com>
 # SPDX-License-Identifier: ISC
 
+shvr_targets_dash ()
+{
+	cat <<-@
+		dash_0.5.11
+		dash_0.5.11.5
+		dash_0.5.10.2
+		dash_0.5.9.1
+		dash_0.5.8
+		dash_0.5.7
+		dash_0.5.6.1
+		dash_0.5.5.1
+	@
+}
+
 shvr_build_dash ()
 {
 	version="$1"

@@ -16,7 +16,37 @@ shvr ()
 
 shvr_build ()
 {
+	if test -z "$*"
+	then set -- $(printf '%s ' $(shvr_targets))
+	fi
+
 	set -x
+
+	shvr_each build "${@:-}"
+}
+
+shvr_targets ()
+{
+	if test -z "$*"
+	then set -- $(printf '%s ' $(shvr_interpreters))
+	fi
+
+	shvr_each targets "${@:-}"
+}
+
+shvr_interpreters ()
+{
+	find "${SHVR_DIR_SELF}/variants" -type f |
+		while read -r variant_file
+		do basename "${variant_file}" | sed 's/\.sh$//'
+		done |
+		sort
+}
+
+shvr_each ()
+{
+	subcommand="$1"
+	shift
 
 	while test $# -gt 0
 	do
@@ -25,7 +55,7 @@ shvr_build ()
 
 		. "${SHVR_DIR_SELF}/variants/${interpreter}.sh"
 
-		"shvr_build_${interpreter}" "$version"
+		"shvr_${subcommand}_${interpreter}" "$version"
 		rm -Rf "${SHVR_DIR_SRC}/${interpreter}"
 		shift
 	done

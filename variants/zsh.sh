@@ -3,6 +3,23 @@
 # Copyright (c) Alexandre Gomes Gaigalas <alganet@gmail.com>
 # SPDX-License-Identifier: ISC
 
+shvr_targets_zsh ()
+{
+	cat <<-@
+		zsh_5.9
+		zsh_5.8.1
+		zsh_5.7.1
+		zsh_5.6.2
+		zsh_5.5.1
+		zsh_5.4.2
+		zsh_5.3.1
+		zsh_5.2
+		zsh_5.1.1
+		zsh_5.0.8
+		zsh_4.2.7
+	@
+}
+
 shvr_build_zsh ()
 {
 	version="$1"

@@ -3,6 +3,18 @@
 # Copyright (c) Alexandre Gomes Gaigalas <alganet@gmail.com>
 # SPDX-License-Identifier: ISC
 
+shvr_targets_loksh ()
+{
+	cat <<-@
+		loksh_7.2
+		loksh_7.1
+		loksh_7.0
+		loksh_6.9
+		loksh_6.8.1
+		loksh_6.7.5
+	@
+}
+
 shvr_build_loksh ()
 {
 	version="$1"
