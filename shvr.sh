@@ -59,6 +59,9 @@ shvr_latest ()
 	do
 		. "${SHVR_DIR_SELF}/variants/${1}.sh"
 		majors="$(shvr_majors_$1 | tr '\n' ' ')"
+		if test -n "$majors"
+		then printf '%s ' "$1-latest"
+		fi
 		for major in $majors
 		do
 			minors="$(shvr_minors_$1 $major | tr '\n' ' ')"
