@@ -5,6 +5,20 @@
 
 shvr_targets_oksh ()
 {
+	shvr_cache targets_oksh \
+		curl --no-progress-meter https://api.github.com/repos/ibara/oksh/releases |
+			sed -n '
+				/^    "tag_name": "/ {
+					s/^    "tag_name": "oksh-/oksh_/
+					s/",$//
+					p
+				}
+			' |
+			grep -v "^oksh_[5]\.[0-9]$" |
+			grep -v "^oksh_[6]\.7\.[0-4]$" |
+			sort -u |
+			sort -V -r
+	return
 	cat <<-@
 		oksh_7.2
 		oksh_7.1

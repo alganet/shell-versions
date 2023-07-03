@@ -5,6 +5,22 @@
 
 shvr_targets_zsh ()
 {
+	shvr_cache targets_zsh \
+		curl --no-progress-meter https://sourceforge.net/projects/zsh/files/zsh/ |
+			grep -Eoi 'href="[^"]*"'  |
+			sed -n '
+				/\/projects\/zsh\/files\/zsh\/[0-9]/ {
+					s/href="\/projects\/zsh\/files\/zsh\/\([0-9][^/]*\)\/.*/zsh_\1/
+					s/"$//
+					p
+				}
+			' |
+			grep -v "^zsh_3" |
+			grep -v "^zsh_4.[01]" |
+			grep -v "^zsh_4.2.[0-6]" |
+			sort -u |
+			sort -V -r
+		return
 	cat <<-@
 		zsh_5.9
 		zsh_5.8.1

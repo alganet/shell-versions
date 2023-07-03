@@ -5,19 +5,45 @@
 
 shvr_targets_bash ()
 {
-	cat <<-@
-		bash_5.2.15
-		bash_5.1.16
-		bash_5.0.18
-		bash_4.4.23
-		bash_4.3.48
-		bash_4.2.53
-		bash_4.1.17
-		bash_4.0.44
-		bash_3.2.57
-		bash_3.1.23
-		bash_3.0.22
-	@
+	shvr_cache targets_bash \
+		curl --no-progress-meter "https://ftp.gnu.org/gnu/bash/" |
+			grep -Eo 'href="[^"]*"' |
+			sed -n '
+				s/^href="bash-/bash_/
+				s/"$//
+				/^bash_[0-9][0-9]*.*\.tar\.gz$/ {
+					s/\.tar\.gz$//
+					p
+				}
+				/^bash_[0-9][0-9]*.*-patches\/$/ {
+					s/^bash_/bash-/
+					p
+				}
+			' |
+			while read -r possible_version
+			do
+				if test "${possible_version%"patches/"}" != "$possible_version"
+				then
+					shvr_cache "targets_bash${possible_version%'/'}" \
+						curl --no-progress-meter "https://ftp.gnu.org/gnu/bash/$possible_version" |
+							grep -Eo 'href="[^"]*"' |
+							sed -n '
+								s/^href="//
+								s/"$//
+								/^bash.*[0-9][0-9][0-9]$/ {
+									p
+								}
+							' |
+							sort -V |
+							cut -d'-' -f2 |
+							sed "s/^/${possible_version%'/'}/" |
+							sed 's/^bash-/bash_/; s/-patches[0]*/./'
+				else echo "$possible_version"
+				fi
+			done |
+			grep -v "^bash_[0-2]\." |
+			sort -u |
+			sort -V -r
 }
 
 shvr_majors_bash () { shvr_semver_majors bash; }

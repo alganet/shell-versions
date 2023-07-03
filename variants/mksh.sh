@@ -5,38 +5,35 @@
 
 shvr_targets_mksh ()
 {
-	cat <<-@
-		mksh_R59c
-		mksh_R58
-		mksh_R57
-		mksh_R56c
-		mksh_R55
-		mksh_R54
-		mksh_R53a
-		mksh_R52c
-		mksh_R51
-		mksh_R50f
-		mksh_R49
-		mksh_R48b
-		mksh_R47
-		mksh_R46
-		mksh_R45
-	@
+	shvr_cache targets_mksh \
+		curl --no-progress-meter "http://www.mirbsd.org/MirOS/dist/mir/mksh/" |
+			grep -Eoi 'HREF="[^"]*"' |
+			sed -n '
+				s/^HREF="mksh-/mksh_/
+				s/"$//
+				/^mksh_R[0-9][0-9]*.*\.tgz$/ {
+					s/\.tgz$//
+					p
+				}
+			' |
+			grep -v "^mksh_R4[234].*$" |
+			sort -u |
+			sort -V -r
 }
 
 shvr_majors_mksh ()
 {
-	shvr_targets_mksh | sed -n 's/^mksh_R\([0-9]*\).*$/mksh_R\1/p' | uniq
+	shvr_targets_mksh | sed -n 's/^mksh_R\([0-9]*\).*$/mksh_R\1/p' | grep -v '_R41' | sort -u | sort -r
 }
 
 shvr_minors_mksh ()
 {
-	shvr_targets_mksh | sed -n 's/^\('$1'\)\(.*\)$/\1/p' | uniq
+	shvr_targets_mksh | sed -n 's/^\('$1'\)\(.*\)$/\1/p' | sort -u | sort -r
 }
 
 shvr_patches_mksh ()
 {
-	shvr_targets_mksh | sed -n 's/^\('$1'\)\(.*\)$/\1\2/p' | uniq
+	shvr_targets_mksh | sed -n 's/^\('$1'\)\(.*\)$/\1\2/p' | sort -u | sort -r
 }
 
 shvr_build_mksh ()
