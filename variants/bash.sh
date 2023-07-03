@@ -20,6 +20,10 @@ shvr_targets_bash ()
 	@
 }
 
+shvr_majors_bash () { shvr_semver_majors bash; }
+shvr_minors_bash () { shvr_semver_minors bash "$@"; }
+shvr_patches_bash () { shvr_semver_patches bash "$@"; }
+
 shvr_build_bash ()
 {
 	version="$1"

@@ -12,6 +12,10 @@ shvr_targets_posh ()
 	@
 }
 
+shvr_majors_posh () { shvr_semver_majors posh; }
+shvr_minors_posh () { shvr_semver_minors posh "$@"; }
+shvr_patches_posh () { shvr_semver_patches posh "$@"; }
+
 shvr_build_posh ()
 {
 	version="$1"

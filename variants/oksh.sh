@@ -17,6 +17,10 @@ shvr_targets_oksh ()
 	@
 }
 
+shvr_majors_oksh () { shvr_semver_majors oksh; }
+shvr_minors_oksh () { shvr_semver_minors oksh "$@"; }
+shvr_patches_oksh () { shvr_semver_patches oksh "$@"; }
+
 shvr_build_oksh ()
 {
 	version="$1"

@@ -24,6 +24,10 @@ shvr_targets_mrsh ()
 	@
 }
 
+shvr_majors_mrsh () { shvr_semver_majors mrsh; }
+shvr_minors_mrsh () { shvr_semver_minors mrsh "$@"; }
+shvr_patches_mrsh () { shvr_semver_patches mrsh "$@"; }
+
 shvr_build_mrsh ()
 {
 	version="$1"

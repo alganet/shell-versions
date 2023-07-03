@@ -24,6 +24,21 @@ shvr_targets_mksh ()
 	@
 }
 
+shvr_majors_mksh ()
+{
+	shvr_targets_mksh | sed -n 's/^mksh_R\([0-9]*\).*$/mksh_R\1/p' | uniq
+}
+
+shvr_minors_mksh ()
+{
+	shvr_targets_mksh | sed -n 's/^\('$1'\)\(.*\)$/\1/p' | uniq
+}
+
+shvr_patches_mksh ()
+{
+	shvr_targets_mksh | sed -n 's/^\('$1'\)\(.*\)$/\1\2/p' | uniq
+}
+
 shvr_build_mksh ()
 {
 	version="$1"

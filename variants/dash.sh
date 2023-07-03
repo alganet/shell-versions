@@ -17,6 +17,10 @@ shvr_targets_dash ()
 	@
 }
 
+shvr_majors_dash () { shvr_semver_majors dash; }
+shvr_minors_dash () { shvr_semver_minors dash "$@"; }
+shvr_patches_dash () { shvr_semver_patches dash "$@"; }
+
 shvr_build_dash ()
 {
 	version="$1"
@@ -39,7 +43,7 @@ shvr_build_dash ()
 	build_arch="$(dpkg-architecture --query DEB_BUILD_GNU_TYPE)"
 
 	if test -f ./autogen.sh
-	then 
+	then
 		./autogen.sh
 	else
 		aclocal

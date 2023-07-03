@@ -20,6 +20,10 @@ shvr_targets_zsh ()
 	@
 }
 
+shvr_majors_zsh () { shvr_semver_majors zsh; }
+shvr_minors_zsh () { shvr_semver_minors zsh "$@"; }
+shvr_patches_zsh () { shvr_semver_patches zsh "$@"; }
+
 shvr_build_zsh ()
 {
 	version="$1"
@@ -40,7 +44,7 @@ shvr_build_zsh ()
 	build_srcdir="${SHVR_DIR_SRC}/zsh/${version}"
 	mkdir -p "${build_srcdir}"
 
-	if 
+	if
 		test "$version_major" -gt 4 -a "${version_minor}" -gt 0 ||
 		test "$version_major" -gt 5
 	then
