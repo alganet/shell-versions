@@ -5,34 +5,73 @@
 
 shvr_targets_ksh ()
 {
-	cat <<-@
-		ksh_shvrA93uplusm-v1.0.4
-		ksh_shvrA93uplusm-v1.0.3
-		ksh_shvrA93uplusm-v1.0.2
-		ksh_shvrA93uplusm-v1.0.1
-		ksh_shvrB2020-2020.0.0
-		ksh_shvrChistory-b_2016-01-10
-		ksh_shvrChistory-b_2012-08-01
-		ksh_shvrChistory-b_2011-03-10
-		ksh_shvrChistory-b_2010-10-26
-		ksh_shvrChistory-b_2010-06-21
-		ksh_shvrChistory-b_2008-11-04
-		ksh_shvrChistory-b_2008-06-08
-		ksh_shvrChistory-b_2008-02-02
-		ksh_shvrChistory-b_2007-01-11
-		ksh_shvrChistory-b_2006-11-15
-		ksh_shvrChistory-b_2006-07-24
-		ksh_shvrChistory-b_2006-02-14
-		ksh_shvrChistory-b_2005-09-16
-		ksh_shvrChistory-b_2005-06-01
-		ksh_shvrChistory-b_2005-02-02
-		ksh_shvrChistory-b_2004-10-11
-	@
+	shvr_cache targets_ksh_93 \
+		curl --no-progress-meter https://api.github.com/repos/ksh93/ksh/tags |
+			sed -n '
+				/^    "name": "/ {
+					s/^    "name": "/ksh_shvrA93uplusm-/
+					s/",$//
+					p
+				}
+			' |
+			sed '/reboot\|rc\|beta/d' 
+			
+
+	shvr_cache targets_ksh_2020 \
+		curl --no-progress-meter https://api.github.com/repos/ksh2020/ksh/tags |
+			sed -n '
+				/^    "name": "/ {
+					s/^    "name": "/ksh_shvrB2020-/
+					s/",$//
+					p
+				}
+			' |
+			sed '/alpha\|beta\|rc\|93\|2017/d' | sort -n -r
+		
+	shvr_cache targets_ksh_history3 \
+		curl --no-progress-meter "https://api.github.com/repos/ksh93/ksh93-history/branches?per_page=100&page=3" |
+			sed -n '
+				/^    "name": "/ {
+					s/^    "name": "/ksh_shvrChistory-/
+					s/",$//
+					p
+				}
+			' | sort -n -r | grep -v 'master'
+	shvr_cache targets_ksh_history2 \
+		curl --no-progress-meter "https://api.github.com/repos/ksh93/ksh93-history/branches?per_page=100&page=2" |
+			sed -n '
+				/^    "name": "/ {
+					s/^    "name": "/ksh_shvrChistory-/
+					s/",$//
+					p
+				}
+			' | sort -n -r | grep -v 'master'
+	shvr_cache targets_ksh_history1 \
+		curl --no-progress-meter "https://api.github.com/repos/ksh93/ksh93-history/branches?per_page=100&page=1" |
+			sed -n '
+				/^    "name": "/ {
+					s/^    "name": "/ksh_shvrChistory-/
+					s/",$//
+					p
+				}
+			' | sort -n -r | grep -v 'master'
 }
 
-shvr_majors_ksh () { shvr_semver_majors ksh; }
-shvr_minors_ksh () { shvr_semver_minors ksh "$@"; }
-shvr_patches_ksh () { shvr_semver_patches ksh "$@"; }
+shvr_majors_ksh ()
+{
+	shvr_targets_ksh | sed -n 's/^ksh_\([^-]*\-[^.0-9]*[0-9]*\).*$/ksh_\1/p' | grep -v 'b_2013' | grep -v 'b_200[0-3]' | grep -v 'b_199' | uniq
+}
+
+shvr_minors_ksh ()
+{
+	shvr_targets_ksh | sed -n 's/^\('$1'\)\(.*\)$/\1/p' | uniq | sort -V -r
+}
+
+shvr_patches_ksh ()
+{
+	shvr_targets_ksh | sed -n 's/^\('$1'\)\(.*\)$/\1\2/p' | sort -u | sort -r
+}
+
 
 shvr_build_ksh ()
 {

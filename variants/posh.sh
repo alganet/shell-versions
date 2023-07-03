@@ -5,6 +5,25 @@
 
 shvr_targets_posh ()
 {
+	shvr_cache targets_posh \
+		curl --no-progress-meter "https://salsa.debian.org/clint/posh/-/tags" |
+			grep -Eoi 'href="[^"]*"'  |
+			sed -n '
+				/\/clint\/posh\/-\/archive\/debian\// {
+					s/href="\/clint\/posh\/-\/archive\/debian\/[^/]*\/posh-debian-/posh_/
+					s/"$//
+					/^posh_[0-9][0-9]*.*\.tar\.gz$/ {
+						s/\.tar\.gz$//
+						p
+					}
+				}
+			' |
+			grep -v "^posh_0\.9" |
+			grep -v "^posh_0\.1[01]" |
+			grep -v "^posh_0\.12.[0-4]" |
+			sort -u |
+			sort -V -r
+		return
 	cat <<-@
 		posh_0.14.1
 		posh_0.13.2
