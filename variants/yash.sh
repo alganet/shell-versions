@@ -22,6 +22,10 @@ shvr_targets_yash ()
 	@
 }
 
+shvr_majors_yash () { shvr_semver_majors yash; }
+shvr_minors_yash () { shvr_semver_minors yash "$@"; }
+shvr_patches_yash () { shvr_semver_patches yash "$@"; }
+
 shvr_build_yash ()
 {
 	version="$1"

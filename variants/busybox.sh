@@ -10,6 +10,7 @@ shvr_targets_busybox ()
 		busybox_1.35.0
 		busybox_1.34.1
 		busybox_1.33.2
+		busybox_1.33.1
 		busybox_1.32.1
 		busybox_1.31.1
 		busybox_1.30.1
@@ -24,6 +25,10 @@ shvr_targets_busybox ()
 		busybox_1.21.1
 	@
 }
+
+shvr_majors_busybox () { shvr_semver_majors busybox; }
+shvr_minors_busybox () { shvr_semver_minors busybox "$@"; }
+shvr_patches_busybox () { shvr_semver_patches busybox "$@"; }
 
 shvr_build_busybox ()
 {
@@ -107,14 +112,14 @@ shvr_build_busybox ()
 	make allnoconfig
 	
 	for conf in $unsetConfs
-	do 
+	do
 		sed -i \
 			-e "s!^$conf=.*\$!# $conf is not set!" \
 			.config
 	done
 	
 	for confV in $setConfs
-	do 
+	do
 		conf="${confV%=*}"
 		sed -i \
 			-e "s!^$conf=.*\$!$confV!" \
@@ -132,7 +137,7 @@ shvr_build_busybox ()
 	done
 
 	for confV in $setConfs
-	do 
+	do
 		if ! grep -q "^$confV\$" .config
 		then
 			if test "${version_major}" = 1 -a "${version_minor}" -lt 26

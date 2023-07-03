@@ -18,6 +18,10 @@ shvr_targets_osh ()
 	@
 }
 
+shvr_majors_osh () { shvr_semver_majors osh; }
+shvr_minors_osh () { shvr_semver_minors osh "$@"; }
+shvr_patches_osh () { shvr_semver_patches osh "$@"; }
+
 shvr_build_osh ()
 {
 	version="$1"

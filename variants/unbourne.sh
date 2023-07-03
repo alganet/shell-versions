@@ -9,6 +9,10 @@ shvr_targets_unbourne ()
 	@
 }
 
+shvr_majors_unbourne () { shvr_semver_majors unbourne; }
+shvr_minors_unbourne () { shvr_semver_minors unbourne "$@"; }
+shvr_patches_unbourne () { shvr_semver_patches unbourne "$@"; }
+
 shvr_build_unbourne ()
 {
 	version="$1"

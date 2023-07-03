@@ -15,6 +15,10 @@ shvr_targets_loksh ()
 	@
 }
 
+shvr_majors_loksh () { shvr_semver_majors loksh; }
+shvr_minors_loksh () { shvr_semver_minors loksh "$@"; }
+shvr_patches_loksh () { shvr_semver_patches loksh "$@"; }
+
 shvr_build_loksh ()
 {
 	version="$1"

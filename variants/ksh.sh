@@ -6,52 +6,56 @@
 shvr_targets_ksh ()
 {
 	cat <<-@
-		ksh_93u+m-v1.0.4
-		ksh_93u+m-v1.0.3
-		ksh_93u+m-v1.0.2
-		ksh_93u+m-v1.0.1
-		ksh_2020-2020.0.0
-		ksh_history-b_2016-01-10
-		ksh_history-b_2012-08-01
-		ksh_history-b_2011-03-10
-		ksh_history-b_2010-10-26
-		ksh_history-b_2010-06-21
-		ksh_history-b_2008-11-04
-		ksh_history-b_2008-06-08
-		ksh_history-b_2008-02-02
-		ksh_history-b_2007-01-11
-		ksh_history-b_2006-11-15
-		ksh_history-b_2006-07-24
-		ksh_history-b_2006-02-14
-		ksh_history-b_2005-09-16
-		ksh_history-b_2005-06-01
-		ksh_history-b_2005-02-02
-		ksh_history-b_2004-10-11
+		ksh_shvrA93uplusm-v1.0.4
+		ksh_shvrA93uplusm-v1.0.3
+		ksh_shvrA93uplusm-v1.0.2
+		ksh_shvrA93uplusm-v1.0.1
+		ksh_shvrB2020-2020.0.0
+		ksh_shvrChistory-b_2016-01-10
+		ksh_shvrChistory-b_2012-08-01
+		ksh_shvrChistory-b_2011-03-10
+		ksh_shvrChistory-b_2010-10-26
+		ksh_shvrChistory-b_2010-06-21
+		ksh_shvrChistory-b_2008-11-04
+		ksh_shvrChistory-b_2008-06-08
+		ksh_shvrChistory-b_2008-02-02
+		ksh_shvrChistory-b_2007-01-11
+		ksh_shvrChistory-b_2006-11-15
+		ksh_shvrChistory-b_2006-07-24
+		ksh_shvrChistory-b_2006-02-14
+		ksh_shvrChistory-b_2005-09-16
+		ksh_shvrChistory-b_2005-06-01
+		ksh_shvrChistory-b_2005-02-02
+		ksh_shvrChistory-b_2004-10-11
 	@
 }
+
+shvr_majors_ksh () { shvr_semver_majors ksh; }
+shvr_minors_ksh () { shvr_semver_minors ksh "$@"; }
+shvr_patches_ksh () { shvr_semver_patches ksh "$@"; }
 
 shvr_build_ksh ()
 {
 	version="$1"
 	fork_name="${1%%-*}"
-	fork_version="${1#*-}"
+	fork_version="${version#"${fork_name}-"}"
 	build_srcdir="${SHVR_DIR_SRC}/ksh/${version}"
 	mkdir -p "${build_srcdir}"
 	
 	case "$fork_name" in
-		'93u+m')
+		'shvrA93uplusm')
 			apt-get -y install \
 				wget gcc
 			wget -O "${build_srcdir}.tar.gz" \
 				"https://github.com/ksh93/ksh/archive/refs/tags/${fork_version}.tar.gz"
 			;;
-		'2020')
+		'shvrB2020')
 			apt-get -y install \
 				wget gcc meson
 			wget -O "${build_srcdir}.tar.gz" \
 				"https://github.com/ksh2020/ksh/archive/refs/tags/${fork_version}.tar.gz"
 			;;
-		'history')
+		'shvrChistory')
 			apt-get -y install \
 				wget gcc
 			wget -O "${build_srcdir}.tar.gz" \
