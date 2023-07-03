@@ -40,11 +40,12 @@ jobs:
           ##########################################
           #                bash
           ##########################################
-          # bash_5-latest bash_5.2-latest bash_5.2.15
+          # bash-latest bash_5-latest bash_5.2-latest bash_5.2.15
           - name: bash_5.2.15
             targets: "bash_5.2.15"
             can_fail_build: false
             tags: |
+              alganet/shell-versions:bash-latest
               alganet/shell-versions:bash_5-latest
               alganet/shell-versions:bash_5.2-latest
               alganet/shell-versions:bash_5.2.15
@@ -134,11 +135,12 @@ jobs:
           ##########################################
           #                busybox
           ##########################################
-          # busybox_1-latest busybox_1.36-latest busybox_1.36.0
+          # busybox-latest busybox_1-latest busybox_1.36-latest busybox_1.36.0
           - name: busybox_1.36.0
             targets: "busybox_1.36.0"
             can_fail_build: false
             tags: |
+              alganet/shell-versions:busybox-latest
               alganet/shell-versions:busybox_1-latest
               alganet/shell-versions:busybox_1.36-latest
               alganet/shell-versions:busybox_1.36.0
@@ -273,11 +275,12 @@ jobs:
           ##########################################
           #                dash
           ##########################################
-          # dash_0-latest dash_0.5-latest dash_0.5.11
+          # dash-latest dash_0-latest dash_0.5-latest dash_0.5.11
           - name: dash_0.5.11
             targets: "dash_0.5.11"
             can_fail_build: false
             tags: |
+              alganet/shell-versions:dash-latest
               alganet/shell-versions:dash_0-latest
               alganet/shell-versions:dash_0.5-latest
               alganet/shell-versions:dash_0.5.11
@@ -327,22 +330,24 @@ jobs:
           ##########################################
           #                gwsh
           ##########################################
-          # gwsh_main-latest gwsh_main
+          # gwsh-latest gwsh_main-latest gwsh_main
           - name: gwsh_main
             targets: "gwsh_main"
             can_fail_build: false
             tags: |
+              alganet/shell-versions:gwsh-latest
               alganet/shell-versions:gwsh_main-latest
               alganet/shell-versions:gwsh_main
 
           ##########################################
           #                ksh
           ##########################################
-          # ksh_shvrA93uplusm-v1-latest ksh_shvrA93uplusm-v1.0-latest ksh_shvrA93uplusm-v1.0.4
+          # ksh-latest ksh_shvrA93uplusm-v1-latest ksh_shvrA93uplusm-v1.0-latest ksh_shvrA93uplusm-v1.0.4
           - name: ksh_shvrA93uplusm-v1.0.4
             targets: "ksh_shvrA93uplusm-v1.0.4"
             can_fail_build: false
             tags: |
+              alganet/shell-versions:ksh-latest
               alganet/shell-versions:ksh_shvrA93uplusm-v1-latest
               alganet/shell-versions:ksh_shvrA93uplusm-v1.0-latest
               alganet/shell-versions:ksh_shvrA93uplusm-v1.0.4
@@ -508,11 +513,12 @@ jobs:
           ##########################################
           #                loksh
           ##########################################
-          # loksh_7-latest loksh_7.2
+          # loksh-latest loksh_7-latest loksh_7.2
           - name: loksh_7.2
             targets: "loksh_7.2"
             can_fail_build: false
             tags: |
+              alganet/shell-versions:loksh-latest
               alganet/shell-versions:loksh_7-latest
               alganet/shell-versions:loksh_7.2
 
@@ -557,11 +563,12 @@ jobs:
           ##########################################
           #                mksh
           ##########################################
-          # mksh_R59-latest mksh_R59-latest mksh_R59c
+          # mksh-latest mksh_R59-latest mksh_R59-latest mksh_R59c
           - name: mksh_R59c
             targets: "mksh_R59c"
             can_fail_build: false
             tags: |
+              alganet/shell-versions:mksh-latest
               alganet/shell-versions:mksh_R59-latest
               alganet/shell-versions:mksh_R59-latest
               alganet/shell-versions:mksh_R59c
@@ -686,11 +693,12 @@ jobs:
           ##########################################
           #                mrsh
           ##########################################
-          # mksh_R59c-latest mksh_R59c
+          # mrsh-latest mksh_R59c-latest mksh_R59c
           - name: mksh_R59c
             targets: "mksh_R59c"
             can_fail_build: false
             tags: |
+              alganet/shell-versions:mksh-latest
               alganet/shell-versions:mksh_R59-latest
               alganet/shell-versions:mksh_R59-latest
               alganet/shell-versions:mksh_R59c
@@ -815,11 +823,12 @@ jobs:
           ##########################################
           #                oksh
           ##########################################
-          # oksh_7-latest oksh_7.2
+          # oksh-latest oksh_7-latest oksh_7.2
           - name: oksh_7.2
             targets: "oksh_7.2"
             can_fail_build: false
             tags: |
+              alganet/shell-versions:oksh-latest
               alganet/shell-versions:oksh_7-latest
               alganet/shell-versions:oksh_7.2
 
@@ -880,11 +889,12 @@ jobs:
           ##########################################
           #                osh
           ##########################################
-          # osh_0-latest osh_0.14-latest osh_0.14.0
+          # osh-latest osh_0-latest osh_0.14-latest osh_0.14.0
           - name: osh_0.14.0
             targets: "osh_0.14.0"
             can_fail_build: false
             tags: |
+              alganet/shell-versions:osh-latest
               alganet/shell-versions:osh_0-latest
               alganet/shell-versions:osh_0.14-latest
               alganet/shell-versions:osh_0.14.0
@@ -956,11 +966,12 @@ jobs:
           ##########################################
           #                posh
           ##########################################
-          # posh_0-latest posh_0.14-latest posh_0.14.1
+          # posh-latest posh_0-latest posh_0.14-latest posh_0.14.1
           - name: posh_0.14.1
             targets: "posh_0.14.1"
             can_fail_build: false
             tags: |
+              alganet/shell-versions:posh-latest
               alganet/shell-versions:posh_0-latest
               alganet/shell-versions:posh_0.14-latest
               alganet/shell-versions:posh_0.14.1
@@ -996,11 +1007,12 @@ jobs:
           ##########################################
           #                yash
           ##########################################
-          # yash_2-latest yash_2.53
+          # yash-latest yash_2-latest yash_2.53
           - name: yash_2.53
             targets: "yash_2.53"
             can_fail_build: false
             tags: |
+              alganet/shell-versions:yash-latest
               alganet/shell-versions:yash_2-latest
               alganet/shell-versions:yash_2.53
 
@@ -1091,11 +1103,12 @@ jobs:
           ##########################################
           #                zsh
           ##########################################
-          # zsh_5-latest zsh_5.9
+          # zsh-latest zsh_5-latest zsh_5.9
           - name: zsh_5.9
             targets: "zsh_5.9"
             can_fail_build: false
             tags: |
+              alganet/shell-versions:zsh-latest
               alganet/shell-versions:zsh_5-latest
               alganet/shell-versions:zsh_5.9
 
