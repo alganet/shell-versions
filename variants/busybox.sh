@@ -5,27 +5,25 @@
 
 shvr_targets_busybox ()
 {
-	shvr_cache targets_busybox \
-		curl --no-progress-meter "https://busybox.net/downloads/" |
-			grep -Eoi 'href="[^"]*"' |
-			sed -n '
-				s/^href="busybox-/busybox_/
-				s/"$//
-				/^busybox_[0-9][0-9]*.*\.tar\.bz2$/ {
-					s/\.tar\.bz2$//
-					p
-				}
-			' |
-			grep "^busybox_1\.[0-9][0-9]" |
-			grep -v "^busybox_1\.[0-1][0-9]" |
-			grep -v "^busybox_1\.20\." |
-			sort -u |
-			sort -V -r
+	cat <<-@
+		busybox_1.36.0
+		busybox_1.35.0
+		busybox_1.34.1
+		busybox_1.33.2
+		busybox_1.32.1
+		busybox_1.31.1
+		busybox_1.30.1
+		busybox_1.29.3
+		busybox_1.28.4
+		busybox_1.27.2
+		busybox_1.26.2
+		busybox_1.25.1
+		busybox_1.24.2
+		busybox_1.23.2
+		busybox_1.22.1
+		busybox_1.21.1
+	@
 }
-
-shvr_majors_busybox () { shvr_semver_majors busybox; }
-shvr_minors_busybox () { shvr_semver_minors busybox "$@"; }
-shvr_patches_busybox () { shvr_semver_patches busybox "$@"; }
 
 shvr_build_busybox ()
 {
@@ -109,14 +107,14 @@ shvr_build_busybox ()
 	make allnoconfig
 	
 	for conf in $unsetConfs
-	do
+	do 
 		sed -i \
 			-e "s!^$conf=.*\$!# $conf is not set!" \
 			.config
 	done
 	
 	for confV in $setConfs
-	do
+	do 
 		conf="${confV%=*}"
 		sed -i \
 			-e "s!^$conf=.*\$!$confV!" \
@@ -134,7 +132,7 @@ shvr_build_busybox ()
 	done
 
 	for confV in $setConfs
-	do
+	do 
 		if ! grep -q "^$confV\$" .config
 		then
 			if test "${version_major}" = 1 -a "${version_minor}" -lt 26

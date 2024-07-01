@@ -5,26 +5,15 @@
 
 shvr_targets_loksh ()
 {
-	shvr_cache targets_loksh \
-		curl --no-progress-meter https://api.github.com/repos/dimkr/loksh/releases |
-			sed -n '
-				/^    "tag_name": "/ {
-					s/^    "tag_name": "/loksh_/
-					s/",$//
-					p
-				}
-			' |
-			grep -v "^loksh_[5]\.[0-9]" |
-			grep -v "^loksh_[6]\.[0-6]" |
-			grep -v "^loksh_[6]\.7\.[0-4]$" |
-			sort -u |
-			sort -V -r
-	return
+	cat <<-@
+		loksh_7.2
+		loksh_7.1
+		loksh_7.0
+		loksh_6.9
+		loksh_6.8.1
+		loksh_6.7.5
+	@
 }
-
-shvr_majors_loksh () { shvr_semver_majors loksh; }
-shvr_minors_loksh () { shvr_semver_minors loksh "$@"; }
-shvr_patches_loksh () { shvr_semver_patches loksh "$@"; }
 
 shvr_build_loksh ()
 {

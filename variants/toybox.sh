@@ -9,10 +9,6 @@ shvr_targets_toybox ()
 	@
 }
 
-shvr_majors_toybox () { shvr_semver_majors toybox; }
-shvr_minors_toybox () { shvr_semver_minors toybox "$@"; }
-shvr_patches_toybox () { shvr_semver_patches toybox "$@"; }
-
 shvr_build_toybox ()
 {
 	version="$1"
@@ -47,14 +43,14 @@ shvr_build_toybox ()
 	make defconfig
 	
 	for conf in $unsetConfs
-	do
+	do 
 		sed -i \
 			-e "s!^$conf=.*\$!# $conf is not set!" \
 			.config
 	done
 	
 	for confV in $setConfs
-	do
+	do 
 		conf="${confV%=*}"
 		sed -i \
 			-e "s!^$conf=.*\$!$confV!" \
@@ -72,7 +68,7 @@ shvr_build_toybox ()
 	done
 
 	for confV in $setConfs
-	do
+	do 
 		if ! grep -q "^$confV\$" .config
 		then
 			echo "Fail $confV"

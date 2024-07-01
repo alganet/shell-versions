@@ -5,22 +5,22 @@
 
 shvr_targets_yash ()
 {
-	shvr_cache targets_yash \
-		curl --no-progress-meter https://api.github.com/repos/magicant/yash/releases |
-			sed -n '
-				/^    "tag_name": "/ {
-					s/^    "tag_name": "/yash_/
-					s/",$//
-					p
-				}
-			' |
-			sort -u |
-			sort -V -r
+	cat <<-@
+		yash_2.53
+		yash_2.52
+		yash_2.51
+		yash_2.50
+		yash_2.49
+		yash_2.48
+		yash_2.47
+		yash_2.46
+		yash_2.45
+		yash_2.44
+		yash_2.43
+		yash_2.42
+		yash_2.41
+	@
 }
-
-shvr_majors_yash () { shvr_semver_majors yash; }
-shvr_minors_yash () { shvr_semver_minors yash "$@"; }
-shvr_patches_yash () { shvr_semver_patches yash "$@"; }
 
 shvr_build_yash ()
 {

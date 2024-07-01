@@ -5,26 +5,18 @@
 
 shvr_targets_osh ()
 {
-	shvr_cache targets_osh \
-		curl --no-progress-meter https://www.oilshell.org/download/ |
-			grep -Eoi 'href="[^"]*"' |
-			sed -n '
-				s/^href="oil-\([0-9]\)/osh_\1/
-				s/"$//
-				/^osh_[0-9][0-9]*.*\.tar\.gz$/ {
-					s/\.tar\.gz$//
-					p
-				}
-			' |
-			grep -v "^osh_0\.13\.0" |
-			grep -v "^osh_0\.[0-5]\." |
-			sort -u |
-			sort -V -r
+	cat <<-@
+		osh_0.14.0
+		osh_0.13.1
+		osh_0.12.9
+		osh_0.11.0
+		osh_0.10.1
+		osh_0.9.9
+		osh_0.8.12
+		osh_0.7.0
+		osh_0.6.0
+	@
 }
-
-shvr_majors_osh () { shvr_semver_majors osh; }
-shvr_minors_osh () { shvr_semver_minors osh "$@"; }
-shvr_patches_osh () { shvr_semver_patches osh "$@"; }
 
 shvr_build_osh ()
 {

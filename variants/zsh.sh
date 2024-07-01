@@ -5,22 +5,6 @@
 
 shvr_targets_zsh ()
 {
-	shvr_cache targets_zsh \
-		curl --no-progress-meter https://sourceforge.net/projects/zsh/files/zsh/ |
-			grep -Eoi 'href="[^"]*"'  |
-			sed -n '
-				/\/projects\/zsh\/files\/zsh\/[0-9]/ {
-					s/href="\/projects\/zsh\/files\/zsh\/\([0-9][^/]*\)\/.*/zsh_\1/
-					s/"$//
-					p
-				}
-			' |
-			grep -v "^zsh_3" |
-			grep -v "^zsh_4.[01]" |
-			grep -v "^zsh_4.2.[0-6]" |
-			sort -u |
-			sort -V -r
-		return
 	cat <<-@
 		zsh_5.9
 		zsh_5.8.1
@@ -35,10 +19,6 @@ shvr_targets_zsh ()
 		zsh_4.2.7
 	@
 }
-
-shvr_majors_zsh () { shvr_semver_majors zsh; }
-shvr_minors_zsh () { shvr_semver_minors zsh "$@"; }
-shvr_patches_zsh () { shvr_semver_patches zsh "$@"; }
 
 shvr_build_zsh ()
 {
@@ -60,7 +40,7 @@ shvr_build_zsh ()
 	build_srcdir="${SHVR_DIR_SRC}/zsh/${version}"
 	mkdir -p "${build_srcdir}"
 
-	if
+	if 
 		test "$version_major" -gt 4 -a "${version_minor}" -gt 0 ||
 		test "$version_major" -gt 5
 	then
