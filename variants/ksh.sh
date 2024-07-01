@@ -6,6 +6,9 @@
 shvr_targets_ksh ()
 {
 	cat <<-@
+		ksh_93u+m-v1.0.8
+		ksh_93u+m-v1.0.7
+		ksh_93u+m-v1.0.6
 		ksh_93u+m-v1.0.4
 		ksh_93u+m-v1.0.3
 		ksh_93u+m-v1.0.2
@@ -39,19 +42,19 @@ shvr_build_ksh ()
 	mkdir -p "${build_srcdir}"
 	
 	case "$fork_name" in
-		'93u+m')
+		*'93uplusm')
 			apt-get -y install \
 				wget gcc
 			wget -O "${build_srcdir}.tar.gz" \
 				"https://github.com/ksh93/ksh/archive/refs/tags/${fork_version}.tar.gz"
 			;;
-		'2020')
+		*'2020')
 			apt-get -y install \
 				wget gcc meson
 			wget -O "${build_srcdir}.tar.gz" \
 				"https://github.com/ksh2020/ksh/archive/refs/tags/${fork_version}.tar.gz"
 			;;
-		'history')
+		*'history')
 			apt-get -y install \
 				wget gcc
 			wget -O "${build_srcdir}.tar.gz" \

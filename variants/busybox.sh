@@ -6,7 +6,7 @@
 shvr_targets_busybox ()
 {
 	cat <<-@
-		busybox_1.36.0
+		busybox_1.36.1
 		busybox_1.35.0
 		busybox_1.34.1
 		busybox_1.33.2

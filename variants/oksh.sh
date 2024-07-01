@@ -6,6 +6,9 @@
 shvr_targets_oksh ()
 {
 	cat <<-@
+		oksh_7.5
+		oksh_7.4
+		oksh_7.3
 		oksh_7.2
 		oksh_7.1
 		oksh_7.0

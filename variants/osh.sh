@@ -6,15 +6,20 @@
 shvr_targets_osh ()
 {
 	cat <<-@
-		osh_0.14.0
+		osh_0.22.0
+		osh_0.21.0
+		osh_0.20.0
+		osh_0.19.0
+		osh_0.18.0
+		osh_0.17.0
+		osh_0.16.0
+		osh_0.15.0
+		osh_0.14.2
 		osh_0.13.1
 		osh_0.12.9
 		osh_0.11.0
 		osh_0.10.1
 		osh_0.9.9
-		osh_0.8.12
-		osh_0.7.0
-		osh_0.6.0
 	@
 }
 

@@ -6,7 +6,7 @@
 shvr_targets_dash ()
 {
 	cat <<-@
-		dash_0.5.11
+		dash_0.5.12
 		dash_0.5.11.5
 		dash_0.5.10.2
 		dash_0.5.9.1
