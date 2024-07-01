@@ -10,10 +10,6 @@ shvr_targets_gwsh ()
 	@
 }
 
-shvr_majors_gwsh () { shvr_semver_majors gwsh; }
-shvr_minors_gwsh () { shvr_semver_minors gwsh "$@"; }
-shvr_patches_gwsh () { shvr_semver_patches gwsh "$@"; }
-
 shvr_build_gwsh ()
 {
 	version="$1"

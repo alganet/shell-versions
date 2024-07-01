@@ -1,8 +1,6 @@
 # Copyright (c) Alexandre Gomes Gaigalas <alganet@gmail.com>
 # SPDX-License-Identifier: ISC
 
-# THIS FILE IS AUTO-GENERATED, DO NOT EDIT
-
 name: Docker Push Pipeline
 
 on:
@@ -25,7 +23,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      - name: "Build Docker Image (push: true)"
+      - name: Build and Push Docker image
         uses: docker/build-push-action@v4
         with:
           context: .
@@ -36,1136 +34,828 @@ jobs:
             TARGETS=${{ matrix.targets }}
 
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         include:
           ##########################################
-          #                multi
+          #                MULTI
           ##########################################
-          #multi-latest
           - name: multi-latest
-            targets: "zsh_5.9 zsh_5.8.1 zsh_4.2.7 yash_2.54 yash_2.53 posh_0.14.1 posh_0.13.2 osh_0.16.0 osh_0.15.0 oksh_7.3 oksh_7.2 oksh_6.9 oksh_6.8.1 mksh_R59c mksh_R58 loksh_7.3 loksh_7.2 loksh_6.9 loksh_6.8.1 ksh_shvrB2020-2020.0.0 ksh_shvrA93uplusm-v1.0.6 gwsh_main dash_0.5.12 dash_0.5.11.5 busybox_1.36.1 busybox_1.35.0 bash_5.2.15 bash_5.1.16 bash_4.4.23 bash_4.3.48 "
+            targets: "bash_5.2.15 busybox_1.36.0 dash_0.5.11 ksh_93u+m-v1.0.4 loksh_7.2 mksh_R59c oksh_7.2 osh_0.14.0 posh_0.14.1 yash_2.53 zsh_5.9"
             can_fail_build: false
             tags: |
-              latest
-              multi-latest
+              alganet/shell-versions:latest
+              alganet/shell-versions:multi-latest
 
           ##########################################
-          #                bash
+          #                BASH
           ##########################################
-          # bash-all
-          - name: bash-all
-            targets: "bash_5.2.15 bash_5.1.16 bash_5.0.18 bash_4.4.23 bash_4.3.48 bash_4.2.53 bash_4.1.17 bash_4.0.44 bash_3.2.57 bash_3.1.23 bash_3.0.22 "
-            can_fail_build: false
-            tags: |
-              bash-all
-
-          # bash-latest bash_5-latest bash_5.2-latest bash_5.2.15
-          - name: bash_5.2.15
-            targets: "bash_5.2.15"
+          - name: bash-5.2.15
+            targets: bash_5.2.15
             can_fail_build: false
             tags: |
               alganet/shell-versions:bash-latest
-              alganet/shell-versions:bash_5-latest
-              alganet/shell-versions:bash_5.2-latest
-              alganet/shell-versions:bash_5.2.15
-
-          # bash_5.1-latest bash_5.1.16
-          - name: bash_5.1.16
-            targets: "bash_5.1.16"
+              alganet/shell-versions:bash-5-latest
+              alganet/shell-versions:bash-5.2-latest
+              alganet/shell-versions:bash-5.2.15
+          - name: bash-5.1.16
+            targets: bash_5.1.16
             can_fail_build: false
             tags: |
-              alganet/shell-versions:bash_5.1-latest
-              alganet/shell-versions:bash_5.1.16
-
-          # bash_5.0-latest bash_5.0.18
-          - name: bash_5.0.18
-            targets: "bash_5.0.18"
+              alganet/shell-versions:bash-5.1-latest
+              alganet/shell-versions:bash-5.1.16
+          - name: bash-5.0.18
+            targets: bash_5.0.18
             can_fail_build: false
             tags: |
-              alganet/shell-versions:bash_5.0-latest
-              alganet/shell-versions:bash_5.0.18
-
-          # bash_4-latest bash_4.4-latest bash_4.4.23
-          - name: bash_4.4.23
-            targets: "bash_4.4.23"
+              alganet/shell-versions:bash-5.0-latest
+              alganet/shell-versions:bash-5.0.18
+          - name: bash-4.4.23
+            targets: bash_4.4.23
             can_fail_build: false
             tags: |
-              alganet/shell-versions:bash_4-latest
-              alganet/shell-versions:bash_4.4-latest
-              alganet/shell-versions:bash_4.4.23
-
-          # bash_4.3-latest bash_4.3.48
-          - name: bash_4.3.48
-            targets: "bash_4.3.48"
+              alganet/shell-versions:bash-4-latest
+              alganet/shell-versions:bash-4.4-latest
+              alganet/shell-versions:bash-4.4.23
+          - name: bash-4.3.48
+            targets: bash_4.3.48
             can_fail_build: false
             tags: |
-              alganet/shell-versions:bash_4.3-latest
-              alganet/shell-versions:bash_4.3.48
-
-          # bash_4.2-latest bash_4.2.53
-          - name: bash_4.2.53
-            targets: "bash_4.2.53"
+              alganet/shell-versions:bash-4.3-latest
+              alganet/shell-versions:bash-4.3.48
+          - name: bash-4.2.53
+            targets: bash_4.2.53
             can_fail_build: false
             tags: |
-              alganet/shell-versions:bash_4.2-latest
-              alganet/shell-versions:bash_4.2.53
-
-          # bash_4.1-latest bash_4.1.17
-          - name: bash_4.1.17
-            targets: "bash_4.1.17"
+              alganet/shell-versions:bash-4.2-latest
+              alganet/shell-versions:bash-4.2.53
+          - name: bash-4.1.17
+            targets: bash_4.1.17
             can_fail_build: false
             tags: |
-              alganet/shell-versions:bash_4.1-latest
-              alganet/shell-versions:bash_4.1.17
-
-          # bash_4.0-latest bash_4.0.44
-          - name: bash_4.0.44
-            targets: "bash_4.0.44"
+              alganet/shell-versions:bash-4.1-latest
+              alganet/shell-versions:bash-4.1.17
+          - name: bash-4.0.44
+            targets: bash_4.0.44
             can_fail_build: false
             tags: |
-              alganet/shell-versions:bash_4.0-latest
-              alganet/shell-versions:bash_4.0.44
-
-          # bash_3-latest bash_3.2-latest bash_3.2.57
-          - name: bash_3.2.57
-            targets: "bash_3.2.57"
+              alganet/shell-versions:bash-4.0-latest
+              alganet/shell-versions:bash-4.0.44
+          - name: bash-3.2.57
+            targets: bash_3.2.57
             can_fail_build: false
             tags: |
-              alganet/shell-versions:bash_3-latest
-              alganet/shell-versions:bash_3.2-latest
-              alganet/shell-versions:bash_3.2.57
-
-          # bash_3.1-latest bash_3.1.23
-          - name: bash_3.1.23
-            targets: "bash_3.1.23"
+              alganet/shell-versions:bash-3-latest
+              alganet/shell-versions:bash-3.2-latest
+              alganet/shell-versions:bash-3.2.57
+          - name: bash-3.1.23
+            targets: bash_3.1.23
             can_fail_build: false
             tags: |
-              alganet/shell-versions:bash_3.1-latest
-              alganet/shell-versions:bash_3.1.23
-
-          # bash_3.0-latest bash_3.0.22
-          - name: bash_3.0.22
-            targets: "bash_3.0.22"
+              alganet/shell-versions:bash-3.1-latest
+              alganet/shell-versions:bash-3.1.23
+          - name: bash-3.0.22
+            targets: bash_3.0.22
             can_fail_build: false
             tags: |
-              alganet/shell-versions:bash_3.0-latest
-              alganet/shell-versions:bash_3.0.22
+              alganet/shell-versions:bash-3.0-latest
+              alganet/shell-versions:bash-3.0.22
 
           ##########################################
-          #                busybox
+          #                BUSYBOX
           ##########################################
-          # busybox-all
-          - name: busybox-all
-            targets: "busybox_1.36.1 busybox_1.35.0 busybox_1.34.1 busybox_1.33.2 busybox_1.32.1 busybox_1.31.1 busybox_1.30.1 busybox_1.29.3 busybox_1.28.4 busybox_1.27.2 busybox_1.26.2 busybox_1.25.1 busybox_1.24.2 busybox_1.23.2 busybox_1.22.1 busybox_1.21.1 "
-            can_fail_build: false
-            tags: |
-              busybox-all
-
-          # busybox-latest busybox_1-latest busybox_1.36-latest busybox_1.36.1
-          - name: busybox_1.36.1
-            targets: "busybox_1.36.1"
+          - name: busybox-1.36.0
+            targets: busybox_1.36.0
             can_fail_build: false
             tags: |
               alganet/shell-versions:busybox-latest
-              alganet/shell-versions:busybox_1-latest
-              alganet/shell-versions:busybox_1.36-latest
-              alganet/shell-versions:busybox_1.36.1
-
-          # busybox_1.35-latest busybox_1.35.0
-          - name: busybox_1.35.0
-            targets: "busybox_1.35.0"
+              alganet/shell-versions:busybox-1-latest
+              alganet/shell-versions:busybox-1.36
+              alganet/shell-versions:busybox-1.36.0
+          - name: busybox-1.35.0
+            targets: busybox_1.35.0
             can_fail_build: false
             tags: |
-              alganet/shell-versions:busybox_1.35-latest
-              alganet/shell-versions:busybox_1.35.0
-
-          # busybox_1.34-latest busybox_1.34.1
-          - name: busybox_1.34.1
-            targets: "busybox_1.34.1"
+              alganet/shell-versions:busybox-1.35-latest
+              alganet/shell-versions:busybox-1.35.0
+          - name: busybox-1.34.1
+            targets: busybox_1.34.1
             can_fail_build: false
             tags: |
-              alganet/shell-versions:busybox_1.34-latest
-              alganet/shell-versions:busybox_1.34.1
-
-          # busybox_1.33-latest busybox_1.33.2
-          - name: busybox_1.33.2
-            targets: "busybox_1.33.2"
+              alganet/shell-versions:busybox-1.34-latest
+              alganet/shell-versions:busybox-1.34.1
+          - name: busybox-1.33.2
+            targets: busybox_1.33.2
             can_fail_build: false
             tags: |
-              alganet/shell-versions:busybox_1.33-latest
-              alganet/shell-versions:busybox_1.33.2
-
-          # busybox_1.32-latest busybox_1.32.1
-          - name: busybox_1.32.1
-            targets: "busybox_1.32.1"
+              alganet/shell-versions:busybox-1.33-latest
+              alganet/shell-versions:busybox-1.33.2
+          - name: busybox-1.32.1
+            targets: busybox_1.32.1
             can_fail_build: false
             tags: |
-              alganet/shell-versions:busybox_1.32-latest
-              alganet/shell-versions:busybox_1.32.1
-
-          # busybox_1.31-latest busybox_1.31.1
-          - name: busybox_1.31.1
-            targets: "busybox_1.31.1"
+              alganet/shell-versions:busybox-1.32-latest
+              alganet/shell-versions:busybox-1.32.1
+          - name: busybox-1.31.1
+            targets: busybox_1.31.1
             can_fail_build: false
             tags: |
-              alganet/shell-versions:busybox_1.31-latest
-              alganet/shell-versions:busybox_1.31.1
-
-          # busybox_1.30-latest busybox_1.30.1
-          - name: busybox_1.30.1
-            targets: "busybox_1.30.1"
+              alganet/shell-versions:busybox-1.31-latest
+              alganet/shell-versions:busybox-1.31.1
+          - name: busybox-1.30.1
+            targets: busybox_1.30.1
             can_fail_build: false
             tags: |
-              alganet/shell-versions:busybox_1.30-latest
-              alganet/shell-versions:busybox_1.30.1
-
-          # busybox_1.29-latest busybox_1.29.3
-          - name: busybox_1.29.3
-            targets: "busybox_1.29.3"
+              alganet/shell-versions:busybox-1.30-latest
+              alganet/shell-versions:busybox-1.30.1
+          - name: busybox-1.29.3
+            targets: busybox_1.29.3
             can_fail_build: false
             tags: |
-              alganet/shell-versions:busybox_1.29-latest
-              alganet/shell-versions:busybox_1.29.3
-
-          # busybox_1.28-latest busybox_1.28.4
-          - name: busybox_1.28.4
-            targets: "busybox_1.28.4"
+              alganet/shell-versions:busybox-1.29-latest
+              alganet/shell-versions:busybox-1.29.3
+          - name: busybox-1.28.4
+            targets: busybox_1.28.4
             can_fail_build: false
             tags: |
-              alganet/shell-versions:busybox_1.28-latest
-              alganet/shell-versions:busybox_1.28.4
-
-          # busybox_1.27-latest busybox_1.27.2
-          - name: busybox_1.27.2
-            targets: "busybox_1.27.2"
+              alganet/shell-versions:busybox-1.28-latest
+              alganet/shell-versions:busybox-1.28.4
+          - name: busybox-1.27.2
+            targets: busybox_1.27.2
             can_fail_build: false
             tags: |
-              alganet/shell-versions:busybox_1.27-latest
-              alganet/shell-versions:busybox_1.27.2
-
-          # busybox_1.26-latest busybox_1.26.2
-          - name: busybox_1.26.2
-            targets: "busybox_1.26.2"
+              alganet/shell-versions:busybox-1.27-latest
+              alganet/shell-versions:busybox-1.27.2
+          - name: busybox-1.26.2
+            targets: busybox_1.26.2
             can_fail_build: false
             tags: |
-              alganet/shell-versions:busybox_1.26-latest
-              alganet/shell-versions:busybox_1.26.2
-
-          # busybox_1.25-latest busybox_1.25.1
-          - name: busybox_1.25.1
-            targets: "busybox_1.25.1"
+              alganet/shell-versions:busybox-1.26-latest
+              alganet/shell-versions:busybox-1.26.2
+          - name: busybox-1.25.1
+            targets: busybox_1.25.1
             can_fail_build: false
             tags: |
-              alganet/shell-versions:busybox_1.25-latest
-              alganet/shell-versions:busybox_1.25.1
-
-          # busybox_1.24-latest busybox_1.24.2
-          - name: busybox_1.24.2
-            targets: "busybox_1.24.2"
+              alganet/shell-versions:busybox-1.25-latest
+              alganet/shell-versions:busybox-1.25.1
+          - name: busybox-1.24.2
+            targets: busybox_1.24.2
             can_fail_build: false
             tags: |
-              alganet/shell-versions:busybox_1.24-latest
-              alganet/shell-versions:busybox_1.24.2
-
-          # busybox_1.23-latest busybox_1.23.2
-          - name: busybox_1.23.2
-            targets: "busybox_1.23.2"
+              alganet/shell-versions:busybox-1.24-latest
+              alganet/shell-versions:busybox-1.24.2
+          - name: busybox-1.23.2
+            targets: busybox_1.23.2
             can_fail_build: false
             tags: |
-              alganet/shell-versions:busybox_1.23-latest
-              alganet/shell-versions:busybox_1.23.2
-
-          # busybox_1.22-latest busybox_1.22.1
-          - name: busybox_1.22.1
-            targets: "busybox_1.22.1"
+              alganet/shell-versions:busybox-1.23-latest
+              alganet/shell-versions:busybox-1.23.2
+          - name: busybox-1.22.1
+            targets: busybox_1.22.1
             can_fail_build: false
             tags: |
-              alganet/shell-versions:busybox_1.22-latest
-              alganet/shell-versions:busybox_1.22.1
-
-          # busybox_1.21-latest busybox_1.21.1
-          - name: busybox_1.21.1
-            targets: "busybox_1.21.1"
+              alganet/shell-versions:busybox-1.22-latest
+              alganet/shell-versions:busybox-1.22.1
+          - name: busybox-1.21.1
+            targets: busybox_1.21.1
             can_fail_build: false
             tags: |
-              alganet/shell-versions:busybox_1.21-latest
-              alganet/shell-versions:busybox_1.21.1
-
+              alganet/shell-versions:busybox-1.21-latest
+              alganet/shell-versions:busybox-1.21.1
+          
           ##########################################
-          #                dash
+          #                DASH
           ##########################################
-          # dash-all
-          - name: dash-all
-            targets: "dash_0.5.12 dash_0.5.11.5 dash_0.5.10.2 dash_0.5.9.1 dash_0.5.8 dash_0.5.7 dash_0.5.6.1 dash_0.5.5.1 "
-            can_fail_build: false
-            tags: |
-              dash-all
-
-          # dash-latest dash_0.5-latest dash_0.5.12-latest dash_0.5.12
-          - name: dash_0.5.12
-            targets: "dash_0.5.12"
+          - name: dash-0.5.11
+            targets: dash_0.5.11
             can_fail_build: false
             tags: |
               alganet/shell-versions:dash-latest
-              alganet/shell-versions:dash_0.5-latest
-              alganet/shell-versions:dash_0.5.12-latest
-              alganet/shell-versions:dash_0.5.12
-
-          # dash_0.5.11-latest dash_0.5.11.5
-          - name: dash_0.5.11.5
-            targets: "dash_0.5.11.5"
+              alganet/shell-versions:dash-0-latest
+              alganet/shell-versions:dash-0.5-latest
+              alganet/shell-versions:dash-0.5.11
+          - name: dash-0.5.11.5
+            targets: dash_0.5.11.5
             can_fail_build: false
             tags: |
-              alganet/shell-versions:dash_0.5.11-latest
-              alganet/shell-versions:dash_0.5.11.5
-
-          # dash_0.5.10-latest dash_0.5.10.2
-          - name: dash_0.5.10.2
-            targets: "dash_0.5.10.2"
+              alganet/shell-versions:dash-0.5.11-latest
+              alganet/shell-versions:dash-0.5.11.5
+          - name: dash-0.5.10.2
+            targets: dash_0.5.10.2
             can_fail_build: false
             tags: |
-              alganet/shell-versions:dash_0.5.10-latest
-              alganet/shell-versions:dash_0.5.10.2
-
-          # dash_0.5.9-latest dash_0.5.9.1
-          - name: dash_0.5.9.1
-            targets: "dash_0.5.9.1"
+              alganet/shell-versions:dash-0.5.10-latest
+              alganet/shell-versions:dash-0.5.10.2
+          - name: dash-0.5.9.1
+            targets: dash_0.5.9.1
             can_fail_build: false
             tags: |
-              alganet/shell-versions:dash_0.5.9-latest
-              alganet/shell-versions:dash_0.5.9.1
-
-          # dash_0.5.8-latest dash_0.5.8
-          - name: dash_0.5.8
-            targets: "dash_0.5.8"
+              alganet/shell-versions:dash-0.5.9-latest
+              alganet/shell-versions:dash-0.5.9.1
+          - name: dash-0.5.8
+            targets: dash_0.5.8
             can_fail_build: false
             tags: |
-              alganet/shell-versions:dash_0.5.8-latest
-              alganet/shell-versions:dash_0.5.8
-
-          # dash_0.5.7-latest dash_0.5.7
-          - name: dash_0.5.7
-            targets: "dash_0.5.7"
+              alganet/shell-versions:dash-0.5.8-latest
+              alganet/shell-versions:dash-0.5.8
+          - name: dash-0.5.7
+            targets: dash_0.5.7
             can_fail_build: false
             tags: |
-              alganet/shell-versions:dash_0.5.7-latest
-              alganet/shell-versions:dash_0.5.7
-
-          # dash_0.5.6-latest dash_0.5.6.1
-          - name: dash_0.5.6.1
-            targets: "dash_0.5.6.1"
+              alganet/shell-versions:dash-0.5.7-latest
+              alganet/shell-versions:dash-0.5.7
+          - name: dash-0.5.6.1
+            targets: dash_0.5.6.1
             can_fail_build: false
             tags: |
-              alganet/shell-versions:dash_0.5.6-latest
-              alganet/shell-versions:dash_0.5.6.1
-
-          # dash_0.5.5-latest dash_0.5.5.1
-          - name: dash_0.5.5.1
-            targets: "dash_0.5.5.1"
+              alganet/shell-versions:dash-0.5.6-latest
+              alganet/shell-versions:dash-0.5.6.1
+          - name: dash-0.5.5.1
+            targets: dash_0.5.5.1
             can_fail_build: false
             tags: |
-              alganet/shell-versions:dash_0.5.5-latest
-              alganet/shell-versions:dash_0.5.5.1
+              alganet/shell-versions:dash-0.5.5-latest
+              alganet/shell-versions:dash-0.5.5.1
 
           ##########################################
-          #                gwsh
+          #                GWSH
           ##########################################
-          # gwsh-all
-          - name: gwsh-all
-            targets: "gwsh_main "
+          - name: gwsh-nightly
+            targets: gwsh_main
             can_fail_build: false
             tags: |
-              gwsh-all
-
-          # gwsh-latest gwsh_main-latest gwsh_main
-          - name: gwsh_main
-            targets: "gwsh_main"
-            can_fail_build: false
-            tags: |
-              alganet/shell-versions:gwsh-latest
-              alganet/shell-versions:gwsh_main-latest
-              alganet/shell-versions:gwsh_main
+              alganet/shell-versions:gwsh-nightly
 
           ##########################################
-          #                ksh
+          #                KSH
           ##########################################
-          # ksh-all
-          - name: ksh-all
-            targets: "ksh_shvrChistory-b_2016-01-10 ksh_shvrChistory-b_2014-12-24 ksh_shvrChistory-b_2012-11-21 ksh_shvrChistory-b_2011-12-24 ksh_shvrChistory-b_2010-12-21 ksh_shvrChistory-b_2009-12-24 ksh_shvrChistory-b_2008-12-31 ksh_shvrChistory-b_2007-11-05 ksh_shvrChistory-b_2006-12-22b ksh_shvrChistory-b_2005-09-16 ksh_shvrChistory-b_2004-12-25 ksh_shvrB2020-2020.0.0 ksh_shvrA93uplusm-v1.0.6 "
-            can_fail_build: false
-            tags: |
-              ksh-all
-
-          # ksh-latest ksh_shvrA93uplusm-v1-latest ksh_shvrA93uplusm-v1.0.6
-          - name: ksh_shvrA93uplusm-v1.0.6
-            targets: "ksh_shvrA93uplusm-v1.0.6"
+          - name: ksh-93uplusm-v1.0.4
+            targets: ksh_93u+m-v1.0.4
             can_fail_build: false
             tags: |
               alganet/shell-versions:ksh-latest
-              alganet/shell-versions:ksh_shvrA93uplusm-v1-latest
-              alganet/shell-versions:ksh_shvrA93uplusm-v1.0.6
-
-          # ksh_shvrB2020-2020-latest ksh_shvrB2020-2020.0.0
-          - name: ksh_shvrB2020-2020.0.0
-            targets: "ksh_shvrB2020-2020.0.0"
+              alganet/shell-versions:ksh-93uplusm-latest
+              alganet/shell-versions:ksh-93uplusm-v1-latest
+              alganet/shell-versions:ksh-93uplusm-v1.0-latest
+              alganet/shell-versions:ksh-93uplusm-v1.0.4
+          - name: ksh-93uplusm-v1.0.3
+            targets: ksh_93u+m-v1.0.3
             can_fail_build: false
             tags: |
-              alganet/shell-versions:ksh_shvrB2020-2020-latest
-              alganet/shell-versions:ksh_shvrB2020-2020.0.0
-
-          # ksh_shvrChistory-b_2016-latest ksh_shvrChistory-b_2016-01-10
-          - name: ksh_shvrChistory-b_2016-01-10
-            targets: "ksh_shvrChistory-b_2016-01-10"
+              alganet/shell-versions:ksh-93uplusm-v1.0.3
+          - name: ksh-93uplusm-v1.0.2
+            targets: ksh_93u+m-v1.0.2
             can_fail_build: false
             tags: |
-              alganet/shell-versions:ksh_shvrChistory-b_2016-latest
-              alganet/shell-versions:ksh_shvrChistory-b_2016-01-10
-
-          # ksh_shvrChistory-b_2014-latest ksh_shvrChistory-b_2014-12-24
-          - name: ksh_shvrChistory-b_2014-12-24
-            targets: "ksh_shvrChistory-b_2014-12-24"
+              alganet/shell-versions:ksh-93uplusm-v1.0.2
+          - name: ksh-93uplusm-v1.0.1
+            targets: ksh_93u+m-v1.0.1
             can_fail_build: false
             tags: |
-              alganet/shell-versions:ksh_shvrChistory-b_2014-latest
-              alganet/shell-versions:ksh_shvrChistory-b_2014-12-24
-
-          # ksh_shvrChistory-b_2012-latest ksh_shvrChistory-b_2012-11-21
-          - name: ksh_shvrChistory-b_2012-11-21
-            targets: "ksh_shvrChistory-b_2012-11-21"
+              alganet/shell-versions:ksh-93uplusm-v1.0.1
+          - name: ksh-2020-2020.0.0
+            targets: ksh_2020-2020.0.0
             can_fail_build: false
             tags: |
-              alganet/shell-versions:ksh_shvrChistory-b_2012-latest
-              alganet/shell-versions:ksh_shvrChistory-b_2012-11-21
-
-          # ksh_shvrChistory-b_2011-latest ksh_shvrChistory-b_2011-12-24
-          - name: ksh_shvrChistory-b_2011-12-24
-            targets: "ksh_shvrChistory-b_2011-12-24"
+              alganet/shell-versions:ksh-2020
+              alganet/shell-versions:ksh-2020-2020.0.0
+          - name: ksh-history-2016-01-10vdash
+            targets: ksh_history-b_2016-01-10
             can_fail_build: false
             tags: |
-              alganet/shell-versions:ksh_shvrChistory-b_2011-latest
-              alganet/shell-versions:ksh_shvrChistory-b_2011-12-24
-
-          # ksh_shvrChistory-b_2010-latest ksh_shvrChistory-b_2010-12-21
-          - name: ksh_shvrChistory-b_2010-12-21
-            targets: "ksh_shvrChistory-b_2010-12-21"
+              alganet/shell-versions:ksh-vdash-latest
+              alganet/shell-versions:ksh-history-2016-01-10vdash
+          - name: ksh-history-2012-08-01uplus
+            targets: ksh_history-b_2012-08-01
             can_fail_build: false
             tags: |
-              alganet/shell-versions:ksh_shvrChistory-b_2010-latest
-              alganet/shell-versions:ksh_shvrChistory-b_2010-12-21
-
-          # ksh_shvrChistory-b_2009-latest ksh_shvrChistory-b_2009-12-24
-          - name: ksh_shvrChistory-b_2009-12-24
-            targets: "ksh_shvrChistory-b_2009-12-24"
+              alganet/shell-versions:ksh-uplus-latest
+              alganet/shell-versions:ksh-history-2012-08-01uplus
+          - name: ksh-history-2011-03-10u
+            targets: ksh_history-b_2011-03-10
             can_fail_build: false
             tags: |
-              alganet/shell-versions:ksh_shvrChistory-b_2009-latest
-              alganet/shell-versions:ksh_shvrChistory-b_2009-12-24
-
-          # ksh_shvrChistory-b_2008-latest ksh_shvrChistory-b_2008-12-31
-          - name: ksh_shvrChistory-b_2008-12-31
-            targets: "ksh_shvrChistory-b_2008-12-31"
+              alganet/shell-versions:ksh-u-latest
+              alganet/shell-versions:ksh-history-2011-03-10u
+          - name: ksh-history-2010-10-26udash
+            targets: ksh_history-b_2010-10-26
             can_fail_build: false
             tags: |
-              alganet/shell-versions:ksh_shvrChistory-b_2008-latest
-              alganet/shell-versions:ksh_shvrChistory-b_2008-12-31
-
-          # ksh_shvrChistory-b_2007-latest ksh_shvrChistory-b_2007-11-05
-          - name: ksh_shvrChistory-b_2007-11-05
-            targets: "ksh_shvrChistory-b_2007-11-05"
+              alganet/shell-versions:ksh-udash-latest
+              alganet/shell-versions:ksh-history-2010-10-26udash
+          - name: ksh-history-2010-06-21tplus
+            targets: ksh_history-b_2010-06-21
             can_fail_build: false
             tags: |
-              alganet/shell-versions:ksh_shvrChistory-b_2007-latest
-              alganet/shell-versions:ksh_shvrChistory-b_2007-11-05
-
-          # ksh_shvrChistory-b_2006-latest ksh_shvrChistory-b_2006-12-22b
-          - name: ksh_shvrChistory-b_2006-12-22b
-            targets: "ksh_shvrChistory-b_2006-12-22b"
+              alganet/shell-versions:ksh-tplus-latest
+              alganet/shell-versions:ksh-history-2010-06-21tplus
+          - name: ksh-history-2008-11-04t
+            targets: ksh_history-b_2008-11-04
             can_fail_build: false
             tags: |
-              alganet/shell-versions:ksh_shvrChistory-b_2006-latest
-              alganet/shell-versions:ksh_shvrChistory-b_2006-12-22b
-
-          # ksh_shvrChistory-b_2005-latest ksh_shvrChistory-b_2005-09-16
-          - name: ksh_shvrChistory-b_2005-09-16
-            targets: "ksh_shvrChistory-b_2005-09-16"
+              alganet/shell-versions:ksh-t-latest
+              alganet/shell-versions:ksh-history-2008-11-04t
+          - name: ksh-history-2008-06-08tdash
+            targets: ksh_history-b_2008-06-08
             can_fail_build: false
             tags: |
-              alganet/shell-versions:ksh_shvrChistory-b_2005-latest
-              alganet/shell-versions:ksh_shvrChistory-b_2005-09-16
-
-          # ksh_shvrChistory-b_2004-latest ksh_shvrChistory-b_2004-12-25
-          - name: ksh_shvrChistory-b_2004-12-25
-            targets: "ksh_shvrChistory-b_2004-12-25"
+              alganet/shell-versions:ksh-tdash-latest
+              alganet/shell-versions:ksh-history-2008-06-08tdash
+          - name: ksh-history-2008-02-02splus
+            targets: ksh_history-b_2008-02-02
             can_fail_build: false
             tags: |
-              alganet/shell-versions:ksh_shvrChistory-b_2004-latest
-              alganet/shell-versions:ksh_shvrChistory-b_2004-12-25
+              alganet/shell-versions:ksh-splus-latest
+              alganet/shell-versions:ksh-history-2008-02-02splus
+          - name: ksh-history-2007-01-11s
+            targets: ksh_history-b_2007-01-11
+            can_fail_build: false
+            tags: |
+              alganet/shell-versions:ksh-s-latest
+              alganet/shell-versions:ksh-history-2007-01-11s
+          - name: ksh-history-2006-11-15sdash
+            targets: ksh_history-b_2006-11-15
+            can_fail_build: false
+            tags: |
+              alganet/shell-versions:ksh-sdash-latest
+              alganet/shell-versions:ksh-history-2006-11-15sdash
+          - name: ksh-history-2006-07-24rplus
+            targets: ksh_history-b_2006-07-24
+            can_fail_build: false
+            tags: |
+              alganet/shell-versions:ksh-rplus-latest
+              alganet/shell-versions:ksh-history-2006-07-24rplus
+          - name: ksh-history-2006-02-14r
+            targets: ksh_history-b_2006-02-14
+            can_fail_build: false
+            tags: |
+              alganet/shell-versions:ksh-r-latest
+              alganet/shell-versions:ksh-history-2006-02-14r
+          - name: ksh-history-2005-09-16rdash
+            targets: ksh_history-b_2005-09-16
+            can_fail_build: false
+            tags: |
+              alganet/shell-versions:ksh-rdash-latest
+              alganet/shell-versions:ksh-history-2005-09-16rdash
+          - name: ksh-history-2005-06-01qplus
+            targets: ksh_history-b_2005-06-01
+            can_fail_build: false
+            tags: |
+              alganet/shell-versions:ksh-qplus-latest
+              alganet/shell-versions:ksh-history-2005-06-01qplus
+          - name: ksh-history-2005-02-02q
+            targets: ksh_history-b_2005-02-02
+            can_fail_build: false
+            tags: |
+              alganet/shell-versions:ksh-q-latest
+              alganet/shell-versions:ksh-history-2005-02-02q
+          - name: ksh-history-2004-10-11pplus
+            targets: ksh_history-b_2004-10-11
+            can_fail_build: false
+            tags: |
+              alganet/shell-versions:ksh-pplus-latest
+              alganet/shell-versions:ksh-history-2004-10-11pplus
 
           ##########################################
-          #                loksh
+          #                LOKSH
           ##########################################
-          # loksh-all
-          - name: loksh-all
-            targets: "loksh_7.3 loksh_7.2 loksh_7.1 loksh_7.0 loksh_6.9 loksh_6.8.1 loksh_6.7.5 "
-            can_fail_build: false
-            tags: |
-              loksh-all
-
-          # loksh-latest loksh_7-latest loksh_7.3-latest loksh_7.3
-          - name: loksh_7.3
-            targets: "loksh_7.3"
+          - name: loksh-7.2
+            targets: loksh_7.2
             can_fail_build: false
             tags: |
               alganet/shell-versions:loksh-latest
-              alganet/shell-versions:loksh_7-latest
-              alganet/shell-versions:loksh_7.3-latest
-              alganet/shell-versions:loksh_7.3
-
-          # loksh_7.2-latest loksh_7.2
-          - name: loksh_7.2
-            targets: "loksh_7.2"
+              alganet/shell-versions:loksh-7-latest
+              alganet/shell-versions:loksh-7.2
+          - name: loksh-7.1
+            targets: loksh_7.1
             can_fail_build: false
             tags: |
-              alganet/shell-versions:loksh_7.2-latest
-              alganet/shell-versions:loksh_7.2
-
-          # loksh_7.1-latest loksh_7.1
-          - name: loksh_7.1
-            targets: "loksh_7.1"
+              alganet/shell-versions:loksh-7.1-latest
+              alganet/shell-versions:loksh-7.1
+          - name: loksh-7.0
+            targets: loksh_7.0
             can_fail_build: false
             tags: |
-              alganet/shell-versions:loksh_7.1-latest
-              alganet/shell-versions:loksh_7.1
-
-          # loksh_7.0-latest loksh_7.0
-          - name: loksh_7.0
-            targets: "loksh_7.0"
+              alganet/shell-versions:loksh-7.0-latest
+              alganet/shell-versions:loksh-7.0
+          - name: loksh-6.9
+            targets: loksh_6.9
             can_fail_build: false
             tags: |
-              alganet/shell-versions:loksh_7.0-latest
-              alganet/shell-versions:loksh_7.0
-
-          # loksh_6-latest loksh_6.9-latest loksh_6.9
-          - name: loksh_6.9
-            targets: "loksh_6.9"
+              alganet/shell-versions:loksh-6-latest
+              alganet/shell-versions:loksh-6.9-latest
+              alganet/shell-versions:loksh-6.9
+          - name: loksh-6.8.1
+            targets: loksh_6.8.1
             can_fail_build: false
             tags: |
-              alganet/shell-versions:loksh_6-latest
-              alganet/shell-versions:loksh_6.9-latest
-              alganet/shell-versions:loksh_6.9
-
-          # loksh_6.8-latest loksh_6.8.1
-          - name: loksh_6.8.1
-            targets: "loksh_6.8.1"
+              alganet/shell-versions:loksh-6.8-latest
+              alganet/shell-versions:loksh-6.8.1
+          - name: loksh-6.7.5
+            targets: loksh_6.7.5
             can_fail_build: false
             tags: |
-              alganet/shell-versions:loksh_6.8-latest
-              alganet/shell-versions:loksh_6.8.1
-
-          # loksh_6.7-latest loksh_6.7.5
-          - name: loksh_6.7.5
-            targets: "loksh_6.7.5"
-            can_fail_build: false
-            tags: |
-              alganet/shell-versions:loksh_6.7-latest
-              alganet/shell-versions:loksh_6.7.5
+              alganet/shell-versions:loksh-6.7-latest
+              alganet/shell-versions:loksh-6.7.5
 
           ##########################################
-          #                mksh
+          #                MKSH
           ##########################################
-          # mksh-all
-          - name: mksh-all
-            targets: "mksh_R59c mksh_R58 mksh_R57 mksh_R56c mksh_R55 mksh_R54 mksh_R53a mksh_R52c mksh_R51 mksh_R50f mksh_R49 mksh_R48b mksh_R47 mksh_R46 mksh_R45 "
-            can_fail_build: false
-            tags: |
-              mksh-all
-
-          # mksh-latest mksh_R59-latest mksh_R59c
-          - name: mksh_R59c
-            targets: "mksh_R59c"
+          - name: mksh-r59c
+            targets: mksh_R59c
             can_fail_build: false
             tags: |
               alganet/shell-versions:mksh-latest
-              alganet/shell-versions:mksh_R59-latest
-              alganet/shell-versions:mksh_R59c
-
-          # mksh_R58-latest mksh_R58
-          - name: mksh_R58
-            targets: "mksh_R58"
+              alganet/shell-versions:mksh-r59-latest
+              alganet/shell-versions:mksh-r59c
+          - name: mksh-r58
+            targets: mksh_R58
             can_fail_build: false
             tags: |
-              alganet/shell-versions:mksh_R58-latest
-              alganet/shell-versions:mksh_R58
-
-          # mksh_R57-latest mksh_R57
-          - name: mksh_R57
-            targets: "mksh_R57"
+              alganet/shell-versions:mksh-r58-latest
+              alganet/shell-versions:mksh-r58
+          - name: mksh-r57
+            targets: mksh_R57
             can_fail_build: false
             tags: |
-              alganet/shell-versions:mksh_R57-latest
-              alganet/shell-versions:mksh_R57
-
-          # mksh_R56-latest mksh_R56c
-          - name: mksh_R56c
-            targets: "mksh_R56c"
+              alganet/shell-versions:mksh-r57-latest
+              alganet/shell-versions:mksh-r57
+          - name: mksh-r56c
+            targets: mksh_R56c
             can_fail_build: false
             tags: |
-              alganet/shell-versions:mksh_R56-latest
-              alganet/shell-versions:mksh_R56c
-
-          # mksh_R55-latest mksh_R55
-          - name: mksh_R55
-            targets: "mksh_R55"
+              alganet/shell-versions:mksh-r56-latest
+              alganet/shell-versions:mksh-r56c
+          - name: mksh-r55
+            targets: mksh_R55
             can_fail_build: false
             tags: |
-              alganet/shell-versions:mksh_R55-latest
-              alganet/shell-versions:mksh_R55
-
-          # mksh_R54-latest mksh_R54
-          - name: mksh_R54
-            targets: "mksh_R54"
+              alganet/shell-versions:mksh-r55-latest
+              alganet/shell-versions:mksh-r55
+          - name: mksh-r54
+            targets: mksh_R54
             can_fail_build: false
             tags: |
-              alganet/shell-versions:mksh_R54-latest
-              alganet/shell-versions:mksh_R54
-
-          # mksh_R53-latest mksh_R53a
-          - name: mksh_R53a
-            targets: "mksh_R53a"
+              alganet/shell-versions:mksh-r54-latest
+              alganet/shell-versions:mksh-r54
+          - name: mksh-r53a
+            targets: mksh_R53a
             can_fail_build: false
             tags: |
-              alganet/shell-versions:mksh_R53-latest
-              alganet/shell-versions:mksh_R53a
-
-          # mksh_R52-latest mksh_R52c
-          - name: mksh_R52c
-            targets: "mksh_R52c"
+              alganet/shell-versions:mksh-r53-latest
+              alganet/shell-versions:mksh-r53a
+          - name: mksh-r52c
+            targets: mksh_R52c
             can_fail_build: false
             tags: |
-              alganet/shell-versions:mksh_R52-latest
-              alganet/shell-versions:mksh_R52c
-
-          # mksh_R51-latest mksh_R51
-          - name: mksh_R51
-            targets: "mksh_R51"
+              alganet/shell-versions:mksh-r52-latest
+              alganet/shell-versions:mksh-r52c
+          - name: mksh-r51
+            targets: mksh_R51
             can_fail_build: false
             tags: |
-              alganet/shell-versions:mksh_R51-latest
-              alganet/shell-versions:mksh_R51
-
-          # mksh_R50-latest mksh_R50f
-          - name: mksh_R50f
-            targets: "mksh_R50f"
+              alganet/shell-versions:mksh-r51-latest
+              alganet/shell-versions:mksh-r51
+          - name: mksh-r50f
+            targets: mksh_R50f
             can_fail_build: false
             tags: |
-              alganet/shell-versions:mksh_R50-latest
-              alganet/shell-versions:mksh_R50f
-
-          # mksh_R49-latest mksh_R49
-          - name: mksh_R49
-            targets: "mksh_R49"
+              alganet/shell-versions:mksh-r50-latest
+              alganet/shell-versions:mksh-r50f
+          - name: mksh-r49
+            targets: mksh_R49
             can_fail_build: false
             tags: |
-              alganet/shell-versions:mksh_R49-latest
-              alganet/shell-versions:mksh_R49
-
-          # mksh_R48-latest mksh_R48b
-          - name: mksh_R48b
-            targets: "mksh_R48b"
+              alganet/shell-versions:mksh-r49-latest
+              alganet/shell-versions:mksh-r49
+          - name: mksh-r48b
+            targets: mksh_R48b
             can_fail_build: false
             tags: |
-              alganet/shell-versions:mksh_R48-latest
-              alganet/shell-versions:mksh_R48b
-
-          # mksh_R47-latest mksh_R47
-          - name: mksh_R47
-            targets: "mksh_R47"
+              alganet/shell-versions:mksh-r48-latest
+              alganet/shell-versions:mksh-r48b
+          - name: mksh-r47
+            targets: mksh_R47
             can_fail_build: false
             tags: |
-              alganet/shell-versions:mksh_R47-latest
-              alganet/shell-versions:mksh_R47
-
-          # mksh_R46-latest mksh_R46
-          - name: mksh_R46
-            targets: "mksh_R46"
+              alganet/shell-versions:mksh-r47-latest
+              alganet/shell-versions:mksh-r47
+          - name: mksh-r46
+            targets: mksh_R46
             can_fail_build: false
             tags: |
-              alganet/shell-versions:mksh_R46-latest
-              alganet/shell-versions:mksh_R46
-
-          # mksh_R45-latest mksh_R45
-          - name: mksh_R45
-            targets: "mksh_R45"
+              alganet/shell-versions:mksh-r46-latest
+              alganet/shell-versions:mksh-r46
+          - name: mksh-r45
+            targets: mksh_R45
             can_fail_build: false
             tags: |
-              alganet/shell-versions:mksh_R45-latest
-              alganet/shell-versions:mksh_R45
+              alganet/shell-versions:mksh-r45-latest
+              alganet/shell-versions:mksh-r45
 
           ##########################################
-          #                mrsh
+          #                OKSH
           ##########################################
-
-
-          # no buildable targets
-
-          ##########################################
-          #                oksh
-          ##########################################
-          # oksh-all
-          - name: oksh-all
-            targets: "oksh_7.3 oksh_7.2 oksh_7.1 oksh_7.0 oksh_6.9 oksh_6.8.1 oksh_6.7 oksh_6.6 oksh_6.5 "
-            can_fail_build: false
-            tags: |
-              oksh-all
-
-          # oksh-latest oksh_7-latest oksh_7.3-latest oksh_7.3
-          - name: oksh_7.3
-            targets: "oksh_7.3"
+          - name: oksh-7.2
+            targets: oksh_7.2
             can_fail_build: false
             tags: |
               alganet/shell-versions:oksh-latest
-              alganet/shell-versions:oksh_7-latest
-              alganet/shell-versions:oksh_7.3-latest
-              alganet/shell-versions:oksh_7.3
-
-          # oksh_7.2-latest oksh_7.2
-          - name: oksh_7.2
-            targets: "oksh_7.2"
+              alganet/shell-versions:oksh-7-latest
+              alganet/shell-versions:oksh-7.2-latest
+              alganet/shell-versions:oksh-7.2
+          - name: oksh-7.1
+            targets: oksh_7.1
             can_fail_build: false
             tags: |
-              alganet/shell-versions:oksh_7.2-latest
-              alganet/shell-versions:oksh_7.2
-
-          # oksh_7.1-latest oksh_7.1
-          - name: oksh_7.1
-            targets: "oksh_7.1"
+              alganet/shell-versions:oksh-7.1-latest
+              alganet/shell-versions:oksh-7.1
+          - name: oksh-7.0
+            targets: oksh_7.0
             can_fail_build: false
             tags: |
-              alganet/shell-versions:oksh_7.1-latest
-              alganet/shell-versions:oksh_7.1
-
-          # oksh_7.0-latest oksh_7.0
-          - name: oksh_7.0
-            targets: "oksh_7.0"
+              alganet/shell-versions:oksh-7.0-latest
+              alganet/shell-versions:oksh-7.0
+          - name: oksh-6.9
+            targets: oksh_6.9
             can_fail_build: false
             tags: |
-              alganet/shell-versions:oksh_7.0-latest
-              alganet/shell-versions:oksh_7.0
-
-          # oksh_6-latest oksh_6.9-latest oksh_6.9
-          - name: oksh_6.9
-            targets: "oksh_6.9"
+              alganet/shell-versions:oksh-6.9-latest
+              alganet/shell-versions:oksh-6.9
+          - name: oksh-6.8.1
+            targets: oksh_6.8.1
             can_fail_build: false
             tags: |
-              alganet/shell-versions:oksh_6-latest
-              alganet/shell-versions:oksh_6.9-latest
-              alganet/shell-versions:oksh_6.9
-
-          # oksh_6.8-latest oksh_6.8.1
-          - name: oksh_6.8.1
-            targets: "oksh_6.8.1"
+              alganet/shell-versions:oksh-6.8-latest
+              alganet/shell-versions:oksh-6.8.1
+          - name: oksh-6.7.1
+            targets: oksh_6.7.1
             can_fail_build: false
             tags: |
-              alganet/shell-versions:oksh_6.8-latest
-              alganet/shell-versions:oksh_6.8.1
-
-          # oksh_6.7-latest oksh_6.7
-          - name: oksh_6.7
-            targets: "oksh_6.7"
+              alganet/shell-versions:oksh-6.7-latest
+              alganet/shell-versions:oksh-6.7.1
+          - name: oksh-6.6
+            targets: oksh_6.6
             can_fail_build: false
             tags: |
-              alganet/shell-versions:oksh_6.7-latest
-              alganet/shell-versions:oksh_6.7
-
-          # oksh_6.6-latest oksh_6.6
-          - name: oksh_6.6
-            targets: "oksh_6.6"
+              alganet/shell-versions:oksh-6.6-latest
+              alganet/shell-versions:oksh-6.6
+          - name: oksh-6.5
+            targets: oksh_6.5
             can_fail_build: false
             tags: |
-              alganet/shell-versions:oksh_6.6-latest
-              alganet/shell-versions:oksh_6.6
-
-          # oksh_6.5-latest oksh_6.5
-          - name: oksh_6.5
-            targets: "oksh_6.5"
-            can_fail_build: false
-            tags: |
-              alganet/shell-versions:oksh_6.5-latest
-              alganet/shell-versions:oksh_6.5
+              alganet/shell-versions:oksh-6.5-latest
+              alganet/shell-versions:oksh-6.5
 
           ##########################################
-          #                osh
+          #                OSH
           ##########################################
-          # osh-all
-          - name: osh-all
-            targets: "osh_0.16.0 osh_0.15.0 osh_0.14.2 osh_0.13.1 osh_0.12.9 osh_0.11.0 osh_0.10.1 osh_0.9.9 osh_0.8.12 osh_0.7.0 osh_0.6.0 "
-            can_fail_build: false
-            tags: |
-              osh-all
-
-          # osh-latest osh_0-latest osh_0.16-latest osh_0.16.0
-          - name: osh_0.16.0
-            targets: "osh_0.16.0"
+          - name: osh-0.14.0
+            targets: osh_0.14.0
             can_fail_build: false
             tags: |
               alganet/shell-versions:osh-latest
-              alganet/shell-versions:osh_0-latest
-              alganet/shell-versions:osh_0.16-latest
-              alganet/shell-versions:osh_0.16.0
-
-          # osh_0.15-latest osh_0.15.0
-          - name: osh_0.15.0
-            targets: "osh_0.15.0"
+              alganet/shell-versions:osh-0-latest
+              alganet/shell-versions:osh-0.14-latest
+              alganet/shell-versions:osh-0.14.0
+          - name: osh-0.13.1
+            targets: osh_0.13.1
             can_fail_build: false
             tags: |
-              alganet/shell-versions:osh_0.15-latest
-              alganet/shell-versions:osh_0.15.0
-
-          # osh_0.14-latest osh_0.14.2
-          - name: osh_0.14.2
-            targets: "osh_0.14.2"
+              alganet/shell-versions:osh-0.13-latest
+              alganet/shell-versions:osh-0.13.1
+          - name: osh-0.12.9
+            targets: osh_0.12.9
             can_fail_build: false
             tags: |
-              alganet/shell-versions:osh_0.14-latest
-              alganet/shell-versions:osh_0.14.2
-
-          # osh_0.13-latest osh_0.13.1
-          - name: osh_0.13.1
-            targets: "osh_0.13.1"
+              alganet/shell-versions:osh-0.12-latest
+              alganet/shell-versions:osh-0.12.9
+          - name: osh-0.11.0
+            targets: osh_0.11.0
             can_fail_build: false
             tags: |
-              alganet/shell-versions:osh_0.13-latest
-              alganet/shell-versions:osh_0.13.1
-
-          # osh_0.12-latest osh_0.12.9
-          - name: osh_0.12.9
-            targets: "osh_0.12.9"
+              alganet/shell-versions:osh-0.11-latest
+              alganet/shell-versions:osh-0.11.0
+          - name: osh-0.10.1
+            targets: osh_0.10.1
             can_fail_build: false
             tags: |
-              alganet/shell-versions:osh_0.12-latest
-              alganet/shell-versions:osh_0.12.9
-
-          # osh_0.11-latest osh_0.11.0
-          - name: osh_0.11.0
-            targets: "osh_0.11.0"
+              alganet/shell-versions:osh-0.10-latest
+              alganet/shell-versions:osh-0.10.1
+          - name: osh-0.9.9
+            targets: osh_0.9.9
             can_fail_build: false
             tags: |
-              alganet/shell-versions:osh_0.11-latest
-              alganet/shell-versions:osh_0.11.0
-
-          # osh_0.10-latest osh_0.10.1
-          - name: osh_0.10.1
-            targets: "osh_0.10.1"
+              alganet/shell-versions:osh-0.9-latest
+              alganet/shell-versions:osh-0.9.9
+          - name: osh-0.8.12
+            targets: osh_0.8.12
             can_fail_build: false
             tags: |
-              alganet/shell-versions:osh_0.10-latest
-              alganet/shell-versions:osh_0.10.1
-
-          # osh_0.9-latest osh_0.9.9
-          - name: osh_0.9.9
-            targets: "osh_0.9.9"
+              alganet/shell-versions:osh-0.8-latest
+              alganet/shell-versions:osh-0.8.12
+          - name: osh-0.7.0
+            targets: osh_0.7.0
             can_fail_build: false
             tags: |
-              alganet/shell-versions:osh_0.9-latest
-              alganet/shell-versions:osh_0.9.9
-
-          # osh_0.8-latest osh_0.8.12
-          - name: osh_0.8.12
-            targets: "osh_0.8.12"
+              alganet/shell-versions:osh-0.7-latest
+              alganet/shell-versions:osh-0.7.0
+          - name: osh-0.6.0
+            targets: osh_0.6.0
             can_fail_build: false
             tags: |
-              alganet/shell-versions:osh_0.8-latest
-              alganet/shell-versions:osh_0.8.12
-
-          # osh_0.7-latest osh_0.7.0
-          - name: osh_0.7.0
-            targets: "osh_0.7.0"
-            can_fail_build: false
-            tags: |
-              alganet/shell-versions:osh_0.7-latest
-              alganet/shell-versions:osh_0.7.0
-
-          # osh_0.6-latest osh_0.6.0
-          - name: osh_0.6.0
-            targets: "osh_0.6.0"
-            can_fail_build: false
-            tags: |
-              alganet/shell-versions:osh_0.6-latest
-              alganet/shell-versions:osh_0.6.0
-
+              alganet/shell-versions:osh-0.6-latest
+              alganet/shell-versions:osh-0.6.0
+          
           ##########################################
-          #                posh
+          #                POSH
           ##########################################
-          # posh-all
-          - name: posh-all
-            targets: "posh_0.14.1 posh_0.13.2 posh_0.12.6 "
-            can_fail_build: false
-            tags: |
-              posh-all
-
-          # posh-latest posh_0-latest posh_0.14-latest posh_0.14.1
-          - name: posh_0.14.1
-            targets: "posh_0.14.1"
+          - name: posh-0.14.1
+            targets: posh_0.14.1
             can_fail_build: false
             tags: |
               alganet/shell-versions:posh-latest
-              alganet/shell-versions:posh_0-latest
-              alganet/shell-versions:posh_0.14-latest
-              alganet/shell-versions:posh_0.14.1
-
-          # posh_0.13-latest posh_0.13.2
-          - name: posh_0.13.2
-            targets: "posh_0.13.2"
+              alganet/shell-versions:posh-0-latest
+              alganet/shell-versions:posh-0.14-latest
+              alganet/shell-versions:posh-0.14.1
+          - name: posh-0.13.2
+            targets: posh_0.13.2
             can_fail_build: false
             tags: |
-              alganet/shell-versions:posh_0.13-latest
-              alganet/shell-versions:posh_0.13.2
-
-          # posh_0.12-latest posh_0.12.6
-          - name: posh_0.12.6
-            targets: "posh_0.12.6"
+              alganet/shell-versions:posh-0.13-latest
+              alganet/shell-versions:posh-0.13.2
+          - name: posh-0.12.6
+            targets: posh_0.12.6
             can_fail_build: false
             tags: |
-              alganet/shell-versions:posh_0.12-latest
-              alganet/shell-versions:posh_0.12.6
+              alganet/shell-versions:posh-0.12-latest
+              alganet/shell-versions:posh-0.12.6
 
           ##########################################
-          #                toybox
+          #                UNBOURNE
           ##########################################
-
-
-          # no buildable targets
-
+          # - name: unbourne-2.2
+          #   targets: unbourne_2.2
+          #   can_fail_build: true # https://github.com/alganet/shell-versions/issues/4
+          #   tags: |
+          #     alganet/shell-versions:unbourne-latest
+          #     alganet/shell-versions:unbourne-2-latest
+          #     alganet/shell-versions:unbourne-2.2-latest
+          #     alganet/shell-versions:unbourne-2.2
+          
           ##########################################
-          #                unbourne
+          #                YASH
           ##########################################
-
-
-          # no buildable targets
-
-          ##########################################
-          #                yash
-          ##########################################
-          # yash-all
-          - name: yash-all
-            targets: "yash_2.54 yash_2.53 yash_2.52 yash_2.51 yash_2.50 yash_2.49 yash_2.48 yash_2.47 yash_2.46 yash_2.45 yash_2.44 yash_2.43 yash_2.42 yash_2.41 "
-            can_fail_build: false
-            tags: |
-              yash-all
-
-          # yash-latest yash_2-latest yash_2.54-latest yash_2.54
-          - name: yash_2.54
-            targets: "yash_2.54"
+          - name: yash-2.53
+            targets: yash_2.53
             can_fail_build: false
             tags: |
               alganet/shell-versions:yash-latest
-              alganet/shell-versions:yash_2-latest
-              alganet/shell-versions:yash_2.54-latest
-              alganet/shell-versions:yash_2.54
-
-          # yash_2.53-latest yash_2.53
-          - name: yash_2.53
-            targets: "yash_2.53"
+              alganet/shell-versions:yash-2-latest
+              alganet/shell-versions:yash-2.53-latest
+              alganet/shell-versions:yash-2.53
+          - name: yash-2.52
+            targets: yash_2.52
             can_fail_build: false
             tags: |
-              alganet/shell-versions:yash_2.53-latest
-              alganet/shell-versions:yash_2.53
-
-          # yash_2.52-latest yash_2.52
-          - name: yash_2.52
-            targets: "yash_2.52"
+              alganet/shell-versions:yash-2.52-latest
+              alganet/shell-versions:yash-2.52
+          - name: yash-2.51
+            targets: yash_2.51
             can_fail_build: false
             tags: |
-              alganet/shell-versions:yash_2.52-latest
-              alganet/shell-versions:yash_2.52
-
-          # yash_2.51-latest yash_2.51
-          - name: yash_2.51
-            targets: "yash_2.51"
+              alganet/shell-versions:yash-2.51-latest
+              alganet/shell-versions:yash-2.51
+          - name: yash-2.50
+            targets: yash_2.50
             can_fail_build: false
             tags: |
-              alganet/shell-versions:yash_2.51-latest
-              alganet/shell-versions:yash_2.51
-
-          # yash_2.50-latest yash_2.50
-          - name: yash_2.50
-            targets: "yash_2.50"
+              alganet/shell-versions:yash-2.50-latest
+              alganet/shell-versions:yash-2.50
+          - name: yash-2.49
+            targets: yash_2.49
             can_fail_build: false
             tags: |
-              alganet/shell-versions:yash_2.50-latest
-              alganet/shell-versions:yash_2.50
-
-          # yash_2.49-latest yash_2.49
-          - name: yash_2.49
-            targets: "yash_2.49"
+              alganet/shell-versions:yash-2.49-latest
+              alganet/shell-versions:yash-2.49
+          - name: yash-2.48
+            targets: yash_2.48
             can_fail_build: false
             tags: |
-              alganet/shell-versions:yash_2.49-latest
-              alganet/shell-versions:yash_2.49
-
-          # yash_2.48-latest yash_2.48
-          - name: yash_2.48
-            targets: "yash_2.48"
+              alganet/shell-versions:yash-2.48-latest
+              alganet/shell-versions:yash-2.48
+          - name: yash-2.47
+            targets: yash_2.47
             can_fail_build: false
             tags: |
-              alganet/shell-versions:yash_2.48-latest
-              alganet/shell-versions:yash_2.48
-
-          # yash_2.47-latest yash_2.47
-          - name: yash_2.47
-            targets: "yash_2.47"
+              alganet/shell-versions:yash-2.47-latest
+              alganet/shell-versions:yash-2.47
+          - name: yash-2.46
+            targets: yash_2.46
             can_fail_build: false
             tags: |
-              alganet/shell-versions:yash_2.47-latest
-              alganet/shell-versions:yash_2.47
-
-          # yash_2.46-latest yash_2.46
-          - name: yash_2.46
-            targets: "yash_2.46"
+              alganet/shell-versions:yash-2.46-latest
+              alganet/shell-versions:yash-2.46
+          - name: yash-2.45
+            targets: yash_2.45
             can_fail_build: false
             tags: |
-              alganet/shell-versions:yash_2.46-latest
-              alganet/shell-versions:yash_2.46
-
-          # yash_2.45-latest yash_2.45
-          - name: yash_2.45
-            targets: "yash_2.45"
+              alganet/shell-versions:yash-2.45-latest
+              alganet/shell-versions:yash-2.45
+          - name: yash-2.44
+            targets: yash_2.44
             can_fail_build: false
             tags: |
-              alganet/shell-versions:yash_2.45-latest
-              alganet/shell-versions:yash_2.45
-
-          # yash_2.44-latest yash_2.44
-          - name: yash_2.44
-            targets: "yash_2.44"
+              alganet/shell-versions:yash-2.44-latest
+              alganet/shell-versions:yash-2.44
+          - name: yash-2.43
+            targets: yash_2.43
             can_fail_build: false
             tags: |
-              alganet/shell-versions:yash_2.44-latest
-              alganet/shell-versions:yash_2.44
-
-          # yash_2.43-latest yash_2.43
-          - name: yash_2.43
-            targets: "yash_2.43"
+              alganet/shell-versions:yash-2.43-latest
+              alganet/shell-versions:yash-2.43
+          - name: yash-2.42
+            targets: yash_2.42
             can_fail_build: false
             tags: |
-              alganet/shell-versions:yash_2.43-latest
-              alganet/shell-versions:yash_2.43
-
-          # yash_2.42-latest yash_2.42
-          - name: yash_2.42
-            targets: "yash_2.42"
+              alganet/shell-versions:yash-2.42-latest
+              alganet/shell-versions:yash-2.42
+          - name: yash-2.41
+            targets: yash_2.41
             can_fail_build: false
             tags: |
-              alganet/shell-versions:yash_2.42-latest
-              alganet/shell-versions:yash_2.42
-
-          # yash_2.41-latest yash_2.41
-          - name: yash_2.41
-            targets: "yash_2.41"
-            can_fail_build: false
-            tags: |
-              alganet/shell-versions:yash_2.41-latest
-              alganet/shell-versions:yash_2.41
+              alganet/shell-versions:yash-2.41-latest
+              alganet/shell-versions:yash-2.41
 
           ##########################################
-          #                zsh
+          #                ZSH
           ##########################################
-          # zsh-all
-          - name: zsh-all
-            targets: "zsh_5.9 zsh_5.8.1 zsh_5.7.1 zsh_5.6.2 zsh_5.5.1 zsh_5.4.2 zsh_5.3.1 zsh_5.2 zsh_5.1.1 zsh_5.0.8 zsh_4.2.7 "
-            can_fail_build: false
-            tags: |
-              zsh-all
-
-          # zsh-latest zsh_5-latest zsh_5.9-latest zsh_5.9
-          - name: zsh_5.9
-            targets: "zsh_5.9"
+          - name: zsh-5.9
+            targets: zsh_5.9
             can_fail_build: false
             tags: |
               alganet/shell-versions:zsh-latest
-              alganet/shell-versions:zsh_5-latest
-              alganet/shell-versions:zsh_5.9-latest
-              alganet/shell-versions:zsh_5.9
-
-          # zsh_5.8-latest zsh_5.8.1
-          - name: zsh_5.8.1
-            targets: "zsh_5.8.1"
+              alganet/shell-versions:zsh-5-latest
+              alganet/shell-versions:zsh-5.9-latest
+              alganet/shell-versions:zsh-5.9
+          - name: zsh-5.8.1
+            targets: zsh_5.8.1
             can_fail_build: false
             tags: |
-              alganet/shell-versions:zsh_5.8-latest
-              alganet/shell-versions:zsh_5.8.1
-
-          # zsh_5.7-latest zsh_5.7.1
-          - name: zsh_5.7.1
-            targets: "zsh_5.7.1"
+              alganet/shell-versions:zsh-5.8-latest
+              alganet/shell-versions:zsh-5.8.1
+          - name: zsh-5.7.1
+            targets: zsh_5.7.1
             can_fail_build: false
             tags: |
-              alganet/shell-versions:zsh_5.7-latest
-              alganet/shell-versions:zsh_5.7.1
-
-          # zsh_5.6-latest zsh_5.6.2
-          - name: zsh_5.6.2
-            targets: "zsh_5.6.2"
+              alganet/shell-versions:zsh-5.7-latest
+              alganet/shell-versions:zsh-5.7.1
+          - name: zsh-5.6.2
+            targets: zsh_5.6.2
             can_fail_build: false
             tags: |
-              alganet/shell-versions:zsh_5.6-latest
-              alganet/shell-versions:zsh_5.6.2
-
-          # zsh_5.5-latest zsh_5.5.1
-          - name: zsh_5.5.1
-            targets: "zsh_5.5.1"
+              alganet/shell-versions:zsh-5.6-latest
+              alganet/shell-versions:zsh-5.6.2
+          - name: zsh-5.5.1
+            targets: zsh_5.5.1
             can_fail_build: false
             tags: |
-              alganet/shell-versions:zsh_5.5-latest
-              alganet/shell-versions:zsh_5.5.1
-
-          # zsh_5.4-latest zsh_5.4.2
-          - name: zsh_5.4.2
-            targets: "zsh_5.4.2"
+              alganet/shell-versions:zsh-5.5-latest
+              alganet/shell-versions:zsh-5.5.1
+          - name: zsh-5.4.2
+            targets: zsh_5.4.2
             can_fail_build: false
             tags: |
-              alganet/shell-versions:zsh_5.4-latest
-              alganet/shell-versions:zsh_5.4.2
-
-          # zsh_5.3-latest zsh_5.3.1
-          - name: zsh_5.3.1
-            targets: "zsh_5.3.1"
+              alganet/shell-versions:zsh-5.4-latest
+              alganet/shell-versions:zsh-5.4.2
+          - name: zsh-5.3.1
+            targets: zsh_5.3.1
             can_fail_build: false
             tags: |
-              alganet/shell-versions:zsh_5.3-latest
-              alganet/shell-versions:zsh_5.3.1
-
-          # zsh_5.2-latest zsh_5.2
-          - name: zsh_5.2
-            targets: "zsh_5.2"
+              alganet/shell-versions:zsh-5.3-latest
+              alganet/shell-versions:zsh-5.3.1
+          - name: zsh-5.2
+            targets: zsh_5.2
             can_fail_build: false
             tags: |
-              alganet/shell-versions:zsh_5.2-latest
-              alganet/shell-versions:zsh_5.2
-
-          # zsh_5.1-latest zsh_5.1.1
-          - name: zsh_5.1.1
-            targets: "zsh_5.1.1"
+              alganet/shell-versions:zsh-5.2-latest
+              alganet/shell-versions:zsh-5.2
+          - name: zsh-5.1.1
+            targets: zsh_5.1.1
             can_fail_build: false
             tags: |
-              alganet/shell-versions:zsh_5.1-latest
-              alganet/shell-versions:zsh_5.1.1
-
-          # zsh_5.0-latest zsh_5.0.8
-          - name: zsh_5.0.8
-            targets: "zsh_5.0.8"
+              alganet/shell-versions:zsh-5.1-latest
+              alganet/shell-versions:zsh-5.1.1
+          - name: zsh-5.0.8
+            targets: zsh_5.0.8
             can_fail_build: false
             tags: |
-              alganet/shell-versions:zsh_5.0-latest
-              alganet/shell-versions:zsh_5.0.8
-
-          # zsh_4-latest zsh_4.2-latest zsh_4.2.7
-          - name: zsh_4.2.7
-            targets: "zsh_4.2.7"
+              alganet/shell-versions:zsh-5.0-latest
+              alganet/shell-versions:zsh-5.0.8
+          - name: zsh-4.2.7
+            targets: zsh_4.2.7
             can_fail_build: false
             tags: |
-              alganet/shell-versions:zsh_4-latest
-              alganet/shell-versions:zsh_4.2-latest
-              alganet/shell-versions:zsh_4.2.7
-
+              alganet/shell-versions:zsh-4-latest
+              alganet/shell-versions:zsh-4.2-latest
+              alganet/shell-versions:zsh-4.2.7

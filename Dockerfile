@@ -17,7 +17,7 @@
 FROM debian:buster-slim AS builder
 
     # Update distro
-    RUN apt -y update && apt -y upgrade
+    RUN apt-get -y update
 
     # Copy contents
     COPY "shvr.sh" "/shvr/shvr.sh"
