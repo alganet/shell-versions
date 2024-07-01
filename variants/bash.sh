@@ -6,7 +6,8 @@
 shvr_targets_bash ()
 {
 	cat <<-@
-		bash_5.2.15
+		bash_5.3-alpha
+		bash_5.2.21
 		bash_5.1.16
 		bash_5.0.18
 		bash_4.4.23
@@ -30,7 +31,7 @@ shvr_build_bash ()
 	fi
 	
 	version_minor="${version#$version_major\.}"
-	version_patch="${version_minor#*\.}"
+	version_patch="${version_minor#*[.-]}"
 	
 	if test "$version_patch" = "$version_minor"
 	then return 1

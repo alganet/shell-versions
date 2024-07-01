@@ -6,6 +6,9 @@
 shvr_targets_yash ()
 {
 	cat <<-@
+		yash_2.56.1
+		yash_2.55
+		yash_2.54
 		yash_2.53
 		yash_2.52
 		yash_2.51

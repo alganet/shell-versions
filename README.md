@@ -39,7 +39,6 @@ hello there
  - [oksh](https://hub.docker.com/r/alganet/shell-versions/tags?page=1&ordering=name&name=oksh-)
  - [osh](https://hub.docker.com/r/alganet/shell-versions/tags?page=1&ordering=name&name=osh-)
  - [posh](https://hub.docker.com/r/alganet/shell-versions/tags?page=1&ordering=name&name=posh-)
- - [unbourne](https://hub.docker.com/r/alganet/shell-versions/tags?page=1&ordering=name&name=unbourne-) - Available only if built locally. See [Issue #4](https://github.com/alganet/shell-versions/issues/4).
  - [yash](https://hub.docker.com/r/alganet/shell-versions/tags?page=1&ordering=name&name=yash-)
  - [zsh](https://hub.docker.com/r/alganet/shell-versions/tags?page=1&ordering=name&name=zsh-)
 

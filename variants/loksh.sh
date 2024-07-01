@@ -6,7 +6,9 @@
 shvr_targets_loksh ()
 {
 	cat <<-@
-		loksh_7.2
+		loksh_7.5
+		loksh_7.4
+		loksh_7.3
 		loksh_7.1
 		loksh_7.0
 		loksh_6.9
