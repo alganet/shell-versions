@@ -41,7 +41,7 @@ jobs:
           #                MULTI
           ##########################################
           - name: multi-latest
-            targets: "bash_5.2.21 busybox_1.36.1 dash_0.5.12 ksh_93u+m-v1.0.8 loksh_7.5 mksh_R59c oksh_7.5 osh_0.22.0 posh_0.14.1 yash_2.56.1 zsh_5.9"
+            targets: "bash_5.2.21 busybox_1.36.1 dash_0.5.12 ksh_shvrA93uplusm-v1.0.8 loksh_7.5 mksh_R59c oksh_7.5 osh_0.22.0 posh_0.14.1 yash_2.56.1 zsh_5.9"
             can_fail_build: false
             tags: |
               alganet/shell-versions:latest
