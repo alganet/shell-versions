@@ -3,6 +3,14 @@
 # Copyright (c) Alexandre Gomes Gaigalas <alganet@gmail.com>
 # SPDX-License-Identifier: ISC
 
+shvr_current_zsh ()
+{
+	cat <<-@
+		zsh_5.9
+		zsh_5.8.1
+	@
+}
+
 shvr_targets_zsh ()
 {
 	cat <<-@

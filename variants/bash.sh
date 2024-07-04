@@ -3,6 +3,14 @@
 # Copyright (c) Alexandre Gomes Gaigalas <alganet@gmail.com>
 # SPDX-License-Identifier: ISC
 
+shvr_current_bash ()
+{
+	cat <<-@
+		bash_5.2.21
+		bash_5.1.16
+	@
+}
+
 shvr_targets_bash ()
 {
 	cat <<-@

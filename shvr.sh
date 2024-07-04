@@ -34,6 +34,15 @@ shvr_targets ()
 	shvr_each targets "${@:-}"
 }
 
+shvr_current ()
+{
+	if test -z "$*"
+	then set -- $(printf '%s ' $(shvr_interpreters))
+	fi
+
+	shvr_each current "${@:-}"
+}
+
 shvr_interpreters ()
 {
 	find "${SHVR_DIR_SELF}/variants" -type f |

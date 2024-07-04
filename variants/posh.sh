@@ -3,6 +3,14 @@
 # Copyright (c) Alexandre Gomes Gaigalas <alganet@gmail.com>
 # SPDX-License-Identifier: ISC
 
+shvr_current_posh ()
+{
+	cat <<-@
+		posh_0.14.1
+		posh_0.13.2
+	@
+}
+
 shvr_targets_posh ()
 {
 	cat <<-@
