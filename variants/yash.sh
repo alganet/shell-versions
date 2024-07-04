@@ -3,6 +3,14 @@
 # Copyright (c) Alexandre Gomes Gaigalas <alganet@gmail.com>
 # SPDX-License-Identifier: ISC
 
+shvr_current_yash ()
+{
+	cat <<-@
+		yash_2.56.1
+		yash_2.55
+	@
+}
+
 shvr_targets_yash ()
 {
 	cat <<-@

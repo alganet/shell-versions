@@ -3,6 +3,14 @@
 # Copyright (c) Alexandre Gomes Gaigalas <alganet@gmail.com>
 # SPDX-License-Identifier: ISC
 
+shvr_current_mksh ()
+{
+	cat <<-@
+		mksh_R59c
+		mksh_R58
+	@
+}
+
 shvr_targets_mksh ()
 {
 	cat <<-@
