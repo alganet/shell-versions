@@ -30,7 +30,7 @@ FROM debian:buster-slim AS builder
     ARG TARGETS
 
     # Build
-    RUN sh "/shvr/shvr.sh" build $TARGETS
+    RUN bash "/shvr/shvr.sh" build $TARGETS
 
 FROM debian:buster-slim
 
