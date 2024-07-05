@@ -47,6 +47,7 @@ shvr_build_oksh ()
 	cd "${build_srcdir}"
 
 	./configure \
+		--disable-curses \
 		--prefix="${SHVR_DIR_OUT}/oksh_$version"
 
 	make -j "$(nproc)"
