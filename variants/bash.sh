@@ -26,6 +26,7 @@ shvr_targets_bash ()
 		bash_3.2.57
 		bash_3.1.23
 		bash_3.0.22
+		bash_2.05b.13
 	@
 }
 
@@ -56,6 +57,9 @@ shvr_build_bash ()
 	elif test "$version_baseline" = "3.0"
 	then apt-get -y install \
 			wget patch gcc bison make ncurses-dev
+	elif test "$version_baseline" = "2.05b"
+	then apt-get -y install \
+			wget patch gcc bison make autoconf
 	else apt-get -y install \
 			wget patch gcc bison make
 	fi
@@ -83,11 +87,22 @@ shvr_build_bash ()
 	
 	cd "${build_srcdir}"
 
-	./configure \
-		--prefix="${SHVR_DIR_OUT}/bash_${version}"
+	if test "$version_baseline" = "2.05b"
+	then
+		rm configure
+		autoconf
+		./configure \
+			--prefix="${SHVR_DIR_OUT}/bash_${version}" \
+			--without-bash-malloc
 
-	make -j "$(nproc)"
+		make -j1
+	else
 
+		./configure \
+			--prefix="${SHVR_DIR_OUT}/bash_${version}" \
+
+		make -j "$(nproc)"
+	fi
 	mkdir -p "${SHVR_DIR_OUT}/bash_${version}/bin"
 	cp bash "${SHVR_DIR_OUT}/bash_${version}/bin/bash"
 
