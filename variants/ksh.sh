@@ -6,14 +6,15 @@
 shvr_current_ksh ()
 {
 	cat <<-@
+		ksh_shvrA93uplusm-v1.0.10
 		ksh_shvrA93uplusm-v1.0.9
-		ksh_shvrA93uplusm-v1.0.8
 	@
 }
 
 shvr_targets_ksh ()
 {
 	cat <<-@
+		ksh_shvrA93uplusm-v1.0.10
 		ksh_shvrA93uplusm-v1.0.9
 		ksh_shvrA93uplusm-v1.0.8
 		ksh_shvrA93uplusm-v1.0.7

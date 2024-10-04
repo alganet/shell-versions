@@ -6,14 +6,15 @@
 shvr_current_yash ()
 {
 	cat <<-@
+		yash_2.57
 		yash_2.56.1
-		yash_2.55
 	@
 }
 
 shvr_targets_yash ()
 {
 	cat <<-@
+		yash_2.57
 		yash_2.56.1
 		yash_2.55
 		yash_2.54
