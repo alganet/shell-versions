@@ -41,6 +41,7 @@ jobs:
             can_fail_build: false
             tags: alganet/shell-versions:test
             targets: >
+              bash_2.05b.13
               bash_3.0.22
               bash_3.1.23
               bash_3.2.57
