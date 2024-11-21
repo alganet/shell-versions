@@ -8,6 +8,7 @@ on:
     branches:
       - "main"
 jobs:
+# TODO macos-latest outside docker
   build:
     runs-on: ubuntu-latest
     continue-on-error: ${{ matrix.can_fail_build }}
