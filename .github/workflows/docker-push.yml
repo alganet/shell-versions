@@ -59,8 +59,8 @@ jobs:
               osh_0.24.0
               posh_0.13.2
               posh_0.14.1
-              yash_2.59.1
-              yash_2.58
+              yash_2.59
+              yash_2.58.1
               zsh_5.8.1
               zsh_5.9
           - name: all
