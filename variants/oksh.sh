@@ -6,14 +6,16 @@
 shvr_current_oksh ()
 {
 	cat <<-@
-		oksh_7.5
-		oksh_7.4
+		oksh_7.7
+		oksh_7.6
 	@
 }
 
 shvr_targets_oksh ()
 {
 	cat <<-@
+		oksh_7.7
+		oksh_7.6
 		oksh_7.5
 		oksh_7.4
 		oksh_7.3

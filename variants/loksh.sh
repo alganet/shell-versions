@@ -6,14 +6,16 @@
 shvr_current_loksh ()
 {
 	cat <<-@
-		loksh_7.5
-		loksh_7.4
+		loksh_7.7
+		loksh_7.6
 	@
 }
 
 shvr_targets_loksh ()
 {
 	cat <<-@
+		loksh_7.7
+		loksh_7.6
 		loksh_7.5
 		loksh_7.4
 		loksh_7.3

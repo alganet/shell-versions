@@ -52,8 +52,8 @@ jobs:
               bash_4.4.23
               bash_5.0.18
               bash_5.1.16
-              bash_5.2.32
-              bash_5.3-alpha
+              bash_5.2.37
+              bash_5.3-rc1
               busybox_1.21.1
               busybox_1.22.1
               busybox_1.23.2
@@ -113,6 +113,8 @@ jobs:
               loksh_7.3
               loksh_7.4
               loksh_7.5
+              loksh_7.6
+              loksh_7.7
               mksh_R45
               mksh_R46
               mksh_R47
@@ -139,6 +141,9 @@ jobs:
               oksh_7.3
               oksh_7.4
               oksh_7.5
+              oksh_7.6
+              oksh_7.7
+              osh_0.9.9
               osh_0.10.1
               osh_0.11.0
               osh_0.12.9
@@ -153,7 +158,7 @@ jobs:
               osh_0.21.0
               osh_0.22.0
               osh_0.23.0
-              osh_0.9.9
+              osh_0.24.0
               posh_0.12.6
               posh_0.13.2
               posh_0.14.1
@@ -172,8 +177,8 @@ jobs:
               yash_2.53
               yash_2.54
               yash_2.55
-              yash_2.56.1
-              yash_2.57
+              yash_2.58.1
+              yash_2.59
               zsh_4.2.7
               zsh_5.0.8
               zsh_5.1.1
