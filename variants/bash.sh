@@ -6,7 +6,7 @@
 shvr_current_bash ()
 {
 	cat <<-@
-		bash_5.2.32
+		bash_5.2.37
 		bash_5.1.16
 	@
 }
@@ -14,8 +14,8 @@ shvr_current_bash ()
 shvr_targets_bash ()
 {
 	cat <<-@
-		bash_5.3-alpha
-		bash_5.2.32
+		bash_5.3-rc1
+		bash_5.2.37
 		bash_5.1.16
 		bash_5.0.18
 		bash_4.4.23
