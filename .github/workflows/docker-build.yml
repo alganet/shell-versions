@@ -54,6 +54,10 @@ jobs:
               bash_5.1.16
               bash_5.2.37
               bash_5.3-rc1
+              brush_0.2.19
+              brush_0.2.18
+              brush_0.2.17
+              brush_0.2.16
               busybox_1.21.1
               busybox_1.22.1
               busybox_1.23.2
@@ -179,6 +183,10 @@ jobs:
               yash_2.55
               yash_2.58.1
               yash_2.59
+              yashrs_0.4.2
+              yashrs_0.4.1
+              yashrs_0.4.0
+              yashrs_0.3.0
               zsh_4.2.7
               zsh_5.0.8
               zsh_5.1.1
