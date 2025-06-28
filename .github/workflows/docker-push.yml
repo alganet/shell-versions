@@ -43,8 +43,6 @@ jobs:
             targets: >
               bash_5.1.16
               bash_5.2.37
-              brush_0.2.19
-              brush_0.2.18
               busybox_1.36.1
               busybox_1.37.0
               dash_0.5.11.5
@@ -84,10 +82,6 @@ jobs:
               bash_5.1.16
               bash_5.2.37
               bash_5.3-rc1
-              brush_0.2.19
-              brush_0.2.18
-              brush_0.2.17
-              brush_0.2.16
               busybox_1.21.1
               busybox_1.22.1
               busybox_1.23.2
