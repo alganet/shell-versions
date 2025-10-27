@@ -41,12 +41,14 @@ jobs:
             can_fail_build: false
             tags: alganet/shell-versions:latest
             targets: >
-              bash_5.1.16
               bash_5.2.37
+              bash_5.3
+              brush_0.2.23
+              brush_0.2.22
               busybox_1.36.1
               busybox_1.37.0
-              dash_0.5.11.5
               dash_0.5.12
+              dash_0.5.13
               ksh_shvrA93uplusm-v1.0.9
               ksh_shvrA93uplusm-v1.0.10
               loksh_7.6
@@ -55,14 +57,14 @@ jobs:
               mksh_R59c
               oksh_7.6
               oksh_7.7
-              osh_0.32.0
-              osh_0.33.0
+              osh_0.35.0
+              osh_0.36.0
               posh_0.13.2
               posh_0.14.1
               yash_2.59
-              yash_2.58.1
-              yashrs_0.4.2
-              yashrs_0.4.1
+              yash_2.60
+              yashrs_0.4.5
+              yashrs_3.0.3
               zsh_5.8.1
               zsh_5.9
           - name: all
@@ -81,7 +83,14 @@ jobs:
               bash_5.0.18
               bash_5.1.16
               bash_5.2.37
+              bash_5.3-beta
               bash_5.3-rc1
+              bash_5.3-rc2
+              bash_5.3
+              brush_0.2.23
+              brush_0.2.22
+              brush_0.2.21
+              brush_0.2.20
               busybox_1.21.1
               busybox_1.22.1
               busybox_1.23.2
@@ -99,14 +108,15 @@ jobs:
               busybox_1.35.0
               busybox_1.36.1
               busybox_1.37.0
-              dash_0.5.10.2
-              dash_0.5.11.5
-              dash_0.5.12
               dash_0.5.5.1
               dash_0.5.6.1
               dash_0.5.7
               dash_0.5.8
               dash_0.5.9.1
+              dash_0.5.10.2
+              dash_0.5.11.5
+              dash_0.5.12
+              dash_0.5.13
               ksh_shvrA93uplusm-v1.0.1
               ksh_shvrA93uplusm-v1.0.2
               ksh_shvrA93uplusm-v1.0.3
@@ -171,6 +181,9 @@ jobs:
               oksh_7.5
               oksh_7.6
               oksh_7.7
+              osh_0.36.0
+              osh_0.35.0
+              osh_0.34.0
               osh_0.33.0
               osh_0.32.0
               osh_0.31.0
@@ -180,12 +193,9 @@ jobs:
               osh_0.27.0
               osh_0.26.0
               osh_0.25.0
-              osh_0.24.0
-              osh_0.23.0
-              osh_0.22.0
               posh_0.12.6
               posh_0.13.2
-              posh_0.14.1
+              posh_0.14.2
               yash_2.41
               yash_2.42
               yash_2.43
@@ -205,6 +215,14 @@ jobs:
               yash_2.57
               yash_2.58.1
               yash_2.59
+              yash_2.60
+              yashrs_3.0.3
+              yashrs_3.0.2
+              yashrs_3.0.1
+              yashrs_3.0.0
+              yashrs_0.4.5
+              yashrs_0.4.4
+              yashrs_0.4.3
               yashrs_0.4.2
               yashrs_0.4.1
               yashrs_0.4.0

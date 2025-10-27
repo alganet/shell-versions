@@ -6,7 +6,7 @@
 shvr_current_posh ()
 {
 	cat <<-@
-		posh_0.14.1
+		posh_0.14.2
 		posh_0.13.2
 	@
 }
@@ -14,6 +14,7 @@ shvr_current_posh ()
 shvr_targets_posh ()
 {
 	cat <<-@
+		posh_0.14.2
 		posh_0.14.1
 		posh_0.13.2
 		posh_0.12.6

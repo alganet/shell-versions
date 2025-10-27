@@ -3,35 +3,28 @@
 # Copyright (c) Alexandre Gomes Gaigalas <alganet@gmail.com>
 # SPDX-License-Identifier: ISC
 
-shvr_current_yashrs ()
+shvr_current_brush ()
 {
 	cat <<-@
-		yashrs_3.0.3
-		yashrs_0.4.5
+		brush_0.2.23
+		brush_0.2.22
 	@
 }
 
-shvr_targets_yashrs ()
+shvr_targets_brush ()
 {
 	cat <<-@
-		yashrs_3.0.3
-		yashrs_3.0.2
-		yashrs_3.0.1
-		yashrs_3.0.0
-		yashrs_0.4.5
-		yashrs_0.4.4
-		yashrs_0.4.3
-		yashrs_0.4.2
-		yashrs_0.4.1
-		yashrs_0.4.0
-		yashrs_0.3.0
+		brush_0.2.23
+		brush_0.2.22
+		brush_0.2.21
+		brush_0.2.20
 	@
 }
 
-shvr_build_yashrs ()
+shvr_build_brush ()
 {
 	version="$1"
-	build_srcdir="${SHVR_DIR_SRC}/yashrs/${version}"
+	build_srcdir="${SHVR_DIR_SRC}/brush/${version}"
 	mkdir -p "${build_srcdir}"
 	
 	apt-get -y install \
@@ -47,7 +40,7 @@ shvr_build_yashrs ()
 	. "$HOME/.cargo/env"
 
 	wget -O "${build_srcdir}.tar.gz" \
-		"https://github.com/magicant/yash-rs/archive/refs/tags/yash-cli-${version}.tar.gz"
+		"https://github.com/reubeno/brush/archive/refs/tags/brush-shell-v${version}.tar.gz"
 
 	tar --extract \
 		--file="${build_srcdir}.tar.gz" \
@@ -58,8 +51,8 @@ shvr_build_yashrs ()
 
 	cargo build --release
 
-	mkdir -p "${SHVR_DIR_OUT}/yashrs_${version}/bin"
-	cp "./target/release/yash3" "${SHVR_DIR_OUT}/yashrs_$version/bin"
+	mkdir -p "${SHVR_DIR_OUT}/brush_${version}/bin"
+	cp "./target/release/brush" "${SHVR_DIR_OUT}/brush_$version/bin"
 	
-	"${SHVR_DIR_OUT}/yashrs_${version}/bin/yash3" -c "echo yashrs version $version"
+	"${SHVR_DIR_OUT}/brush_${version}/bin/brush" -c "echo brush version $version"
 }
