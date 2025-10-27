@@ -54,6 +54,10 @@ jobs:
               bash_5.1.16
               bash_5.2.37
               bash_5.3-rc1
+              brush_0.2.23
+              brush_0.2.22
+              brush_0.2.21
+              brush_0.2.20
               busybox_1.21.1
               busybox_1.22.1
               busybox_1.23.2
