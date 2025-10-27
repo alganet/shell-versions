@@ -21,7 +21,7 @@ $ docker run -it --rm alganet/shell-versions find /opt -type f
 And run them by choosing a version:
 
 ```sh
-$ docker run -it --rm alganet/shell-versions /opt/bash_5.2.15/bin/bash -c "echo hello there"
+$ docker run -it --rm alganet/shell-versions /opt/bash_5.3/bin/bash -c "echo hello there"
 hello there
 ```
 

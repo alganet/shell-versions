@@ -6,15 +6,18 @@
 shvr_current_bash ()
 {
 	cat <<-@
+		bash_5.3
 		bash_5.2.37
-		bash_5.1.16
 	@
 }
 
 shvr_targets_bash ()
 {
 	cat <<-@
+		bash_5.3
 		bash_5.3-rc1
+		bash_5.3-rc2
+		bash_5.3-beta
 		bash_5.2.37
 		bash_5.1.16
 		bash_5.0.18
@@ -43,7 +46,7 @@ shvr_build_bash ()
 	version_patch="${version_minor#*[.-]}"
 	
 	if test "$version_patch" = "$version_minor"
-	then return 1
+	then version_patch=0
 	else version_minor="${version_minor%\.*}"
 	fi
 	
@@ -65,7 +68,7 @@ shvr_build_bash ()
 	fi
 	
 	wget -O "${build_srcdir}.tar.gz" \
-		"https://ftp.gnu.org/gnu/bash/bash-${version_baseline}.tar.gz"
+		"https://mirrors.ocf.berkeley.edu/gnu/bash/bash-${version_baseline}.tar.gz"
 	tar --extract \
 		--file="${build_srcdir}.tar.gz" \
 		--strip-components=1 \
@@ -77,7 +80,7 @@ shvr_build_bash ()
 	do
 		patch_i=$((patch_i + 1))
 		patch_n="$(printf '%03d' "$patch_i")"
-		url="https://ftp.gnu.org/gnu/bash/bash-${version_baseline}-patches/bash${version_major}${version_minor}-${patch_n}"
+		url="https://mirrors.ocf.berkeley.edu/gnu/bash/bash-${version_baseline}-patches/bash${version_major}${version_minor}-${patch_n}"
 		wget -O "${build_srcdir}-patches/$patch_n" "$url"
 		patch \
 			--directory="${build_srcdir}" \
