@@ -14,7 +14,7 @@
 # OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
 # PERFORMANCE OF THIS SOFTWARE.
 
-FROM debian:buster-slim AS builder
+FROM debian:bullseye-slim AS builder
 
     # Update distro
     RUN apt-get -y update
@@ -32,7 +32,7 @@ FROM debian:buster-slim AS builder
     # Build
     RUN bash "/shvr/shvr.sh" build $TARGETS
 
-FROM debian:buster-slim
+FROM debian:bullseye-slim
 
     # Setup environment
     ENV SHVR_DIR_OUT /opt
