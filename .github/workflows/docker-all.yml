@@ -1,15 +1,23 @@
-# Copyright (c) Alexandre Gomes Gaigalas <alganet@gmail.com>
+# SPDX-FileCopyrightText: 2025 Alexandre Gomes Gaigalas <alganet@gmail.com>
 # SPDX-License-Identifier: ISC
 
-name: Docker Push Pipeline
+name: Push alganet/shell-versions:all
 
 on:
   push:
     branches:
       - "main"
 jobs:
+  download:
+    if: false # Disable job execution
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/actions/downloads
   build:
-    runs-on: ubuntu-latest
+    if: false # Disable job execution
+    needs: download
+    runs-on: ubuntu-24.04
     continue-on-error: ${{ matrix.can_fail_build }}
     steps:
       - uses: actions/checkout@v3
@@ -37,39 +45,10 @@ jobs:
       fail-fast: true
       matrix:
         include:
-          - name: latest
-            can_fail_build: false
-            tags: alganet/shell-versions:latest
-            targets: >
-              bash_5.2.37
-              bash_5.3
-              brush_0.2.23
-              brush_0.2.22
-              busybox_1.36.1
-              busybox_1.37.0
-              dash_0.5.12
-              dash_0.5.13
-              ksh_shvrA93uplusm-v1.0.9
-              ksh_shvrA93uplusm-v1.0.10
-              loksh_7.6
-              loksh_7.7
-              mksh_R58
-              mksh_R59c
-              oksh_7.6
-              oksh_7.7
-              osh_0.35.0
-              osh_0.36.0
-              posh_0.13.2
-              posh_0.14.1
-              yash_2.59
-              yash_2.60
-              yashrs_0.4.5
-              yashrs_3.0.3
-              zsh_5.8.1
-              zsh_5.9
           - name: all
             can_fail_build: false
             tags: alganet/shell-versions:all
+            # AUTO-GENERATED LIST. DO NOT EDIT MANUALLY.
             targets: >
               bash_2.05b.13
               bash_3.0.22
@@ -83,14 +62,11 @@ jobs:
               bash_5.0.18
               bash_5.1.16
               bash_5.2.37
-              bash_5.3-beta
-              bash_5.3-rc1
-              bash_5.3-rc2
               bash_5.3
-              brush_0.2.23
-              brush_0.2.22
-              brush_0.2.21
               brush_0.2.20
+              brush_0.2.21
+              brush_0.2.22
+              brush_0.2.23
               busybox_1.21.1
               busybox_1.22.1
               busybox_1.23.2
@@ -153,6 +129,7 @@ jobs:
               loksh_7.5
               loksh_7.6
               loksh_7.7
+              loksh_7.8
               mksh_R45
               mksh_R46
               mksh_R47
@@ -181,21 +158,33 @@ jobs:
               oksh_7.5
               oksh_7.6
               oksh_7.7
-              osh_0.36.0
-              osh_0.35.0
-              osh_0.34.0
-              osh_0.33.0
-              osh_0.32.0
-              osh_0.31.0
-              osh_0.30.0
-              osh_0.29.0
-              osh_0.28.0
-              osh_0.27.0
-              osh_0.26.0
+              oksh_7.8
               osh_0.25.0
+              osh_0.26.0
+              osh_0.27.0
+              osh_0.28.0
+              osh_0.29.0
+              osh_0.30.0
+              osh_0.31.0
+              osh_0.32.0
+              osh_0.33.0
+              osh_0.34.0
+              osh_0.35.0
+              osh_0.36.0
               posh_0.12.6
               posh_0.13.2
-              posh_0.14.2
+              posh_0.14.1
+              yashrs_0.3.0
+              yashrs_0.4.0
+              yashrs_0.4.1
+              yashrs_0.4.2
+              yashrs_0.4.3
+              yashrs_0.4.4
+              yashrs_0.4.5
+              yashrs_3.0.0
+              yashrs_3.0.1
+              yashrs_3.0.2
+              yashrs_3.0.3
               yash_2.41
               yash_2.42
               yash_2.43
@@ -216,17 +205,6 @@ jobs:
               yash_2.58.1
               yash_2.59
               yash_2.60
-              yashrs_3.0.3
-              yashrs_3.0.2
-              yashrs_3.0.1
-              yashrs_3.0.0
-              yashrs_0.4.5
-              yashrs_0.4.4
-              yashrs_0.4.3
-              yashrs_0.4.2
-              yashrs_0.4.1
-              yashrs_0.4.0
-              yashrs_0.3.0
               zsh_4.2.7
               zsh_5.0.8
               zsh_5.1.1

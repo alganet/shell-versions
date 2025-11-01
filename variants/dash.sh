@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 
-# Copyright (c) Alexandre Gomes Gaigalas <alganet@gmail.com>
+# SPDX-FileCopyrightText: 2025 Alexandre Gomes Gaigalas <alganet@gmail.com>
 # SPDX-License-Identifier: ISC
 
 shvr_current_dash ()
@@ -26,6 +26,19 @@ shvr_targets_dash ()
 	@
 }
 
+shvr_download_dash ()
+{
+	version="$1"
+	build_srcdir="${SHVR_DIR_SRC}/dash/${version}"
+	mkdir -p "${SHVR_DIR_SRC}/dash"
+
+	if ! test -f "${build_srcdir}.tar.gz"
+	then
+		wget -O "${build_srcdir}.tar.gz" \
+			"https://git.kernel.org/pub/scm/utils/dash/dash.git/snapshot/dash-$version.tar.gz"
+	fi
+}
+
 shvr_build_dash ()
 {
 	version="$1"
@@ -34,8 +47,6 @@ shvr_build_dash ()
 
 	apt-get -y install \
 		wget gcc automake autoconf dpkg-dev
-	wget -O "${build_srcdir}.tar.gz" \
-		"https://git.kernel.org/pub/scm/utils/dash/dash.git/snapshot/dash-$version.tar.gz"
 
 	tar --extract \
 		--file="${build_srcdir}.tar.gz" \

@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 
-# Copyright (c) Alexandre Gomes Gaigalas <alganet@gmail.com>
+# SPDX-FileCopyrightText: 2025 Alexandre Gomes Gaigalas <alganet@gmail.com>
 # SPDX-License-Identifier: ISC
 
 shvr_current_yash ()
@@ -37,6 +37,19 @@ shvr_targets_yash ()
 	@
 }
 
+shvr_download_yash ()
+{
+	version="$1"
+	build_srcdir="${SHVR_DIR_SRC}/yash/${version}"
+	mkdir -p "${SHVR_DIR_SRC}/yash"
+
+	if ! test -f "${build_srcdir}.tar.gz"
+	then
+		wget -O "${build_srcdir}.tar.gz" \
+			"https://github.com/magicant/yash/releases/download/${version}/yash-${version}.tar.xz"
+	fi
+}
+
 shvr_build_yash ()
 {
 	version="$1"
@@ -45,8 +58,6 @@ shvr_build_yash ()
 	
 	apt-get -y install \
 		wget gcc make xz-utils
-	wget -O "${build_srcdir}.tar.gz" \
-		"https://github.com/magicant/yash/releases/download/${version}/yash-${version}.tar.xz"
 
 	tar --extract \
 		--file="${build_srcdir}.tar.gz" \

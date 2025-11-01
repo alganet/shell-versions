@@ -1,0 +1,77 @@
+# SPDX-FileCopyrightText: 2025 Alexandre Gomes Gaigalas <alganet@gmail.com>
+# SPDX-License-Identifier: ISC
+
+name: Push alganet/shell-versions:test
+
+on:
+  pull_request:
+    branches:
+      - "main"
+jobs:
+  download:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/actions/downloads
+  build:
+    needs: download
+    runs-on: ubuntu-24.04
+    continue-on-error: ${{ matrix.can_fail_build }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/actions/downloads
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PASS }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: "Build Docker Image (push: test)"
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          tags: ${{ matrix.tags }}
+          labels: ${{ matrix.name }}
+          build-args: |
+            TARGETS=${{ matrix.targets }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: test
+            can_fail_build: false
+            tags: alganet/shell-versions:test
+            # AUTO-GENERATED LIST. DO NOT EDIT MANUALLY.
+            targets: >
+              bash_5.2.37
+              bash_5.3
+              brush_0.2.22
+              brush_0.2.23
+              busybox_1.36.1
+              busybox_1.37.0
+              dash_0.5.12
+              dash_0.5.13
+              ksh_shvrA93uplusm-v1.0.9
+              ksh_shvrA93uplusm-v1.0.10
+              loksh_7.7
+              loksh_7.8
+              mksh_R58
+              mksh_R59c
+              oksh_7.7
+              oksh_7.8
+              osh_0.35.0
+              osh_0.36.0
+              posh_0.13.2
+              posh_0.14.1
+              yashrs_0.4.5
+              yashrs_3.0.3
+              yash_2.59
+              yash_2.60
+              zsh_5.8.1
+              zsh_5.9

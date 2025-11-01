@@ -1,3 +1,6 @@
+[#]:: (SPDX-FileCopyrightText: 2025 Alexandre Gomes Gaigalas <alganet@gmail.com>)
+[#]:: (SPDX-License-Identifier: ISC)
+
 # alganet/shell-versions
 
 [![Docker Build](https://github.com/alganet/shell-versions/actions/workflows/docker-push.yml/badge.svg?branch=main)](https://github.com/alganet/shell-versions/actions/workflows/docker-push.yml)
@@ -27,9 +30,10 @@ hello there
 
 ## Building Locally
 
-You can pass a list of versions to `TARGETS=` or use `sh shvr.sh [current|targets]` to let the script generate a list for you:
-
 ```sh
+$ sh shvr.sh download $(sh shvr.sh targets)
 $ docker build -t "mymultishell" --build-arg TARGETS="$(sh shvr.sh targets)" .
 $ docker run -it --rm "mymultishell" ls /opt
 ```
+
+You can pass a shorter list of versions instead of the full `$(sh shvr.sh targets)`.
