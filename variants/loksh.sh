@@ -1,19 +1,20 @@
 #!/usr/bin/env sh
 
-# Copyright (c) Alexandre Gomes Gaigalas <alganet@gmail.com>
+# SPDX-FileCopyrightText: 2025 Alexandre Gomes Gaigalas <alganet@gmail.com>
 # SPDX-License-Identifier: ISC
 
 shvr_current_loksh ()
 {
 	cat <<-@
+		loksh_7.8
 		loksh_7.7
-		loksh_7.6
 	@
 }
 
 shvr_targets_loksh ()
 {
 	cat <<-@
+		loksh_7.8
 		loksh_7.7
 		loksh_7.6
 		loksh_7.5
@@ -27,6 +28,19 @@ shvr_targets_loksh ()
 	@
 }
 
+shvr_download_loksh ()
+{
+	version="$1"
+	build_srcdir="${SHVR_DIR_SRC}/loksh/${version}"
+	mkdir -p "${SHVR_DIR_SRC}/loksh"
+
+	if ! test -f "${build_srcdir}.tar.xz"
+	then
+		wget -O "${build_srcdir}.tar.xz" \
+			"https://github.com/dimkr/loksh/releases/download/$version/loksh-$version.tar.xz"
+	fi
+}
+
 shvr_build_loksh ()
 {
 	version="$1"
@@ -35,8 +49,6 @@ shvr_build_loksh ()
 
 	apt-get -y install \
 		wget gcc meson ninja-build xz-utils
-	wget -O "${build_srcdir}.tar.xz" \
-		"https://github.com/dimkr/loksh/releases/download/$version/loksh-$version.tar.xz"
 
 	tar --extract \
 		--file="${build_srcdir}.tar.xz" \

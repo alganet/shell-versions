@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 
-# Copyright (c) Alexandre Gomes Gaigalas <alganet@gmail.com>
+# SPDX-FileCopyrightText: 2025 Alexandre Gomes Gaigalas <alganet@gmail.com>
 # SPDX-License-Identifier: ISC
 
 shvr_current_ksh ()
@@ -43,32 +43,57 @@ shvr_targets_ksh ()
 	@
 }
 
-shvr_build_ksh ()
+shvr_versioninfo_ksh ()
 {
 	version="$1"
 	fork_name="${1%%-*}"
 	fork_version="${1#*-}"
+}
+
+shvr_download_ksh ()
+{
+	shvr_versioninfo_ksh "$1"
+	build_srcdir="${SHVR_DIR_SRC}/ksh/${version}"
+	mkdir -p "${SHVR_DIR_SRC}/ksh"
+	
+	if ! test -f "${build_srcdir}.tar.gz"
+	then
+		case "$fork_name" in
+			*'93uplusm')
+				wget -O "${build_srcdir}.tar.gz" \
+					"https://github.com/ksh93/ksh/archive/refs/tags/${fork_version}.tar.gz"
+				;;
+			*'2020')
+				wget -O "${build_srcdir}.tar.gz" \
+					"https://github.com/ksh2020/ksh/archive/refs/tags/${fork_version}.tar.gz"
+				;;
+			*'history')
+				wget -O "${build_srcdir}.tar.gz" \
+					"https://api.github.com/repos/ksh93/ksh93-history/tarball/${fork_version}"
+				;;
+		esac
+	fi
+}
+
+shvr_build_ksh ()
+{
+	shvr_versioninfo_ksh "$1"
+
 	build_srcdir="${SHVR_DIR_SRC}/ksh/${version}"
 	mkdir -p "${build_srcdir}"
-	
+
 	case "$fork_name" in
 		*'93uplusm')
 			apt-get -y install \
 				wget gcc
-			wget -O "${build_srcdir}.tar.gz" \
-				"https://github.com/ksh93/ksh/archive/refs/tags/${fork_version}.tar.gz"
 			;;
 		*'2020')
 			apt-get -y install \
 				wget gcc meson
-			wget -O "${build_srcdir}.tar.gz" \
-				"https://github.com/ksh2020/ksh/archive/refs/tags/${fork_version}.tar.gz"
 			;;
 		*'history')
 			apt-get -y install \
 				wget gcc
-			wget -O "${build_srcdir}.tar.gz" \
-				"https://api.github.com/repos/ksh93/ksh93-history/tarball/${fork_version}"
 			;;
 	esac
 

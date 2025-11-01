@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 
-# Copyright (c) Alexandre Gomes Gaigalas <alganet@gmail.com>
+# SPDX-FileCopyrightText: 2025 Alexandre Gomes Gaigalas <alganet@gmail.com>
 # SPDX-License-Identifier: ISC
 
 shvr_current_mksh ()
@@ -32,6 +32,19 @@ shvr_targets_mksh ()
 	@
 }
 
+shvr_download_mksh ()
+{
+	version="$1"
+	build_srcdir="${SHVR_DIR_SRC}/mksh/${version}"
+	mkdir -p "${SHVR_DIR_SRC}/mksh"
+
+	if ! test -f "${build_srcdir}.tar.gz"
+	then
+		wget -O "${build_srcdir}.tgz" \
+			"https://github.com/MirBSD/mksh/archive/refs/tags/mksh-$version.tar.gz"
+	fi
+}
+
 shvr_build_mksh ()
 {
 	version="$1"
@@ -40,8 +53,6 @@ shvr_build_mksh ()
 
 	apt-get -y install \
 		wget gcc make
-	wget -O "${build_srcdir}.tgz" \
-		"http://www.mirbsd.org/MirOS/dist/mir/mksh/mksh-$version.tgz"
 
 	tar --extract \
 		--file="${build_srcdir}.tgz" \

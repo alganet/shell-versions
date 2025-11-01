@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 
-# Copyright (c) Alexandre Gomes Gaigalas <alganet@gmail.com>
+# SPDX-FileCopyrightText: 2025 Alexandre Gomes Gaigalas <alganet@gmail.com>
 # SPDX-License-Identifier: ISC
 
 shvr_current_zsh ()
@@ -28,7 +28,7 @@ shvr_targets_zsh ()
 	@
 }
 
-shvr_build_zsh ()
+shvr_versioninfo_zsh ()
 {
 	version="$1"
 	version_major="${version%%\.*}"
@@ -36,26 +36,54 @@ shvr_build_zsh ()
 	if test "$version" = "$version_major"
 	then return 1
 	fi
-	
+
 	version_minor="${version#$version_major\.}"
 	version_patch="${version_minor#*\.}"
-	
+
 	if test "$version_patch" = "$version_minor"
 	then version_patch="0"
 	else version_minor="${version_minor%\.*}"
 	fi
-	
+}
+
+shvr_download_zsh ()
+{
+	shvr_versioninfo_zsh "$1"
+
+	build_srcdir="${SHVR_DIR_SRC}/zsh/${version}"
+	mkdir -p "${SHVR_DIR_SRC}/zsh"
+
+	if
+		{ test "$version_major" -gt 4 && test "${version_minor}" -gt 0; } ||
+		test "$version_major" -gt 5
+	then
+		if ! test -f "${build_srcdir}.tar.xz"
+		then
+			wget -O "${build_srcdir}.tar.xz" \
+				"https://downloads.sourceforge.net/project/zsh/zsh/$version/zsh-$version.tar.xz"
+		fi
+	else
+		if ! test -f "${build_srcdir}.tar.gz"
+		then
+			wget -O "${build_srcdir}.tar.gz" \
+				"https://downloads.sourceforge.net/project/zsh/zsh/$version/zsh-$version.tar.gz"
+		fi
+	fi
+}
+
+shvr_build_zsh ()
+{
+	shvr_versioninfo_zsh "$1"
+
 	build_srcdir="${SHVR_DIR_SRC}/zsh/${version}"
 	mkdir -p "${build_srcdir}"
 
-	if 
-		test "$version_major" -gt 4 -a "${version_minor}" -gt 0 ||
+	if
+		{ test "$version_major" -gt 4 && test "${version_minor}" -gt 0; } ||
 		test "$version_major" -gt 5
 	then
 		apt-get -y install \
 			wget gcc make autoconf libtinfo-dev xz-utils
-		wget -O "${build_srcdir}.tar.xz" \
-			"https://downloads.sourceforge.net/project/zsh/zsh/$version/zsh-$version.tar.xz"
 		tar --extract \
 			--file="${build_srcdir}.tar.xz" \
 			--strip-components=1 \
@@ -63,8 +91,6 @@ shvr_build_zsh ()
 	else
 		apt-get -y install \
 			wget gcc make autoconf libtinfo-dev
-		wget -O "${build_srcdir}.tar.gz" \
-			"https://downloads.sourceforge.net/project/zsh/zsh/$version/zsh-$version.tar.gz"
 		tar --extract \
 			--file="${build_srcdir}.tar.gz" \
 			--strip-components=1 \
@@ -86,3 +112,4 @@ shvr_build_zsh ()
 
 	"${SHVR_DIR_OUT}/zsh_${version}/bin/zsh" --version
 }
+

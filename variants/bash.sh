@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 
-# Copyright (c) Alexandre Gomes Gaigalas <alganet@gmail.com>
+# SPDX-FileCopyrightText: 2025 Alexandre Gomes Gaigalas <alganet@gmail.com>
 # SPDX-License-Identifier: ISC
 
 shvr_current_bash ()
@@ -15,9 +15,6 @@ shvr_targets_bash ()
 {
 	cat <<-@
 		bash_5.3
-		bash_5.3-rc1
-		bash_5.3-rc2
-		bash_5.3-beta
 		bash_5.2.37
 		bash_5.1.16
 		bash_5.0.18
@@ -33,7 +30,7 @@ shvr_targets_bash ()
 	@
 }
 
-shvr_build_bash ()
+shvr_versioninfo_bash ()
 {
 	version="$1"
 	version_major="${version%%\.*}"
@@ -49,8 +46,41 @@ shvr_build_bash ()
 	then version_patch=0
 	else version_minor="${version_minor%\.*}"
 	fi
-	
+
 	version_baseline="${version_major}.${version_minor}"
+}
+
+shvr_download_bash ()
+{
+	shvr_versioninfo_bash "$1"
+	
+	build_srcdir="${SHVR_DIR_SRC}/bash/${version_baseline}"
+	mkdir -p "${SHVR_DIR_SRC}/bash"
+
+	if ! test -f "${build_srcdir}.tar.gz"
+	then
+		wget -O "${build_srcdir}.tar.gz" \
+			"https://mirrors.ocf.berkeley.edu/gnu/bash/bash-${version_baseline}.tar.gz"
+	fi
+
+	mkdir -p "${build_srcdir}-patches"
+	patch_i=0
+	while test $patch_i -lt $version_patch
+	do
+		patch_i=$((patch_i + 1))
+		patch_n="$(printf '%03d' "$patch_i")"
+		if ! test -f "${build_srcdir}-patches/$patch_n"
+		then
+			url="https://mirrors.ocf.berkeley.edu/gnu/bash/bash-${version_baseline}-patches/bash${version_major}${version_minor}-${patch_n}"
+			wget -O "${build_srcdir}-patches/$patch_n" "$url"
+		fi
+	done
+}
+
+shvr_build_bash ()
+{
+	shvr_versioninfo_bash "$1"
+
 	build_srcdir="${SHVR_DIR_SRC}/bash/${version_baseline}"
 	mkdir -p "${build_srcdir}"
 
@@ -67,27 +97,21 @@ shvr_build_bash ()
 			wget patch gcc bison make
 	fi
 	
-	wget -O "${build_srcdir}.tar.gz" \
-		"https://mirrors.ocf.berkeley.edu/gnu/bash/bash-${version_baseline}.tar.gz"
 	tar --extract \
 		--file="${build_srcdir}.tar.gz" \
 		--strip-components=1 \
 		--directory="${build_srcdir}"
 
-	mkdir -p "${build_srcdir}-patches"
 	patch_i=0
 	while test $patch_i -lt $version_patch
 	do
 		patch_i=$((patch_i + 1))
 		patch_n="$(printf '%03d' "$patch_i")"
-		url="https://mirrors.ocf.berkeley.edu/gnu/bash/bash-${version_baseline}-patches/bash${version_major}${version_minor}-${patch_n}"
-		wget -O "${build_srcdir}-patches/$patch_n" "$url"
 		patch \
 			--directory="${build_srcdir}" \
 			--input="${build_srcdir}-patches/$patch_n" \
 			--strip=0
 	done
-	
 	cd "${build_srcdir}"
 
 	if test "$version_baseline" = "2.05b"

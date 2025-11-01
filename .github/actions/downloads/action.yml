@@ -1,0 +1,686 @@
+# SPDX-FileCopyrightText: 2025 Alexandre Gomes Gaigalas <alganet@gmail.com>
+# SPDX-License-Identifier: ISC
+
+name: All downloads
+description: Downloads and caches all distfiles
+runs:
+  using: composite
+  # AUTO-GENERATED LIST. DO NOT EDIT MANUALLY.
+  steps:
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: bash
+        shvr_version: "2.05b.13"
+        cache_path: "2.05b"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: bash
+        shvr_version: "3.0.22"
+        cache_path: "3.0"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: bash
+        shvr_version: "3.1.23"
+        cache_path: "3.1"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: bash
+        shvr_version: "3.2.57"
+        cache_path: "3.2"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: bash
+        shvr_version: "4.0.44"
+        cache_path: "4.0"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: bash
+        shvr_version: "4.1.17"
+        cache_path: "4.1"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: bash
+        shvr_version: "4.2.53"
+        cache_path: "4.2"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: bash
+        shvr_version: "4.3.48"
+        cache_path: "4.3"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: bash
+        shvr_version: "4.4.23"
+        cache_path: "4.4"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: bash
+        shvr_version: "5.0.18"
+        cache_path: "5.0"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: bash
+        shvr_version: "5.1.16"
+        cache_path: "5.1"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: bash
+        shvr_version: "5.2.37"
+        cache_path: "5.2"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: bash
+        shvr_version: "5.3"
+        cache_path: "5.3"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: brush
+        shvr_version: "0.2.20"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: brush
+        shvr_version: "0.2.21"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: brush
+        shvr_version: "0.2.22"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: brush
+        shvr_version: "0.2.23"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: busybox
+        shvr_version: "1.21.1"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: busybox
+        shvr_version: "1.22.1"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: busybox
+        shvr_version: "1.23.2"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: busybox
+        shvr_version: "1.24.2"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: busybox
+        shvr_version: "1.25.1"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: busybox
+        shvr_version: "1.26.2"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: busybox
+        shvr_version: "1.27.2"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: busybox
+        shvr_version: "1.28.4"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: busybox
+        shvr_version: "1.29.3"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: busybox
+        shvr_version: "1.30.1"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: busybox
+        shvr_version: "1.31.1"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: busybox
+        shvr_version: "1.32.1"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: busybox
+        shvr_version: "1.33.2"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: busybox
+        shvr_version: "1.34.1"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: busybox
+        shvr_version: "1.35.0"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: busybox
+        shvr_version: "1.36.1"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: busybox
+        shvr_version: "1.37.0"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: dash
+        shvr_version: "0.5.5.1"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: dash
+        shvr_version: "0.5.6.1"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: dash
+        shvr_version: "0.5.7"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: dash
+        shvr_version: "0.5.8"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: dash
+        shvr_version: "0.5.9.1"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: dash
+        shvr_version: "0.5.10.2"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: dash
+        shvr_version: "0.5.11.5"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: dash
+        shvr_version: "0.5.12"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: dash
+        shvr_version: "0.5.13"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: ksh
+        shvr_version: "shvrA93uplusm-v1.0.1"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: ksh
+        shvr_version: "shvrA93uplusm-v1.0.2"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: ksh
+        shvr_version: "shvrA93uplusm-v1.0.3"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: ksh
+        shvr_version: "shvrA93uplusm-v1.0.4"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: ksh
+        shvr_version: "shvrA93uplusm-v1.0.6"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: ksh
+        shvr_version: "shvrA93uplusm-v1.0.7"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: ksh
+        shvr_version: "shvrA93uplusm-v1.0.8"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: ksh
+        shvr_version: "shvrA93uplusm-v1.0.9"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: ksh
+        shvr_version: "shvrA93uplusm-v1.0.10"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: ksh
+        shvr_version: "shvrB2020-2020.0.0"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: ksh
+        shvr_version: "shvrChistory-b_2004-10-11"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: ksh
+        shvr_version: "shvrChistory-b_2005-02-02"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: ksh
+        shvr_version: "shvrChistory-b_2005-06-01"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: ksh
+        shvr_version: "shvrChistory-b_2005-09-16"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: ksh
+        shvr_version: "shvrChistory-b_2006-02-14"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: ksh
+        shvr_version: "shvrChistory-b_2006-07-24"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: ksh
+        shvr_version: "shvrChistory-b_2006-11-15"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: ksh
+        shvr_version: "shvrChistory-b_2007-01-11"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: ksh
+        shvr_version: "shvrChistory-b_2008-02-02"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: ksh
+        shvr_version: "shvrChistory-b_2008-06-08"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: ksh
+        shvr_version: "shvrChistory-b_2008-11-04"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: ksh
+        shvr_version: "shvrChistory-b_2010-06-21"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: ksh
+        shvr_version: "shvrChistory-b_2010-10-26"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: ksh
+        shvr_version: "shvrChistory-b_2011-03-10"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: ksh
+        shvr_version: "shvrChistory-b_2012-08-01"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: ksh
+        shvr_version: "shvrChistory-b_2016-01-10"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: loksh
+        shvr_version: "6.7.5"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: loksh
+        shvr_version: "6.8.1"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: loksh
+        shvr_version: "6.9"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: loksh
+        shvr_version: "7.0"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: loksh
+        shvr_version: "7.1"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: loksh
+        shvr_version: "7.3"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: loksh
+        shvr_version: "7.4"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: loksh
+        shvr_version: "7.5"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: loksh
+        shvr_version: "7.6"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: loksh
+        shvr_version: "7.7"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: loksh
+        shvr_version: "7.8"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: mksh
+        shvr_version: "R45"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: mksh
+        shvr_version: "R46"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: mksh
+        shvr_version: "R47"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: mksh
+        shvr_version: "R48b"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: mksh
+        shvr_version: "R49"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: mksh
+        shvr_version: "R50f"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: mksh
+        shvr_version: "R51"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: mksh
+        shvr_version: "R52c"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: mksh
+        shvr_version: "R53a"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: mksh
+        shvr_version: "R54"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: mksh
+        shvr_version: "R55"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: mksh
+        shvr_version: "R56c"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: mksh
+        shvr_version: "R57"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: mksh
+        shvr_version: "R58"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: mksh
+        shvr_version: "R59c"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: oksh
+        shvr_version: "6.5"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: oksh
+        shvr_version: "6.6"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: oksh
+        shvr_version: "6.7.1"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: oksh
+        shvr_version: "6.8.1"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: oksh
+        shvr_version: "6.9"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: oksh
+        shvr_version: "7.0"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: oksh
+        shvr_version: "7.1"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: oksh
+        shvr_version: "7.2"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: oksh
+        shvr_version: "7.3"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: oksh
+        shvr_version: "7.4"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: oksh
+        shvr_version: "7.5"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: oksh
+        shvr_version: "7.6"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: oksh
+        shvr_version: "7.7"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: oksh
+        shvr_version: "7.8"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: osh
+        shvr_version: "0.25.0"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: osh
+        shvr_version: "0.26.0"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: osh
+        shvr_version: "0.27.0"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: osh
+        shvr_version: "0.28.0"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: osh
+        shvr_version: "0.29.0"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: osh
+        shvr_version: "0.30.0"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: osh
+        shvr_version: "0.31.0"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: osh
+        shvr_version: "0.32.0"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: osh
+        shvr_version: "0.33.0"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: osh
+        shvr_version: "0.34.0"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: osh
+        shvr_version: "0.35.0"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: osh
+        shvr_version: "0.36.0"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: posh
+        shvr_version: "0.12.6"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: posh
+        shvr_version: "0.13.2"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: posh
+        shvr_version: "0.14.1"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: yashrs
+        shvr_version: "0.3.0"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: yashrs
+        shvr_version: "0.4.0"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: yashrs
+        shvr_version: "0.4.1"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: yashrs
+        shvr_version: "0.4.2"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: yashrs
+        shvr_version: "0.4.3"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: yashrs
+        shvr_version: "0.4.4"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: yashrs
+        shvr_version: "0.4.5"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: yashrs
+        shvr_version: "3.0.0"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: yashrs
+        shvr_version: "3.0.1"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: yashrs
+        shvr_version: "3.0.2"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: yashrs
+        shvr_version: "3.0.3"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: yash
+        shvr_version: "2.41"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: yash
+        shvr_version: "2.42"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: yash
+        shvr_version: "2.43"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: yash
+        shvr_version: "2.44"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: yash
+        shvr_version: "2.45"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: yash
+        shvr_version: "2.46"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: yash
+        shvr_version: "2.47"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: yash
+        shvr_version: "2.48"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: yash
+        shvr_version: "2.49"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: yash
+        shvr_version: "2.50"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: yash
+        shvr_version: "2.51"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: yash
+        shvr_version: "2.52"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: yash
+        shvr_version: "2.53"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: yash
+        shvr_version: "2.54"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: yash
+        shvr_version: "2.55"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: yash
+        shvr_version: "2.56.1"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: yash
+        shvr_version: "2.57"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: yash
+        shvr_version: "2.58.1"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: yash
+        shvr_version: "2.59"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: yash
+        shvr_version: "2.60"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: zsh
+        shvr_version: "4.2.7"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: zsh
+        shvr_version: "5.0.8"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: zsh
+        shvr_version: "5.1.1"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: zsh
+        shvr_version: "5.2"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: zsh
+        shvr_version: "5.3.1"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: zsh
+        shvr_version: "5.4.2"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: zsh
+        shvr_version: "5.5.1"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: zsh
+        shvr_version: "5.6.2"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: zsh
+        shvr_version: "5.7.1"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: zsh
+        shvr_version: "5.8.1"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: zsh
+        shvr_version: "5.9"

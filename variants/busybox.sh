@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 
-# Copyright (c) Alexandre Gomes Gaigalas <alganet@gmail.com>
+# SPDX-FileCopyrightText: 2025 Alexandre Gomes Gaigalas <alganet@gmail.com>
 # SPDX-License-Identifier: ISC
 
 shvr_current_busybox ()
@@ -34,7 +34,7 @@ shvr_targets_busybox ()
 	@
 }
 
-shvr_build_busybox ()
+shvr_versioninfo_busybox ()
 {
 	version="$1"
 	version_major="${version%%\.*}"
@@ -49,14 +49,30 @@ shvr_build_busybox ()
 	then return 1
 	else version_minor="${version_minor%\.*}"
 	fi
-	
+}
+
+shvr_download_busybox ()
+{
+	shvr_versioninfo_busybox "$1"
+	build_srcdir="${SHVR_DIR_SRC}/busybox/${version}"
+	mkdir -p "${SHVR_DIR_SRC}/busybox"
+
+	if ! test -f "${build_srcdir}.tar.bz2"
+	then
+		wget -O "${build_srcdir}.tar.bz2" \
+			"https://busybox.net/downloads/busybox-${version}.tar.bz2"
+	fi
+}
+
+shvr_build_busybox ()
+{
+	shvr_versioninfo_busybox "$1"
+
 	build_srcdir="${SHVR_DIR_SRC}/busybox/${version}"
 	mkdir -p "${build_srcdir}"
 
 	apt-get -y install \
 		wget bzip2 gcc make
-	wget -O "${build_srcdir}.tar.bz2" \
-		"https://busybox.net/downloads/busybox-${version}.tar.bz2"
 
 	mkdir -p /usr/src/busybox
 	tar --extract \
@@ -113,7 +129,7 @@ shvr_build_busybox ()
 		CONFIG_ASH_OPTIMIZE_FOR_SIZE
 	'
 	
-	make allnoconfig
+	make -j "$(nproc)" allnoconfig
 	
 	for conf in $unsetConfs
 	do 
@@ -134,7 +150,7 @@ shvr_build_busybox ()
 		fi
 	done
 	
-	make oldconfig
+	make -j "$(nproc)" oldconfig
 	
 	for conf in $unsetConfs
 	do ! grep -q "^$conf=" .config

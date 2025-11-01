@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 
-# Copyright (c) Alexandre Gomes Gaigalas <alganet@gmail.com>
+# SPDX-FileCopyrightText: 2025 Alexandre Gomes Gaigalas <alganet@gmail.com>
 # SPDX-License-Identifier: ISC
 
 shvr_current_osh ()
@@ -29,6 +29,19 @@ shvr_targets_osh ()
 	@
 }
 
+shvr_download_osh ()
+{
+	version="$1"
+	build_srcdir="${SHVR_DIR_SRC}/osh/${version}"
+	mkdir -p "${SHVR_DIR_SRC}/osh"
+
+	if ! test -f "${build_srcdir}.tar.gz"
+	then
+		wget -O "${build_srcdir}.tar.gz" \
+			"https://oils.pub/download/oils-for-unix-${version}.tar.gz"
+	fi
+}
+
 shvr_build_osh ()
 {
 	version="$1"
@@ -37,8 +50,6 @@ shvr_build_osh ()
 
 	apt-get -y install \
 		wget gcc g++ make
-	wget -O "${build_srcdir}.tar.gz" \
-		"https://oils.pub/download/oils-for-unix-${version}.tar.gz"
 
 	tar --extract \
 		--file="${build_srcdir}.tar.gz" \

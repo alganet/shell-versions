@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 
-# Copyright (c) Alexandre Gomes Gaigalas <alganet@gmail.com>
+# SPDX-FileCopyrightText: 2025 Alexandre Gomes Gaigalas <alganet@gmail.com>
 # SPDX-License-Identifier: ISC
 
 shvr_current_brush ()
@@ -21,6 +21,19 @@ shvr_targets_brush ()
 	@
 }
 
+shvr_download_brush ()
+{
+	version="$1"
+	build_srcdir="${SHVR_DIR_SRC}/brush/${version}"
+	mkdir -p "${SHVR_DIR_SRC}/brush"
+
+	if ! test -f "${build_srcdir}.tar.gz"
+	then
+		wget -O "${build_srcdir}.tar.gz" \
+			"https://github.com/reubeno/brush/archive/refs/tags/brush-shell-v${version}.tar.gz"
+	fi
+}
+
 shvr_build_brush ()
 {
 	version="$1"
@@ -29,18 +42,15 @@ shvr_build_brush ()
 	
 	apt-get -y install \
 		curl wget gcc
-    
+
 	if ! test -f "$HOME/.cargo/env"
 	then
 		curl -o "$HOME/rustup.sh" --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs
-		cd $HOME
+		cd "$HOME"
 		sh rustup.sh -y
 	fi
 
 	. "$HOME/.cargo/env"
-
-	wget -O "${build_srcdir}.tar.gz" \
-		"https://github.com/reubeno/brush/archive/refs/tags/brush-shell-v${version}.tar.gz"
 
 	tar --extract \
 		--file="${build_srcdir}.tar.gz" \

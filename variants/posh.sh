@@ -1,12 +1,12 @@
 #!/usr/bin/env sh
 
-# Copyright (c) Alexandre Gomes Gaigalas <alganet@gmail.com>
+# SPDX-FileCopyrightText: 2025 Alexandre Gomes Gaigalas <alganet@gmail.com>
 # SPDX-License-Identifier: ISC
 
 shvr_current_posh ()
 {
 	cat <<-@
-		posh_0.14.2
+		posh_0.14.1
 		posh_0.13.2
 	@
 }
@@ -14,11 +14,23 @@ shvr_current_posh ()
 shvr_targets_posh ()
 {
 	cat <<-@
-		posh_0.14.2
 		posh_0.14.1
 		posh_0.13.2
 		posh_0.12.6
 	@
+}
+
+shvr_download_posh ()
+{
+	version="$1"
+	build_srcdir="${SHVR_DIR_SRC}/posh/${version}"
+	mkdir -p "${SHVR_DIR_SRC}/posh"
+
+	if ! test -f "${build_srcdir}.tar.gz"
+	then
+		wget -O "${build_srcdir}.tar.gz" \
+			"https://salsa.debian.org/clint/posh/-/archive/debian/$version/posh-debian-$version.tar.gz"
+	fi
 }
 
 shvr_build_posh ()
@@ -29,8 +41,6 @@ shvr_build_posh ()
 
 	apt-get -y install \
 		wget gcc make autoconf automake
-	wget -O "${build_srcdir}.tar.gz" \
-		"https://salsa.debian.org/clint/posh/-/archive/debian/$version/posh-debian-$version.tar.gz"
 
 	tar --extract \
 		--file="${build_srcdir}.tar.gz" \

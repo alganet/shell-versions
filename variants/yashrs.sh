@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 
-# Copyright (c) Alexandre Gomes Gaigalas <alganet@gmail.com>
+# SPDX-FileCopyrightText: 2025 Alexandre Gomes Gaigalas <alganet@gmail.com>
 # SPDX-License-Identifier: ISC
 
 shvr_current_yashrs ()
@@ -28,6 +28,19 @@ shvr_targets_yashrs ()
 	@
 }
 
+shvr_download_yashrs ()
+{
+	version="$1"
+	build_srcdir="${SHVR_DIR_SRC}/yashrs/${version}"
+	mkdir -p "${SHVR_DIR_SRC}/yashrs"
+
+	if ! test -f "${build_srcdir}.tar.gz"
+	then
+		wget -O "${build_srcdir}.tar.gz" \
+			"https://github.com/magicant/yash-rs/archive/refs/tags/yash-cli-${version}.tar.gz"
+	fi
+}
+
 shvr_build_yashrs ()
 {
 	version="$1"
@@ -45,9 +58,6 @@ shvr_build_yashrs ()
 	fi
 
 	. "$HOME/.cargo/env"
-
-	wget -O "${build_srcdir}.tar.gz" \
-		"https://github.com/magicant/yash-rs/archive/refs/tags/yash-cli-${version}.tar.gz"
 
 	tar --extract \
 		--file="${build_srcdir}.tar.gz" \

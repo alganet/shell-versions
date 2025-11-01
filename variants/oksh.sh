@@ -1,19 +1,20 @@
 #!/usr/bin/env sh
 
-# Copyright (c) Alexandre Gomes Gaigalas <alganet@gmail.com>
+# SPDX-FileCopyrightText: 2025 Alexandre Gomes Gaigalas <alganet@gmail.com>
 # SPDX-License-Identifier: ISC
 
 shvr_current_oksh ()
 {
 	cat <<-@
+		oksh_7.8
 		oksh_7.7
-		oksh_7.6
 	@
 }
 
 shvr_targets_oksh ()
 {
 	cat <<-@
+		oksh_7.8
 		oksh_7.7
 		oksh_7.6
 		oksh_7.5
@@ -30,6 +31,19 @@ shvr_targets_oksh ()
 	@
 }
 
+shvr_download_oksh ()
+{
+	version="$1"
+	build_srcdir="${SHVR_DIR_SRC}/oksh/${version}"
+	mkdir -p "${SHVR_DIR_SRC}/oksh"
+
+	if ! test -f "${build_srcdir}.tar.gz"
+	then
+		wget -O "${build_srcdir}.tar.gz" \
+			"https://github.com/ibara/oksh/releases/download/oksh-$version/oksh-$version.tar.gz"
+	fi
+}
+
 shvr_build_oksh ()
 {
 	version="$1"
@@ -38,11 +52,9 @@ shvr_build_oksh ()
 
 	apt-get -y install \
 		wget gcc make
-	wget -O "${build_srcdir}.tar.xz" \
-		"https://github.com/ibara/oksh/releases/download/oksh-$version/oksh-$version.tar.gz"
 
 	tar --extract \
-		--file="${build_srcdir}.tar.xz" \
+		--file="${build_srcdir}.tar.gz" \
 		--strip-components=1 \
 		--directory="${build_srcdir}"
 
