@@ -9,13 +9,11 @@ on:
       - "main"
 jobs:
   download:
-    if: false # Disable job execution
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v3
       - uses: ./.github/actions/downloads
   build:
-    if: false # Disable job execution
     needs: download
     runs-on: ubuntu-24.04
     continue-on-error: ${{ matrix.can_fail_build }}
@@ -103,13 +101,6 @@ jobs:
               ksh_shvrA93uplusm-v1.0.9
               ksh_shvrA93uplusm-v1.0.10
               ksh_shvrB2020-2020.0.0
-              ksh_shvrChistory-b_2004-10-11
-              ksh_shvrChistory-b_2005-02-02
-              ksh_shvrChistory-b_2005-06-01
-              ksh_shvrChistory-b_2005-09-16
-              ksh_shvrChistory-b_2006-02-14
-              ksh_shvrChistory-b_2006-07-24
-              ksh_shvrChistory-b_2006-11-15
               ksh_shvrChistory-b_2007-01-11
               ksh_shvrChistory-b_2008-02-02
               ksh_shvrChistory-b_2008-06-08

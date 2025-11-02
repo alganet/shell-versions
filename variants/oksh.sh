@@ -67,6 +67,6 @@ shvr_build_oksh ()
 	make -j "$(nproc)"
 	mkdir -p "${SHVR_DIR_OUT}/oksh_${version}/bin"
 	cp "oksh" "${SHVR_DIR_OUT}/oksh_$version/bin"
-	
+
 	"${SHVR_DIR_OUT}/oksh_${version}/bin/oksh" -c "echo oksh version $version"
 }

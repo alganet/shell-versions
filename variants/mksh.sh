@@ -40,7 +40,7 @@ shvr_download_mksh ()
 
 	if ! test -f "${build_srcdir}.tar.gz"
 	then
-		wget -O "${build_srcdir}.tgz" \
+		wget -O "${build_srcdir}.tar.gz" \
 			"https://github.com/MirBSD/mksh/archive/refs/tags/mksh-$version.tar.gz"
 	fi
 }
@@ -55,7 +55,7 @@ shvr_build_mksh ()
 		wget gcc make
 
 	tar --extract \
-		--file="${build_srcdir}.tgz" \
+		--file="${build_srcdir}.tar.gz" \
 		--strip-components=1 \
 		--directory="${build_srcdir}"
 
@@ -65,6 +65,6 @@ shvr_build_mksh ()
 
 	mkdir -p "${SHVR_DIR_OUT}/mksh_${version}/bin"
 	cp "mksh" "${SHVR_DIR_OUT}/mksh_$version/bin"
-	
+
 	"${SHVR_DIR_OUT}/mksh_${version}/bin/mksh" -c "echo mksh version $version"
 }

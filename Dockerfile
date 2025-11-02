@@ -9,6 +9,7 @@ FROM debian:bookworm-slim AS builder
     # Copy contents
     COPY "shvr.sh" "/shvr/shvr.sh"
     COPY "variants/" "/shvr/variants"
+    COPY "patches/" "/shvr/patches"
     COPY "build/" "/usr/src/shvr"
     RUN chmod +x "/shvr/shvr.sh"
 

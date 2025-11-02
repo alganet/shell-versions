@@ -1,0 +1,40 @@
+# SPDX-FileCopyrightText: 2025 Alexandre Gomes Gaigalas <alganet@gmail.com>
+# SPDX-License-Identifier: ISC
+--- src/cmd/ksh93/Mamfile
++++ src/cmd/ksh93/Mamfile
+@@ -1268,7 +1268,7 @@
+ prev ${mam_libsocket}
+ prev ${mam_libsecdb}
+ prev ${mam_liborder} archive
+-exec - iffe -v -c '${CC} ${mam_cc_FLAGS} ${CCFLAGS}   ${LDFLAGS} '  ref ${mam_cc_L+-L.} ${mam_cc_L+-L${INSTALLROOT}/lib} -I${PACKAGE_ast_INCLUDE} -I${INSTALLROOT}/include ${mam_libdll} ${mam_libcoshell} ${mam_libcmd} ${mam_libast} ${mam_libm} ${mam_libnsl}  : run features/math.sh data/math.tab
++exec - iffe -v -c '${CC} ${mam_cc_FLAGS} ${CCFLAGS}   ${LDFLAGS} '  ref ${mam_cc_L+-L.} ${mam_cc_L+-L${INSTALLROOT}/lib} -I${PACKAGE_ast_INCLUDE} -I${INSTALLROOT}/include ${mam_libdll} ${mam_libcoshell} ${mam_libcmd} ${mam_libast} -lm ${mam_libm} ${mam_libnsl}  : run features/math.sh data/math.tab
+ make ${PACKAGE_ast_INCLUDE}/ast_standards.h implicit
+ done ${PACKAGE_ast_INCLUDE}/ast_standards.h dontcare
+ done FEATURE/math generated
+@@ -1423,7 +1423,7 @@
+ prev ${mam_libsocket}
+ prev ${mam_libsecdb}
+ prev ${mam_liborder} archive
+-exec - ${CC} ${CCLDFLAGS} ${mam_cc_FLAGS} ${CCFLAGS} ${LDFLAGS} ${mam_cc_L+-L.} ${mam_cc_L+-L${INSTALLROOT}/lib} -o ksh pmain.o -lm ${mam_libshell} ${mam_libnsl} ${mam_libast}
++exec - ${CC} ${CCLDFLAGS} ${mam_cc_FLAGS} ${CCFLAGS} ${LDFLAGS} ${mam_cc_L+-L.} ${mam_cc_L+-L${INSTALLROOT}/lib} -o ksh pmain.o ${mam_libshell} ${mam_libnsl} ${mam_libast} -lm
+ done ksh generated
+ make shcomp
+ make shcomp.o
+@@ -1448,7 +1448,7 @@
+ prev ${mam_liborder} archive
+ setv CC.DLL -UCC.DLL
+ setv SH_DICT -DSH_DICT="\"libshell\""
+-exec - ${CC} ${CCLDFLAGS} ${mam_cc_FLAGS} ${CCFLAGS} ${LDFLAGS} ${mam_cc_L+-L.} ${mam_cc_L+-L${INSTALLROOT}/lib} -o shcomp shcomp.o -lm ${mam_libshell} ${mam_libnsl} ${mam_libast}
++exec - ${CC} ${CCLDFLAGS} ${mam_cc_FLAGS} ${CCFLAGS} ${LDFLAGS} ${mam_cc_L+-L.} ${mam_cc_L+-L${INSTALLROOT}/lib} -o shcomp shcomp.o ${mam_libshell} ${mam_libnsl} ${mam_libast} -lm
+ done shcomp generated
+ make suid_exec
+ make suid_exec.o
+@@ -1472,7 +1472,7 @@
+ prev ${mam_libsecdb}
+ prev ${mam_liborder} archive
+ setv CC.DLL -UCC.DLL
+-exec - ${CC} ${CCLDFLAGS} ${mam_cc_FLAGS} ${CCFLAGS} ${LDFLAGS} ${mam_cc_L+-L.} ${mam_cc_L+-L${INSTALLROOT}/lib} -o suid_exec suid_exec.o ${mam_libast} ${mam_libnsl} ${mam_libast}
++exec - ${CC} ${CCLDFLAGS} ${mam_cc_FLAGS} ${CCFLAGS} ${LDFLAGS} ${mam_cc_L+-L.} ${mam_cc_L+-L${INSTALLROOT}/lib} -o suid_exec suid_exec.o ${mam_libast} ${mam_libnsl} ${mam_libast} -lm
+ done suid_exec generated
+ make shell
+ prev libshell.a archive
