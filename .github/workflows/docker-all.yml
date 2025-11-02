@@ -19,6 +19,7 @@ jobs:
     continue-on-error: ${{ matrix.can_fail_build }}
     steps:
       - uses: actions/checkout@v3
+      - uses: ./.github/actions/downloads
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
