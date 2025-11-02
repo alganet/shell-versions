@@ -235,34 +235,6 @@ runs:
     - uses: ./.github/actions/single-download
       with:
         shvr_shell: ksh
-        shvr_version: "shvrChistory-b_2004-10-11"
-    - uses: ./.github/actions/single-download
-      with:
-        shvr_shell: ksh
-        shvr_version: "shvrChistory-b_2005-02-02"
-    - uses: ./.github/actions/single-download
-      with:
-        shvr_shell: ksh
-        shvr_version: "shvrChistory-b_2005-06-01"
-    - uses: ./.github/actions/single-download
-      with:
-        shvr_shell: ksh
-        shvr_version: "shvrChistory-b_2005-09-16"
-    - uses: ./.github/actions/single-download
-      with:
-        shvr_shell: ksh
-        shvr_version: "shvrChistory-b_2006-02-14"
-    - uses: ./.github/actions/single-download
-      with:
-        shvr_shell: ksh
-        shvr_version: "shvrChistory-b_2006-07-24"
-    - uses: ./.github/actions/single-download
-      with:
-        shvr_shell: ksh
-        shvr_version: "shvrChistory-b_2006-11-15"
-    - uses: ./.github/actions/single-download
-      with:
-        shvr_shell: ksh
         shvr_version: "shvrChistory-b_2007-01-11"
     - uses: ./.github/actions/single-download
       with:

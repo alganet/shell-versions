@@ -118,7 +118,7 @@ shvr_github_regen_downloads ()
 			shvr_clear_versioninfo
 			interpreter="${1%%_*}"
 			version="${1#*_}"
-			
+
 			cat <<-@ | sed 's/.//'
 				|    - uses: ./.github/actions/single-download
 				|      with:
@@ -127,7 +127,7 @@ shvr_github_regen_downloads ()
 			@
 
 			. "${SHVR_DIR_SELF}/variants/${interpreter}.sh"
-			if 
+			if
 				command -v shvr_versioninfo_"${interpreter}" >/dev/null 2>&1 &&
 				shvr_versioninfo_"${interpreter}" "$version" &&
 				test -n "$version_baseline"
@@ -174,7 +174,7 @@ shvr_github_regen_all ()
 {
 	(shvr_github_regen_downloads)
 	(shvr_github_regen_workflow docker-all targets)
-	(shvr_github_regen_workflow docker-test current)
+	(shvr_github_regen_workflow docker-test targets)
 	(shvr_github_regen_workflow docker-latest current)
 }
 

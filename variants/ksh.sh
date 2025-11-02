@@ -33,13 +33,6 @@ shvr_targets_ksh ()
 		ksh_shvrChistory-b_2008-06-08
 		ksh_shvrChistory-b_2008-02-02
 		ksh_shvrChistory-b_2007-01-11
-		ksh_shvrChistory-b_2006-11-15
-		ksh_shvrChistory-b_2006-07-24
-		ksh_shvrChistory-b_2006-02-14
-		ksh_shvrChistory-b_2005-09-16
-		ksh_shvrChistory-b_2005-06-01
-		ksh_shvrChistory-b_2005-02-02
-		ksh_shvrChistory-b_2004-10-11
 	@
 }
 
@@ -55,7 +48,7 @@ shvr_download_ksh ()
 	shvr_versioninfo_ksh "$1"
 	build_srcdir="${SHVR_DIR_SRC}/ksh/${version}"
 	mkdir -p "${SHVR_DIR_SRC}/ksh"
-	
+
 	if ! test -f "${build_srcdir}.tar.gz"
 	then
 		case "$fork_name" in
@@ -93,7 +86,7 @@ shvr_build_ksh ()
 			;;
 		*'history')
 			apt-get -y install \
-				wget gcc
+				wget gcc patch
 			;;
 	esac
 
@@ -103,6 +96,13 @@ shvr_build_ksh ()
 		--directory="${build_srcdir}"
 
 	cd "${build_srcdir}"
+
+	if test -d "${SHVR_DIR_SELF}/patches/ksh/$version"
+	then
+		find "${SHVR_DIR_SELF}/patches/ksh/$version" -type f | sort | while read -r patch_file
+		do patch -p0 < "$patch_file"
+		done
+	fi
 
 	if test -f "bin/package"
 	then
@@ -124,6 +124,6 @@ shvr_build_ksh ()
 		cp "build/src/cmd/ksh93/ksh" "${SHVR_DIR_OUT}/ksh_${version}/bin/ksh"
 		cp "build/src/cmd/ksh93/shcomp" "${SHVR_DIR_OUT}/ksh_${version}/bin/shcomp"
 	fi
-	
+
 	"${SHVR_DIR_OUT}/ksh_${version}/bin/ksh" -c "echo ksh version $version"
 }

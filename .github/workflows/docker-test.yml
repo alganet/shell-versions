@@ -49,29 +49,162 @@ jobs:
             tags: alganet/shell-versions:test
             # AUTO-GENERATED LIST. DO NOT EDIT MANUALLY.
             targets: >
+              bash_2.05b.13
+              bash_3.0.22
+              bash_3.1.23
+              bash_3.2.57
+              bash_4.0.44
+              bash_4.1.17
+              bash_4.2.53
+              bash_4.3.48
+              bash_4.4.23
+              bash_5.0.18
+              bash_5.1.16
               bash_5.2.37
               bash_5.3
+              brush_0.2.20
+              brush_0.2.21
               brush_0.2.22
               brush_0.2.23
+              busybox_1.21.1
+              busybox_1.22.1
+              busybox_1.23.2
+              busybox_1.24.2
+              busybox_1.25.1
+              busybox_1.26.2
+              busybox_1.27.2
+              busybox_1.28.4
+              busybox_1.29.3
+              busybox_1.30.1
+              busybox_1.31.1
+              busybox_1.32.1
+              busybox_1.33.2
+              busybox_1.34.1
+              busybox_1.35.0
               busybox_1.36.1
               busybox_1.37.0
+              dash_0.5.5.1
+              dash_0.5.6.1
+              dash_0.5.7
+              dash_0.5.8
+              dash_0.5.9.1
+              dash_0.5.10.2
+              dash_0.5.11.5
               dash_0.5.12
               dash_0.5.13
+              ksh_shvrA93uplusm-v1.0.1
+              ksh_shvrA93uplusm-v1.0.2
+              ksh_shvrA93uplusm-v1.0.3
+              ksh_shvrA93uplusm-v1.0.4
+              ksh_shvrA93uplusm-v1.0.6
+              ksh_shvrA93uplusm-v1.0.7
+              ksh_shvrA93uplusm-v1.0.8
               ksh_shvrA93uplusm-v1.0.9
               ksh_shvrA93uplusm-v1.0.10
+              ksh_shvrB2020-2020.0.0
+              ksh_shvrChistory-b_2007-01-11
+              ksh_shvrChistory-b_2008-02-02
+              ksh_shvrChistory-b_2008-06-08
+              ksh_shvrChistory-b_2008-11-04
+              ksh_shvrChistory-b_2010-06-21
+              ksh_shvrChistory-b_2010-10-26
+              ksh_shvrChistory-b_2011-03-10
+              ksh_shvrChistory-b_2012-08-01
+              ksh_shvrChistory-b_2016-01-10
+              loksh_6.7.5
+              loksh_6.8.1
+              loksh_6.9
+              loksh_7.0
+              loksh_7.1
+              loksh_7.3
+              loksh_7.4
+              loksh_7.5
+              loksh_7.6
               loksh_7.7
               loksh_7.8
+              mksh_R45
+              mksh_R46
+              mksh_R47
+              mksh_R48b
+              mksh_R49
+              mksh_R50f
+              mksh_R51
+              mksh_R52c
+              mksh_R53a
+              mksh_R54
+              mksh_R55
+              mksh_R56c
+              mksh_R57
               mksh_R58
               mksh_R59c
+              oksh_6.5
+              oksh_6.6
+              oksh_6.7.1
+              oksh_6.8.1
+              oksh_6.9
+              oksh_7.0
+              oksh_7.1
+              oksh_7.2
+              oksh_7.3
+              oksh_7.4
+              oksh_7.5
+              oksh_7.6
               oksh_7.7
               oksh_7.8
+              osh_0.25.0
+              osh_0.26.0
+              osh_0.27.0
+              osh_0.28.0
+              osh_0.29.0
+              osh_0.30.0
+              osh_0.31.0
+              osh_0.32.0
+              osh_0.33.0
+              osh_0.34.0
               osh_0.35.0
               osh_0.36.0
+              posh_0.12.6
               posh_0.13.2
               posh_0.14.1
+              yashrs_0.3.0
+              yashrs_0.4.0
+              yashrs_0.4.1
+              yashrs_0.4.2
+              yashrs_0.4.3
+              yashrs_0.4.4
               yashrs_0.4.5
+              yashrs_3.0.0
+              yashrs_3.0.1
+              yashrs_3.0.2
               yashrs_3.0.3
+              yash_2.41
+              yash_2.42
+              yash_2.43
+              yash_2.44
+              yash_2.45
+              yash_2.46
+              yash_2.47
+              yash_2.48
+              yash_2.49
+              yash_2.50
+              yash_2.51
+              yash_2.52
+              yash_2.53
+              yash_2.54
+              yash_2.55
+              yash_2.56.1
+              yash_2.57
+              yash_2.58.1
               yash_2.59
               yash_2.60
+              zsh_4.2.7
+              zsh_5.0.8
+              zsh_5.1.1
+              zsh_5.2
+              zsh_5.3.1
+              zsh_5.4.2
+              zsh_5.5.1
+              zsh_5.6.2
+              zsh_5.7.1
               zsh_5.8.1
               zsh_5.9
