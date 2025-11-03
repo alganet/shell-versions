@@ -23,6 +23,10 @@ FROM debian:bookworm-slim AS builder
 
 FROM debian:bookworm-slim
 
+    # Copy helper script
+    COPY "shrun" "/bin/shrun"
+    RUN chmod +x "/bin/shrun"
+
     # Setup environment
     ENV SHVR_DIR_OUT=/opt
 
