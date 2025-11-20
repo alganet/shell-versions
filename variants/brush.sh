@@ -21,10 +21,16 @@ shvr_targets_brush ()
 	@
 }
 
-shvr_download_brush ()
+shvr_versioninfo_brush ()
 {
 	version="$1"
 	build_srcdir="${SHVR_DIR_SRC}/brush/${version}"
+}
+
+shvr_download_brush ()
+{
+	shvr_versioninfo_brush "$1"
+
 	mkdir -p "${SHVR_DIR_SRC}/brush"
 
 	if ! test -f "${build_srcdir}.tar.gz"
@@ -36,10 +42,10 @@ shvr_download_brush ()
 
 shvr_build_brush ()
 {
-	version="$1"
-	build_srcdir="${SHVR_DIR_SRC}/brush/${version}"
+	shvr_versioninfo_brush "$1"
+
 	mkdir -p "${build_srcdir}"
-	
+
 	apt-get -y install \
 		curl wget gcc
 
@@ -63,6 +69,6 @@ shvr_build_brush ()
 
 	mkdir -p "${SHVR_DIR_OUT}/brush_${version}/bin"
 	cp "./target/release/brush" "${SHVR_DIR_OUT}/brush_$version/bin"
-	
+
 	"${SHVR_DIR_OUT}/brush_${version}/bin/brush" -c "echo brush version $version"
 }

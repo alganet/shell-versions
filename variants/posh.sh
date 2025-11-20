@@ -20,10 +20,16 @@ shvr_targets_posh ()
 	@
 }
 
-shvr_download_posh ()
+shvr_versioninfo_posh ()
 {
 	version="$1"
 	build_srcdir="${SHVR_DIR_SRC}/posh/${version}"
+}
+
+shvr_download_posh ()
+{
+	shvr_versioninfo_posh "$1"
+
 	mkdir -p "${SHVR_DIR_SRC}/posh"
 
 	if ! test -f "${build_srcdir}.tar.gz"
@@ -35,8 +41,8 @@ shvr_download_posh ()
 
 shvr_build_posh ()
 {
-	version="$1"
-	build_srcdir="${SHVR_DIR_SRC}/posh/${version}"
+	shvr_versioninfo_posh "$1"
+
 	mkdir -p "${build_srcdir}"
 
 	apt-get -y install \
@@ -56,6 +62,6 @@ shvr_build_posh ()
 	make -j "$(nproc)"
 	mkdir -p "${SHVR_DIR_OUT}/posh_${version}/bin"
 	cp "posh" "${SHVR_DIR_OUT}/posh_$version/bin"
-	
+
 	"${SHVR_DIR_OUT}/posh_${version}/bin/posh" -c "echo posh version $version"
 }

@@ -31,10 +31,16 @@ shvr_targets_oksh ()
 	@
 }
 
-shvr_download_oksh ()
+shvr_versioninfo_oksh ()
 {
 	version="$1"
 	build_srcdir="${SHVR_DIR_SRC}/oksh/${version}"
+}
+
+shvr_download_oksh ()
+{
+	shvr_versioninfo_oksh "$1"
+
 	mkdir -p "${SHVR_DIR_SRC}/oksh"
 
 	if ! test -f "${build_srcdir}.tar.gz"
@@ -46,8 +52,8 @@ shvr_download_oksh ()
 
 shvr_build_oksh ()
 {
-	version="$1"
-	build_srcdir="${SHVR_DIR_SRC}/oksh/${version}"
+	shvr_versioninfo_oksh "$1"
+
 	mkdir -p "${build_srcdir}"
 
 	apt-get -y install \

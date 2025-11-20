@@ -49,29 +49,31 @@ jobs:
             tags: alganet/shell-versions:latest
             # AUTO-GENERATED LIST. DO NOT EDIT MANUALLY.
             targets: >
-              bash_5.2.37
+              ash_1.37.0
+              ash_1.36.1
               bash_5.3
-              brush_0.2.22
+              bash_5.2.37
               brush_0.2.23
-              busybox_1.36.1
-              busybox_1.37.0
-              dash_0.5.12
+              brush_0.2.22
               dash_0.5.13
-              ksh_shvrA93uplusm-v1.0.9
+              dash_0.5.12
+              hush_1.37.0
+              hush_1.36.1
               ksh_shvrA93uplusm-v1.0.10
-              loksh_7.7
+              ksh_shvrA93uplusm-v1.0.9
               loksh_7.8
-              mksh_R58
+              loksh_7.7
               mksh_R59c
-              oksh_7.7
+              mksh_R58
               oksh_7.8
-              osh_0.35.0
+              oksh_7.7
               osh_0.36.0
-              posh_0.13.2
+              osh_0.35.0
               posh_0.14.1
-              yashrs_0.4.5
-              yashrs_3.0.3
-              yash_2.59
+              posh_0.13.2
               yash_2.60
-              zsh_5.8.1
+              yash_2.59
+              yashrs_3.0.3
+              yashrs_0.4.5
               zsh_5.9
+              zsh_5.8.1

@@ -26,10 +26,16 @@ shvr_targets_dash ()
 	@
 }
 
-shvr_download_dash ()
+shvr_versioninfo_dash ()
 {
 	version="$1"
 	build_srcdir="${SHVR_DIR_SRC}/dash/${version}"
+}
+
+shvr_download_dash ()
+{
+	shvr_versioninfo_dash "$1"
+
 	mkdir -p "${SHVR_DIR_SRC}/dash"
 
 	if ! test -f "${build_srcdir}.tar.gz"
@@ -41,8 +47,8 @@ shvr_download_dash ()
 
 shvr_build_dash ()
 {
-	version="$1"
-	build_srcdir="${SHVR_DIR_SRC}/dash/${version}"
+	shvr_versioninfo_dash "$1"
+
 	mkdir -p "${build_srcdir}"
 
 	apt-get -y install \
@@ -59,7 +65,7 @@ shvr_build_dash ()
 	build_arch="$(dpkg-architecture --query DEB_BUILD_GNU_TYPE)"
 
 	if test -f ./autogen.sh
-	then 
+	then
 		./autogen.sh
 	else
 		aclocal
@@ -75,6 +81,6 @@ shvr_build_dash ()
 	make -j "$(nproc)"
 	mkdir -p "${SHVR_DIR_OUT}/dash_${version}/bin"
 	cp "src/dash" "${SHVR_DIR_OUT}/dash_$version/bin"
-	
+
 	"${SHVR_DIR_OUT}/dash_${version}/bin/dash" -c "echo dash version $version"
 }

@@ -28,10 +28,16 @@ shvr_targets_loksh ()
 	@
 }
 
-shvr_download_loksh ()
+shvr_versioninfo_loksh ()
 {
 	version="$1"
 	build_srcdir="${SHVR_DIR_SRC}/loksh/${version}"
+}
+
+shvr_download_loksh ()
+{
+	shvr_versioninfo_loksh "$1"
+
 	mkdir -p "${SHVR_DIR_SRC}/loksh"
 
 	if ! test -f "${build_srcdir}.tar.xz"
@@ -43,8 +49,8 @@ shvr_download_loksh ()
 
 shvr_build_loksh ()
 {
-	version="$1"
-	build_srcdir="${SHVR_DIR_SRC}/loksh/${version}"
+	shvr_versioninfo_loksh "$1"
+
 	mkdir -p "${build_srcdir}"
 
 	apt-get -y install \
@@ -65,6 +71,6 @@ shvr_build_loksh ()
 
 	mkdir -p "${SHVR_DIR_OUT}/loksh_${version}/bin"
 	cp "build/ksh" "${SHVR_DIR_OUT}/loksh_$version/bin/loksh"
-	
+
 	"${SHVR_DIR_OUT}/loksh_${version}/bin/loksh" -c "echo loksh version $version"
 }

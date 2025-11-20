@@ -37,10 +37,16 @@ shvr_targets_yash ()
 	@
 }
 
-shvr_download_yash ()
+shvr_versioninfo_yash ()
 {
 	version="$1"
 	build_srcdir="${SHVR_DIR_SRC}/yash/${version}"
+}
+
+shvr_download_yash ()
+{
+	shvr_versioninfo_yash "$1"
+
 	mkdir -p "${SHVR_DIR_SRC}/yash"
 
 	if ! test -f "${build_srcdir}.tar.gz"
@@ -52,10 +58,10 @@ shvr_download_yash ()
 
 shvr_build_yash ()
 {
-	version="$1"
-	build_srcdir="${SHVR_DIR_SRC}/yash/${version}"
+	shvr_versioninfo_yash "$1"
+
 	mkdir -p "${build_srcdir}"
-	
+
 	apt-get -y install \
 		wget gcc make xz-utils
 
@@ -75,6 +81,6 @@ shvr_build_yash ()
 
 	mkdir -p "${SHVR_DIR_OUT}/yash_${version}/bin"
 	cp "yash" "${SHVR_DIR_OUT}/yash_$version/bin"
-	
+
 	"${SHVR_DIR_OUT}/yash_${version}/bin/yash" -c "echo yash version $version"
 }

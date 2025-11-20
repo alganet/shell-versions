@@ -93,11 +93,12 @@ shvr_clear_versioninfo ()
 	version_baseline=""
 	fork_name=""
 	fork_version=""
+	build_srcdir=""
 }
 
 shvr_github_regen_downloads ()
 {
-	set -- $(printf '%s ' $(shvr_targets | sort --version-sort))
+	set -- $(printf '%s ' $(shvr_targets | sort -t'_' -k1,1 -k2Vr))
 	local yml_file="${SHVR_DIR_SELF}/.github/actions/downloads/action.yml"
 	cp -f "$yml_file" "${yml_file}.bak"
 	IFS=
@@ -118,24 +119,17 @@ shvr_github_regen_downloads ()
 			shvr_clear_versioninfo
 			interpreter="${1%%_*}"
 			version="${1#*_}"
+			. "${SHVR_DIR_SELF}/variants/${interpreter}.sh"
+			shvr_versioninfo_"${interpreter}" "$version"
 
 			cat <<-@ | sed 's/.//'
 				|    - uses: ./.github/actions/single-download
 				|      with:
 				|        shvr_shell: $interpreter
 				|        shvr_version: "$version"
+				|        cache_path: "${build_srcdir#${SHVR_DIR_SRC}/}"
 			@
 
-			. "${SHVR_DIR_SELF}/variants/${interpreter}.sh"
-			if
-				command -v shvr_versioninfo_"${interpreter}" >/dev/null 2>&1 &&
-				shvr_versioninfo_"${interpreter}" "$version" &&
-				test -n "$version_baseline"
-			then
-				cat <<-@ | sed 's/.//'
-					|        cache_path: "$version_baseline"
-				@
-			fi
 			shift
 		done
 	 } > "$yml_file"
@@ -146,7 +140,7 @@ shvr_github_regen_downloads ()
 shvr_github_regen_workflow ()
 {
 	local yml_file="${SHVR_DIR_SELF}/.github/workflows/$1.yml"
-	set -- $(printf '%s ' $(shvr_${2:-targets} | sort --version-sort))
+	set -- $(printf '%s ' $(shvr_${2:-targets} | sort -t'_' -k1,1 -k2Vr))
 	cp -f "$yml_file" "${yml_file}.bak"
 	IFS=
 	cat "$yml_file.bak" |
