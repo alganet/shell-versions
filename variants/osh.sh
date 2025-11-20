@@ -29,10 +29,16 @@ shvr_targets_osh ()
 	@
 }
 
-shvr_download_osh ()
+shvr_versioninfo_osh ()
 {
 	version="$1"
 	build_srcdir="${SHVR_DIR_SRC}/osh/${version}"
+}
+
+shvr_download_osh ()
+{
+	shvr_versioninfo_osh "$1"
+
 	mkdir -p "${SHVR_DIR_SRC}/osh"
 
 	if ! test -f "${build_srcdir}.tar.gz"
@@ -44,8 +50,8 @@ shvr_download_osh ()
 
 shvr_build_osh ()
 {
-	version="$1"
-	build_srcdir="${SHVR_DIR_SRC}/osh/${version}"
+	shvr_versioninfo_osh "$1"
+
 	mkdir -p "${build_srcdir}"
 
 	apt-get -y install \

@@ -34,27 +34,27 @@ shvr_versioninfo_bash ()
 {
 	version="$1"
 	version_major="${version%%\.*}"
-	
+
 	if test "$version" = "$version_major"
 	then return 1
 	fi
-	
+
 	version_minor="${version#$version_major\.}"
 	version_patch="${version_minor#*[.-]}"
-	
+
 	if test "$version_patch" = "$version_minor"
 	then version_patch=0
 	else version_minor="${version_minor%\.*}"
 	fi
 
 	version_baseline="${version_major}.${version_minor}"
+	build_srcdir="${SHVR_DIR_SRC}/bash/${version_baseline}"
 }
 
 shvr_download_bash ()
 {
 	shvr_versioninfo_bash "$1"
-	
-	build_srcdir="${SHVR_DIR_SRC}/bash/${version_baseline}"
+
 	mkdir -p "${SHVR_DIR_SRC}/bash"
 
 	if ! test -f "${build_srcdir}.tar.gz"
@@ -96,7 +96,7 @@ shvr_build_bash ()
 	else apt-get -y install \
 			wget patch gcc bison make
 	fi
-	
+
 	tar --extract \
 		--file="${build_srcdir}.tar.gz" \
 		--strip-components=1 \

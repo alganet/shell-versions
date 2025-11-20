@@ -41,12 +41,13 @@ shvr_versioninfo_ksh ()
 	version="$1"
 	fork_name="${1%%-*}"
 	fork_version="${1#*-}"
+	build_srcdir="${SHVR_DIR_SRC}/ksh/${version}"
 }
 
 shvr_download_ksh ()
 {
 	shvr_versioninfo_ksh "$1"
-	build_srcdir="${SHVR_DIR_SRC}/ksh/${version}"
+
 	mkdir -p "${SHVR_DIR_SRC}/ksh"
 
 	if ! test -f "${build_srcdir}.tar.gz"
@@ -72,7 +73,6 @@ shvr_build_ksh ()
 {
 	shvr_versioninfo_ksh "$1"
 
-	build_srcdir="${SHVR_DIR_SRC}/ksh/${version}"
 	mkdir -p "${build_srcdir}"
 
 	case "$fork_name" in
@@ -111,7 +111,6 @@ shvr_build_ksh ()
 		mkdir -p "${SHVR_DIR_OUT}/ksh_${version}/bin"
 		host_type="$(bin/package host type)"
 		cp "arch/${host_type}/bin/ksh" "${SHVR_DIR_OUT}/ksh_${version}/bin/ksh"
-		cp "arch/${host_type}/bin/shcomp" "${SHVR_DIR_OUT}/ksh_${version}/bin/shcomp"
 	elif test -f "meson.build"
 	then
 		meson \
@@ -122,7 +121,6 @@ shvr_build_ksh ()
 
 		mkdir -p "${SHVR_DIR_OUT}/ksh_${version}/bin"
 		cp "build/src/cmd/ksh93/ksh" "${SHVR_DIR_OUT}/ksh_${version}/bin/ksh"
-		cp "build/src/cmd/ksh93/shcomp" "${SHVR_DIR_OUT}/ksh_${version}/bin/shcomp"
 	fi
 
 	"${SHVR_DIR_OUT}/ksh_${version}/bin/ksh" -c "echo ksh version $version"

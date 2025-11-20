@@ -22,7 +22,7 @@ runs:
         cache-name: cache-shell
       with:
         path: |
-          build/${{ inputs.shvr_shell }}/${{ inputs.cache_path && inputs.cache_path || inputs.shvr_version }}**
+          build/${{ inputs.cache_path }}**
         key: build-${{ env.cache-name }}-${{ inputs.shvr_shell }}-${{ inputs.shvr_version }}
     - shell: sh
       run: sh shvr.sh download "${{ inputs.shvr_shell }}_${{ inputs.shvr_version }}"
@@ -33,5 +33,5 @@ runs:
         cache-name: cache-shell
       with:
         path: |
-          build/${{ inputs.shvr_shell }}/${{ inputs.cache_path && inputs.cache_path || inputs.shvr_version }}**
+          build/${{ inputs.cache_path }}**
         key: build-${{ env.cache-name }}-${{ inputs.shvr_shell }}-${{ inputs.shvr_version }}

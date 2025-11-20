@@ -28,10 +28,16 @@ shvr_targets_yashrs ()
 	@
 }
 
-shvr_download_yashrs ()
+shvr_versioninfo_yashrs ()
 {
 	version="$1"
 	build_srcdir="${SHVR_DIR_SRC}/yashrs/${version}"
+}
+
+shvr_download_yashrs ()
+{
+	shvr_versioninfo_yashrs "$1"
+
 	mkdir -p "${SHVR_DIR_SRC}/yashrs"
 
 	if ! test -f "${build_srcdir}.tar.gz"
@@ -43,13 +49,13 @@ shvr_download_yashrs ()
 
 shvr_build_yashrs ()
 {
-	version="$1"
-	build_srcdir="${SHVR_DIR_SRC}/yashrs/${version}"
+	shvr_versioninfo_yashrs "$1"
+
 	mkdir -p "${build_srcdir}"
-	
+
 	apt-get -y install \
 		curl wget gcc
-    
+
 	if ! test -f "$HOME/.cargo/env"
 	then
 		curl -o "$HOME/rustup.sh" --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs
@@ -70,6 +76,6 @@ shvr_build_yashrs ()
 
 	mkdir -p "${SHVR_DIR_OUT}/yashrs_${version}/bin"
 	cp "./target/release/yash3" "${SHVR_DIR_OUT}/yashrs_$version/bin"
-	
+
 	"${SHVR_DIR_OUT}/yashrs_${version}/bin/yash3" -c "echo yashrs version $version"
 }

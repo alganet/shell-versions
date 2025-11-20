@@ -44,13 +44,14 @@ shvr_versioninfo_zsh ()
 	then version_patch="0"
 	else version_minor="${version_minor%\.*}"
 	fi
+
+	build_srcdir="${SHVR_DIR_SRC}/zsh/${version}"
 }
 
 shvr_download_zsh ()
 {
 	shvr_versioninfo_zsh "$1"
 
-	build_srcdir="${SHVR_DIR_SRC}/zsh/${version}"
 	mkdir -p "${SHVR_DIR_SRC}/zsh"
 
 	if
@@ -75,7 +76,6 @@ shvr_build_zsh ()
 {
 	shvr_versioninfo_zsh "$1"
 
-	build_srcdir="${SHVR_DIR_SRC}/zsh/${version}"
 	mkdir -p "${build_srcdir}"
 
 	if

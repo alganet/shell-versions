@@ -32,10 +32,16 @@ shvr_targets_mksh ()
 	@
 }
 
-shvr_download_mksh ()
+shvr_versioninfo_mksh ()
 {
 	version="$1"
 	build_srcdir="${SHVR_DIR_SRC}/mksh/${version}"
+}
+
+shvr_download_mksh ()
+{
+	shvr_versioninfo_mksh "$1"
+
 	mkdir -p "${SHVR_DIR_SRC}/mksh"
 
 	if ! test -f "${build_srcdir}.tar.gz"
@@ -47,8 +53,8 @@ shvr_download_mksh ()
 
 shvr_build_mksh ()
 {
-	version="$1"
-	build_srcdir="${SHVR_DIR_SRC}/mksh/${version}"
+	shvr_versioninfo_mksh "$1"
+
 	mkdir -p "${build_srcdir}"
 
 	apt-get -y install \
