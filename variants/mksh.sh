@@ -46,8 +46,7 @@ shvr_download_mksh ()
 
 	if ! test -f "${build_srcdir}.tar.gz"
 	then
-		wget -O "${build_srcdir}.tar.gz" \
-			"https://github.com/MirBSD/mksh/archive/refs/tags/mksh-$version.tar.gz"
+		shvr_fetch "https://github.com/MirBSD/mksh/archive/refs/tags/mksh-$version.tar.gz" "${build_srcdir}.tar.gz"
 	fi
 }
 

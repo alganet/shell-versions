@@ -51,8 +51,7 @@ shvr_download_yash ()
 
 	if ! test -f "${build_srcdir}.tar.gz"
 	then
-		wget -O "${build_srcdir}.tar.gz" \
-			"https://github.com/magicant/yash/releases/download/${version}/yash-${version}.tar.xz"
+		shvr_fetch "https://github.com/magicant/yash/releases/download/${version}/yash-${version}.tar.xz" "${build_srcdir}.tar.gz"
 	fi
 }
 

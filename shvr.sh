@@ -8,12 +8,19 @@ set -euf
 SHVR_DIR_SELF="$(cd "$(dirname "$0")"; pwd)"
 SHVR_DIR_SRC="${SHVR_DIR_SRC:-"${SHVR_DIR_SELF}/build"}"
 SHVR_DIR_OUT="${SHVR_DIR_OUT:-"${SHVR_DIR_SELF}/out"}"
+SHVR_CHECKSUMS_DIR="${SHVR_CHECKSUMS_DIR:-"${SHVR_DIR_SELF}/checksums"}"
+# Default: verify by default; set SHVR_SKIP_VERIFY_SHA256=1 to disable verification
+SHVR_SKIP_VERIFY_SHA256="${SHVR_SKIP_VERIFY_SHA256:-0}"
 
 shvr ()
 {
 	mkdir -p "${SHVR_DIR_SRC}"
 	mkdir -p "${SHVR_DIR_OUT}"
-	shvr_"${@:-}"
+	# Allow hyphen or underscore in command names: normalize to underscore
+	cmd="$1"
+	shift || true
+	cmd="$(echo "$cmd" | sed 's/-/_/g')"
+	shvr_${cmd} "${@:-}"
 }
 
 shvr_build ()
@@ -94,6 +101,87 @@ shvr_clear_versioninfo ()
 	fork_name=""
 	fork_version=""
 	build_srcdir=""
+}
+
+# Helper: download a file and verify sha256 against checksums dir.
+# Usage: shvr_fetch URL DEST
+# Will derive checksum path from the DEST path relative to SHVR_DIR_SRC and
+# will require a file at: ${SHVR_CHECKSUMS_DIR}/${rel}.sha256sums
+shvr_fetch()
+{
+	url="$1"
+	dest="$2"
+
+	mkdir -p "$(dirname "$dest")"
+
+	if ! test -f "$dest"
+	then
+		if command -v wget >/dev/null 2>&1
+		then
+			wget -q -O "$dest" "$url" || return 1
+		elif command -v curl >/dev/null 2>&1
+		then
+			curl -sSL -o "$dest" "$url" || return 1
+		else
+			echo "neither wget nor curl available to download $url" >&2
+			return 1
+		fi
+	fi
+
+	if test "${SHVR_SKIP_VERIFY_SHA256}" = "1"
+	then
+		# skip verification when explicitly requested
+		return 0
+	fi
+
+	# Only verify files under SHVR_DIR_SRC; for others derive from absolute
+	# path by stripping leading slash and using that relative path in checksums.
+	case "$dest" in
+		${SHVR_DIR_SRC}/*)
+			relpath="${dest#${SHVR_DIR_SRC}/}"
+			;;
+		/*)
+			relpath="${dest#/}"
+			;;
+		*)
+			relpath="$dest"
+			;;
+	esac
+
+	checksum_file="${SHVR_CHECKSUMS_DIR}/${relpath}.sha256sums"
+
+	if ! test -f "$checksum_file"
+	then
+		echo "checksum missing for $dest, expected at $checksum_file" >&2
+		return 1
+	fi
+
+	# Run verification: change to dest dir so relative filenames match
+	savedir="$(pwd)"
+	cd "$(dirname "$dest")"
+	if ! sha256sum -c "$checksum_file" >/dev/null 2>&1
+	then
+		echo "sha256sum mismatch for $dest (checksum file: $checksum_file)" >&2
+		cd "$savedir"
+		return 1
+	fi
+	cd "$savedir"
+	return 0
+}
+
+shvr_generate_checksums()
+{
+
+	start_dir="${SHVR_DIR_SRC}"
+
+	find "$start_dir" -type f | while read -r f
+	do
+		rel="${f#${SHVR_DIR_SRC}/}"
+		dest_dir="$(dirname "${SHVR_CHECKSUMS_DIR}/${rel}.sha256sums")"
+		mkdir -p "$dest_dir"
+		# write a file containing one line with: <sha256>  basename
+		sha256sum "$f" | sed "s/  .*/  $(basename "$f")/" > "${SHVR_CHECKSUMS_DIR}/${rel}.sha256sums"
+	done
 }
 
 shvr_github_regen_downloads ()

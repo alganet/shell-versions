@@ -45,8 +45,7 @@ shvr_download_oksh ()
 
 	if ! test -f "${build_srcdir}.tar.gz"
 	then
-		wget -O "${build_srcdir}.tar.gz" \
-			"https://github.com/ibara/oksh/releases/download/oksh-$version/oksh-$version.tar.gz"
+		shvr_fetch "https://github.com/ibara/oksh/releases/download/oksh-$version/oksh-$version.tar.gz" "${build_srcdir}.tar.gz"
 	fi
 }
 

@@ -38,12 +38,16 @@ shvr_download_yashrs ()
 {
 	shvr_versioninfo_yashrs "$1"
 
+	if ! test -f "${SHVR_DIR_SRC}/rustup-init-1.28.2.sh"
+	then
+		shvr_fetch "https://raw.githubusercontent.com/rust-lang/rustup/refs/tags/1.28.2/rustup-init.sh" "${SHVR_DIR_SRC}/rustup-init-1.28.2.sh"
+	fi
+
 	mkdir -p "${SHVR_DIR_SRC}/yashrs"
 
 	if ! test -f "${build_srcdir}.tar.gz"
 	then
-		wget -O "${build_srcdir}.tar.gz" \
-			"https://github.com/magicant/yash-rs/archive/refs/tags/yash-cli-${version}.tar.gz"
+		shvr_fetch "https://github.com/magicant/yash-rs/archive/refs/tags/yash-cli-${version}.tar.gz" "${build_srcdir}.tar.gz"
 	fi
 }
 
@@ -58,9 +62,7 @@ shvr_build_yashrs ()
 
 	if ! test -f "$HOME/.cargo/env"
 	then
-		curl -o "$HOME/rustup.sh" --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs
-		cd $HOME
-		sh rustup.sh -y
+		sh "${SHVR_DIR_SRC}/rustup-init-1.28.2.sh" -y
 	fi
 
 	. "$HOME/.cargo/env"

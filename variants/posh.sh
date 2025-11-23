@@ -34,8 +34,7 @@ shvr_download_posh ()
 
 	if ! test -f "${build_srcdir}.tar.gz"
 	then
-		wget -O "${build_srcdir}.tar.gz" \
-			"https://salsa.debian.org/clint/posh/-/archive/debian/$version/posh-debian-$version.tar.gz"
+		shvr_fetch "https://salsa.debian.org/clint/posh/-/archive/debian/$version/posh-debian-$version.tar.gz" "${build_srcdir}.tar.gz"
 	fi
 }
 

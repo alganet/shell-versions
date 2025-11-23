@@ -59,8 +59,7 @@ shvr_download_bash ()
 
 	if ! test -f "${build_srcdir}.tar.gz"
 	then
-		wget -O "${build_srcdir}.tar.gz" \
-			"https://mirrors.ocf.berkeley.edu/gnu/bash/bash-${version_baseline}.tar.gz"
+		shvr_fetch "https://mirrors.ocf.berkeley.edu/gnu/bash/bash-${version_baseline}.tar.gz" "${build_srcdir}.tar.gz"
 	fi
 
 	mkdir -p "${build_srcdir}-patches"
@@ -72,7 +71,7 @@ shvr_download_bash ()
 		if ! test -f "${build_srcdir}-patches/$patch_n"
 		then
 			url="https://mirrors.ocf.berkeley.edu/gnu/bash/bash-${version_baseline}-patches/bash${version_major}${version_minor}-${patch_n}"
-			wget -O "${build_srcdir}-patches/$patch_n" "$url"
+			shvr_fetch "$url" "${build_srcdir}-patches/$patch_n"
 		fi
 	done
 }
