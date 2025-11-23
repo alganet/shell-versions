@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: ISC
 
 name: Push alganet/shell-versions:test
+permissions:
+  contents: read
 
 on:
   pull_request:
@@ -16,6 +18,7 @@ jobs:
   build:
     needs: download
     runs-on: ubuntu-24.04
+
     continue-on-error: ${{ matrix.can_fail_build }}
     steps:
       - uses: actions/checkout@v3

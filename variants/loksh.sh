@@ -42,8 +42,7 @@ shvr_download_loksh ()
 
 	if ! test -f "${build_srcdir}.tar.xz"
 	then
-		wget -O "${build_srcdir}.tar.xz" \
-			"https://github.com/dimkr/loksh/releases/download/$version/loksh-$version.tar.xz"
+		shvr_fetch "https://github.com/dimkr/loksh/releases/download/$version/loksh-$version.tar.xz" "${build_srcdir}.tar.xz"
 	fi
 }
 

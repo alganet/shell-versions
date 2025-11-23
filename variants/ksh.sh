@@ -54,16 +54,13 @@ shvr_download_ksh ()
 	then
 		case "$fork_name" in
 			*'93uplusm')
-				wget -O "${build_srcdir}.tar.gz" \
-					"https://github.com/ksh93/ksh/archive/refs/tags/${fork_version}.tar.gz"
+				shvr_fetch "https://github.com/ksh93/ksh/archive/refs/tags/${fork_version}.tar.gz" "${build_srcdir}.tar.gz"
 				;;
 			*'2020')
-				wget -O "${build_srcdir}.tar.gz" \
-					"https://github.com/ksh2020/ksh/archive/refs/tags/${fork_version}.tar.gz"
+				shvr_fetch "https://github.com/ksh2020/ksh/archive/refs/tags/${fork_version}.tar.gz" "${build_srcdir}.tar.gz"
 				;;
 			*'history')
-				wget -O "${build_srcdir}.tar.gz" \
-					"https://api.github.com/repos/ksh93/ksh93-history/tarball/${fork_version}"
+				shvr_fetch "https://api.github.com/repos/ksh93/ksh93-history/tarball/${fork_version}" "${build_srcdir}.tar.gz"
 				;;
 		esac
 	fi

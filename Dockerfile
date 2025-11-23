@@ -7,11 +7,13 @@ FROM debian:bookworm-slim AS builder
     RUN apt-get -y update
 
     # Copy contents
-    COPY "shvr.sh" "/shvr/shvr.sh"
-    COPY "variants/" "/shvr/variants"
+    COPY "build/" "/usr/src/shvr"
+    COPY "checksums/" "/shvr/checksums"
     COPY "common/" "/shvr/common"
     COPY "patches/" "/shvr/patches"
-    COPY "build/" "/usr/src/shvr"
+    COPY "variants/" "/shvr/variants"
+
+    COPY "shvr.sh" "/shvr/shvr.sh"
     RUN chmod +x "/shvr/shvr.sh"
 
     # Setup environment

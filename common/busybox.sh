@@ -54,7 +54,6 @@ shvr_download_busybox ()
 
 	if ! test -f "${build_srcdir}.tar.bz2"
 	then
-		wget -O "${build_srcdir}.tar.bz2" \
-			"https://busybox.net/downloads/busybox-${version}.tar.bz2"
+		shvr_fetch "https://busybox.net/downloads/busybox-${version}.tar.bz2" "${build_srcdir}.tar.bz2"
 	fi
 }

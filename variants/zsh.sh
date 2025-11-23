@@ -60,14 +60,12 @@ shvr_download_zsh ()
 	then
 		if ! test -f "${build_srcdir}.tar.xz"
 		then
-			wget -O "${build_srcdir}.tar.xz" \
-				"https://downloads.sourceforge.net/project/zsh/zsh/$version/zsh-$version.tar.xz"
+			shvr_fetch "https://downloads.sourceforge.net/project/zsh/zsh/$version/zsh-$version.tar.xz" "${build_srcdir}.tar.xz"
 		fi
 	else
 		if ! test -f "${build_srcdir}.tar.gz"
 		then
-			wget -O "${build_srcdir}.tar.gz" \
-				"https://downloads.sourceforge.net/project/zsh/zsh/$version/zsh-$version.tar.gz"
+			shvr_fetch "https://downloads.sourceforge.net/project/zsh/zsh/$version/zsh-$version.tar.gz" "${build_srcdir}.tar.gz"
 		fi
 	fi
 }

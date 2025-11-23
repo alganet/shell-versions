@@ -43,8 +43,7 @@ shvr_download_osh ()
 
 	if ! test -f "${build_srcdir}.tar.gz"
 	then
-		wget -O "${build_srcdir}.tar.gz" \
-			"https://oils.pub/download/oils-for-unix-${version}.tar.gz"
+		shvr_fetch "https://oils.pub/download/oils-for-unix-${version}.tar.gz" "${build_srcdir}.tar.gz"
 	fi
 }
 
