@@ -3,6 +3,9 @@
 
 name: Push alganet/shell-versions:latest
 
+permissions:
+  contents: read
+
 on:
   push:
     branches:

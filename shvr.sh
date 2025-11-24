@@ -103,10 +103,10 @@ shvr_clear_versioninfo ()
 	build_srcdir=""
 }
 
-# Helper: download a file and verify sha256 against checksums dir.
+# Helper: download a file and verify sha256 against checksums sources dir.
 # Usage: shvr_fetch URL DEST
 # Will derive checksum path from the DEST path relative to SHVR_DIR_SRC and
-# will require a file at: ${SHVR_CHECKSUMS_DIR}/${rel}.sha256sums
+# will require a file at: ${SHVR_CHECKSUMS_DIR}/sources/${rel}.sha256sums
 shvr_fetch()
 {
 	url="$1"
@@ -148,7 +148,7 @@ shvr_fetch()
 			;;
 	esac
 
-	checksum_file="${SHVR_CHECKSUMS_DIR}/${relpath}.sha256sums"
+	checksum_file="${SHVR_CHECKSUMS_DIR}/sources/${relpath}.sha256sums"
 
 	if ! test -f "$checksum_file"
 	then
@@ -177,10 +177,10 @@ shvr_generate_checksums()
 	find "$start_dir" -type f | while read -r f
 	do
 		rel="${f#${SHVR_DIR_SRC}/}"
-		dest_dir="$(dirname "${SHVR_CHECKSUMS_DIR}/${rel}.sha256sums")"
+		dest_dir="$(dirname "${SHVR_CHECKSUMS_DIR}/sources/${rel}.sha256sums")"
 		mkdir -p "$dest_dir"
 		# write a file containing one line with: <sha256>  basename
-		sha256sum "$f" | sed "s/  .*/  $(basename "$f")/" > "${SHVR_CHECKSUMS_DIR}/${rel}.sha256sums"
+		sha256sum "$f" | sed "s/  .*/  $(basename "$f")/" > "${SHVR_CHECKSUMS_DIR}/sources/${rel}.sha256sums"
 	done
 }
 

@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: ISC
 
 name: Push alganet/shell-versions:test
+
 permissions:
   contents: read
 
