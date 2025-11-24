@@ -1,4 +1,7 @@
-name: Checksum Verification
+name: Workflow Verification
+
+permissions:
+  contents: read
 
 on:
   pull_request:
@@ -8,13 +11,32 @@ on:
   workflow_dispatch:
 
 jobs:
+  verify-workflows:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v3
+      - name: Check workflow permissions
+        run: |
+          set -e
+          missing=0
+          for f in .github/workflows/*.yml; do
+            if ! grep -q '^[[:space:]]*permissions:' "$f"; then
+              echo "Workflow $f missing 'permissions' key"
+              missing=1
+            fi
+          done
+          if [ "$missing" = 1 ]; then
+            echo "One or more workflows are missing the 'permissions' stanza."
+            exit 1
+          fi
+
   verify-checksums:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v3
 
-      - name: 'Fast verify: successful download (dash)'
+      - name: 'Download Verification'
         run: |
           set -ex
           # ensure clean state and perform an initial download (should succeed)
@@ -25,9 +47,9 @@ jobs:
         run: |
           set -ex
           # backup checksum file
-          cp checksums/dash/0.5.13.tar.gz.sha256sums checksums/dash/0.5.13.tar.gz.sha256sums.bak
+          cp checksums/sources/dash/0.5.13.tar.gz.sha256sums checksums/sources/dash/0.5.13.tar.gz.sha256sums.bak
           # corrupt checksum: replace hash with ones; keep filename
-          printf '1111111111111111111111111111111111111111111111111111111111111111  %s\n' "0.5.13.tar.gz" > checksums/dash/0.5.13.tar.gz.sha256sums
+          printf '1111111111111111111111111111111111111111111111111111111111111111  %s\n' "0.5.13.tar.gz" > checksums/sources/dash/0.5.13.tar.gz.sha256sums
           # remove any existing artifact to force re-download
           rm -f build/dash/0.5.13.tar.gz
           set +e
@@ -55,6 +77,6 @@ jobs:
       - name: 'Restore checksum and verify success'
         run: |
           set -ex
-          mv checksums/dash/0.5.13.tar.gz.sha256sums.bak checksums/dash/0.5.13.tar.gz.sha256sums
+          mv checksums/sources/dash/0.5.13.tar.gz.sha256sums.bak checksums/sources/dash/0.5.13.tar.gz.sha256sums
           rm -f build/dash/0.5.13.tar.gz
           sh shvr.sh download dash_0.5.13

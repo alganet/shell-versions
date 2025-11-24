@@ -87,20 +87,3 @@ This is particularly useful if you want to test a version that we don't bundle
 by default, such as an old patch. Our scripts are able to build most
 intermediate versions without modifications, but we can't include them all in
 any of the default images.
-
-## Checksums and Verification
-
-This repository includes a `checksums/` directory that mirrors the layout in
-`build/` and contains `.sha256sums` files for each downloaded artifact. The
-build process verifies downloads against these checksums and will fail fast
-if checksums are missing or do not match.
-
-To generate checksum files for existing `build/` artifacts, use:
-
-```sh
-sh shvr.sh generate_checksums
-```
-
-Checksums are used automatically by our `shvr_fetch` helper by default. To
-disable verification set `SHVR_SKIP_VERIFY_SHA256=1` (not recommended unless
-you need a temporary bypass).
