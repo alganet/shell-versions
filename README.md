@@ -12,6 +12,9 @@ Multiple versions of multiple shells. Ideal for testing portable shell scripts.
  - **latest** - Contains the two most recent versions of each shell. Ideal for testing up to date scripts.
  - **all** - Everything we can build in a single image. Ideal for testing legacy and backwards compatible scripts.
 
+Shells are built on debian-slim, and copied during multi-stage to a barebones
+busybox image (you get busybox tools + all shells).
+
 ## Basic Usage
 
 List all shells:
@@ -79,9 +82,6 @@ $ docker run -it --rm "mymultishell"
 ```
 
 You can pass a shorter list of versions instead of the full `$(sh shvr.sh targets)`.
-
-The first shell in the list will be chosen to run the entrypoint.sh file for
-the image.
 
 This is particularly useful if you want to test a version that we don't bundle
 by default, such as an old patch. Our scripts are able to build most
