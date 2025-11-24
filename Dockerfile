@@ -33,16 +33,11 @@ FROM debian:bookworm-slim AS builder
     RUN mkdir -p /deps/opt/shvr && \
         find /opt \( -type l -o -type f \) | sort -t'_' -k1,1 -k2Vr > /deps/opt/shvr/manifest.txt
 
-    # Find first shell in TARGETS and symlink it to /deps/bin/sh
-    RUN first_shell=$(echo $TARGETS | cut -d' ' -f1) && \
-        first_shell_opt_path=$(find /opt -type d -name "$first_shell*" | head -n1) && \
-        first_shell_executable=$(find "$first_shell_opt_path" -type f -executable | head -n1) && \
-        ln -s "$first_shell_executable" /deps/bin/sh
 
-FROM scratch
+FROM busybox:stable-musl
 
     # Copy helper script
-    COPY "entrypoint.sh" "entrypoint.sh"
+    COPY "entrypoint.sh" "/opt/shvr/entrypoint.sh"
 
     # Setup environment
     ENV SHVR_DIR_OUT=/opt
@@ -52,4 +47,4 @@ FROM scratch
     COPY --from=builder "$SHVR_DIR_OUT" "$SHVR_DIR_OUT"
     COPY --from=builder /deps /
 
-    ENTRYPOINT [ "/bin/sh", "entrypoint.sh" ]
+    ENTRYPOINT [ "/bin/sh", "/opt/shvr/entrypoint.sh" ]
