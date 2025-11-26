@@ -56,8 +56,7 @@ shvr_build_mksh ()
 
 	mkdir -p "${build_srcdir}"
 
-	apt-get -y install \
-		wget gcc make
+	shvr_deps_mksh "$1"
 
 	tar --extract \
 		--file="${build_srcdir}.tar.gz" \
@@ -72,4 +71,11 @@ shvr_build_mksh ()
 	cp "mksh" "${SHVR_DIR_OUT}/mksh_$version/bin"
 
 	"${SHVR_DIR_OUT}/mksh_${version}/bin/mksh" -c "echo mksh version $version"
+}
+
+shvr_deps_mksh ()
+{
+	shvr_versioninfo_mksh "$1"
+	apt-get -y install \
+		wget gcc make
 }

@@ -55,8 +55,7 @@ shvr_build_oksh ()
 
 	mkdir -p "${build_srcdir}"
 
-	apt-get -y install \
-		wget gcc make
+	shvr_deps_oksh "$1"
 
 	tar --extract \
 		--file="${build_srcdir}.tar.gz" \
@@ -74,4 +73,11 @@ shvr_build_oksh ()
 	cp "oksh" "${SHVR_DIR_OUT}/oksh_$version/bin"
 
 	"${SHVR_DIR_OUT}/oksh_${version}/bin/oksh" -c "echo oksh version $version"
+}
+
+shvr_deps_oksh ()
+{
+	shvr_versioninfo_oksh "$1"
+	apt-get -y install \
+		wget gcc make
 }

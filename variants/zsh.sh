@@ -76,19 +76,16 @@ shvr_build_zsh ()
 
 	mkdir -p "${build_srcdir}"
 
+	shvr_deps_zsh "$1"
 	if
 		{ test "$version_major" -gt 4 && test "${version_minor}" -gt 0; } ||
 		test "$version_major" -gt 5
 	then
-		apt-get -y install \
-			wget gcc make autoconf libtinfo-dev xz-utils
 		tar --extract \
 			--file="${build_srcdir}.tar.xz" \
 			--strip-components=1 \
 			--directory="${build_srcdir}"
 	else
-		apt-get -y install \
-			wget gcc make autoconf libtinfo-dev
 		tar --extract \
 			--file="${build_srcdir}.tar.gz" \
 			--strip-components=1 \
@@ -109,5 +106,20 @@ shvr_build_zsh ()
 	cp "Src/zsh" "${SHVR_DIR_OUT}/zsh_$version/bin"
 
 	"${SHVR_DIR_OUT}/zsh_${version}/bin/zsh" --version
+}
+
+shvr_deps_zsh ()
+{
+	shvr_versioninfo_zsh "$1"
+	if
+		{ test "$version_major" -gt 4 && test "${version_minor}" -gt 0; } ||
+		test "$version_major" -gt 5
+	then
+		apt-get -y install \
+			wget gcc make autoconf libtinfo-dev xz-utils
+	else
+		apt-get -y install \
+			wget gcc make autoconf libtinfo-dev
+	fi
 }
 

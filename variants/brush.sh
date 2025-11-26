@@ -50,15 +50,7 @@ shvr_build_brush ()
 
 	mkdir -p "${build_srcdir}"
 
-	apt-get -y install \
-		curl wget gcc
-
-	if ! test -f "$HOME/.cargo/env"
-	then
-		sh "${SHVR_DIR_SRC}/rustup-init-1.28.2.sh" -y
-	fi
-
-	. "$HOME/.cargo/env"
+	shvr_deps_brush "$1"
 
 	tar --extract \
 		--file="${build_srcdir}.tar.gz" \
@@ -73,4 +65,18 @@ shvr_build_brush ()
 	cp "./target/release/brush" "${SHVR_DIR_OUT}/brush_$version/bin"
 
 	"${SHVR_DIR_OUT}/brush_${version}/bin/brush" -c "echo brush version $version"
+}
+
+shvr_deps_brush ()
+{
+	shvr_versioninfo_brush "$1"
+	apt-get -y install \
+		curl wget gcc
+
+	if ! test -f "$HOME/.cargo/env"
+	then
+		sh "${SHVR_DIR_SRC}/rustup-init-1.28.2.sh" -y
+	fi
+
+	. "$HOME/.cargo/env"
 }

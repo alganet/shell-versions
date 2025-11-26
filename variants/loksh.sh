@@ -52,8 +52,7 @@ shvr_build_loksh ()
 
 	mkdir -p "${build_srcdir}"
 
-	apt-get -y install \
-		wget gcc meson ninja-build xz-utils
+	shvr_deps_loksh "$1"
 
 	tar --extract \
 		--file="${build_srcdir}.tar.xz" \
@@ -72,4 +71,11 @@ shvr_build_loksh ()
 	cp "build/ksh" "${SHVR_DIR_OUT}/loksh_$version/bin/loksh"
 
 	"${SHVR_DIR_OUT}/loksh_${version}/bin/loksh" -c "echo loksh version $version"
+}
+
+shvr_deps_loksh ()
+{
+	shvr_versioninfo_loksh "$1"
+	apt-get -y install \
+		wget gcc meson ninja-build xz-utils
 }

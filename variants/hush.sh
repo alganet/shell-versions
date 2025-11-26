@@ -31,9 +31,7 @@ shvr_build_hush ()
 
 	mkdir -p "${build_srcdir}"
 
-	# Install build dependencies
-	apt-get -y install \
-		wget bzip2 gcc make
+	shvr_deps_hush "$1"
 
 	mkdir -p /usr/src/busybox
 	tar --extract \
@@ -111,4 +109,12 @@ shvr_build_hush ()
 
 	# Test the built shell
 	"${SHVR_DIR_OUT}/hush_${version}/bin/hush" -c "echo busybox hush version $version"
+}
+
+shvr_deps_hush ()
+{
+	shvr_versioninfo_hush "$1"
+	# Install build dependencies
+	apt-get -y install \
+		wget bzip2 gcc make
 }

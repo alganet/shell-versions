@@ -61,8 +61,7 @@ shvr_build_yash ()
 
 	mkdir -p "${build_srcdir}"
 
-	apt-get -y install \
-		wget gcc make xz-utils
+	shvr_deps_yash "$1"
 
 	tar --extract \
 		--file="${build_srcdir}.tar.gz" \
@@ -82,4 +81,11 @@ shvr_build_yash ()
 	cp "yash" "${SHVR_DIR_OUT}/yash_$version/bin"
 
 	"${SHVR_DIR_OUT}/yash_${version}/bin/yash" -c "echo yash version $version"
+}
+
+shvr_deps_yash ()
+{
+	shvr_versioninfo_yash "$1"
+	apt-get -y install \
+		wget gcc make xz-utils
 }
