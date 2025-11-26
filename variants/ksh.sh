@@ -72,20 +72,7 @@ shvr_build_ksh ()
 
 	mkdir -p "${build_srcdir}"
 
-	case "$fork_name" in
-		*'93uplusm')
-			apt-get -y install \
-				wget gcc
-			;;
-		*'2020')
-			apt-get -y install \
-				wget gcc meson
-			;;
-		*'history')
-			apt-get -y install \
-				wget gcc patch
-			;;
-	esac
+	shvr_deps_ksh "$1"
 
 	tar --extract \
 		--file="${build_srcdir}.tar.gz" \
@@ -121,4 +108,23 @@ shvr_build_ksh ()
 	fi
 
 	"${SHVR_DIR_OUT}/ksh_${version}/bin/ksh" -c "echo ksh version $version"
+}
+
+shvr_deps_ksh ()
+{
+	shvr_versioninfo_ksh "$1"
+	case "$fork_name" in
+		*'93uplusm')
+			apt-get -y install \
+				wget gcc
+			;;
+		*'2020')
+			apt-get -y install \
+				wget gcc meson
+			;;
+		*'history')
+			apt-get -y install \
+				wget gcc patch
+			;;
+	esac
 }

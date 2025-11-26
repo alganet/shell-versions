@@ -50,8 +50,7 @@ shvr_build_dash ()
 
 	mkdir -p "${build_srcdir}"
 
-	apt-get -y install \
-		wget gcc automake autoconf dpkg-dev
+	shvr_deps_dash "$1"
 
 	tar --extract \
 		--file="${build_srcdir}.tar.gz" \
@@ -82,4 +81,11 @@ shvr_build_dash ()
 	cp "src/dash" "${SHVR_DIR_OUT}/dash_$version/bin"
 
 	"${SHVR_DIR_OUT}/dash_${version}/bin/dash" -c "echo dash version $version"
+}
+
+shvr_deps_dash ()
+{
+	shvr_versioninfo_dash "$1"
+	apt-get -y install \
+		wget gcc automake autoconf dpkg-dev
 }

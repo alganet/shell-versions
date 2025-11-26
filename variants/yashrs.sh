@@ -57,15 +57,7 @@ shvr_build_yashrs ()
 
 	mkdir -p "${build_srcdir}"
 
-	apt-get -y install \
-		curl wget gcc
-
-	if ! test -f "$HOME/.cargo/env"
-	then
-		sh "${SHVR_DIR_SRC}/rustup-init-1.28.2.sh" -y
-	fi
-
-	. "$HOME/.cargo/env"
+	shvr_deps_yashrs "$1"
 
 	tar --extract \
 		--file="${build_srcdir}.tar.gz" \
@@ -80,4 +72,18 @@ shvr_build_yashrs ()
 	cp "./target/release/yash3" "${SHVR_DIR_OUT}/yashrs_$version/bin"
 
 	"${SHVR_DIR_OUT}/yashrs_${version}/bin/yash3" -c "echo yashrs version $version"
+}
+
+shvr_deps_yashrs ()
+{
+	shvr_versioninfo_yashrs "$1"
+	apt-get -y install \
+		curl wget gcc
+
+	if ! test -f "$HOME/.cargo/env"
+	then
+		sh "${SHVR_DIR_SRC}/rustup-init-1.28.2.sh" -y
+	fi
+
+	. "$HOME/.cargo/env"
 }

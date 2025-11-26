@@ -83,18 +83,7 @@ shvr_build_bash ()
 	build_srcdir="${SHVR_DIR_SRC}/bash/${version_baseline}"
 	mkdir -p "${build_srcdir}"
 
-	if test "$version_baseline" = "4.0"
-	then apt-get -y install \
-			wget patch gcc bison make autoconf
-	elif test "$version_baseline" = "3.0"
-	then apt-get -y install \
-			wget patch gcc bison make ncurses-dev
-	elif test "$version_baseline" = "2.05b"
-	then apt-get -y install \
-			wget patch gcc bison make autoconf
-	else apt-get -y install \
-			wget patch gcc bison make
-	fi
+	shvr_deps_bash "$1"
 
 	tar --extract \
 		--file="${build_srcdir}.tar.gz" \
@@ -133,4 +122,21 @@ shvr_build_bash ()
 	cp bash "${SHVR_DIR_OUT}/bash_${version}/bin/bash"
 
 	"${SHVR_DIR_OUT}/bash_${version}/bin/bash" --version
+}
+
+shvr_deps_bash ()
+{
+	shvr_versioninfo_bash "$1"
+	if test "$version_baseline" = "4.0"
+	then apt-get -y install \
+		wget patch gcc bison make autoconf
+	elif test "$version_baseline" = "3.0"
+	then apt-get -y install \
+		wget patch gcc bison make ncurses-dev
+	elif test "$version_baseline" = "2.05b"
+	then apt-get -y install \
+		wget patch gcc bison make autoconf
+	else apt-get -y install \
+		wget patch gcc bison make
+	fi
 }

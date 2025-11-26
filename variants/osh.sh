@@ -53,8 +53,7 @@ shvr_build_osh ()
 
 	mkdir -p "${build_srcdir}"
 
-	apt-get -y install \
-		wget gcc g++ make
+	shvr_deps_osh "$1"
 
 	tar --extract \
 		--file="${build_srcdir}.tar.gz" \
@@ -72,4 +71,11 @@ shvr_build_osh ()
 	cp "_bin/cxx-opt-sh/oils-for-unix" "${SHVR_DIR_OUT}/osh_$version/bin/osh"
 
 	"${SHVR_DIR_OUT}/osh_${version}/bin/osh" -c "echo osh version $version"
+}
+
+shvr_deps_osh ()
+{
+	shvr_versioninfo_osh "$1"
+	apt-get -y install \
+		wget gcc g++ make
 }

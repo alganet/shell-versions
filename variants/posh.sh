@@ -44,8 +44,7 @@ shvr_build_posh ()
 
 	mkdir -p "${build_srcdir}"
 
-	apt-get -y install \
-		wget gcc make autoconf automake
+	shvr_deps_posh "$1"
 
 	tar --extract \
 		--file="${build_srcdir}.tar.gz" \
@@ -63,4 +62,11 @@ shvr_build_posh ()
 	cp "posh" "${SHVR_DIR_OUT}/posh_$version/bin"
 
 	"${SHVR_DIR_OUT}/posh_${version}/bin/posh" -c "echo posh version $version"
+}
+
+shvr_deps_posh ()
+{
+	shvr_versioninfo_posh "$1"
+	apt-get -y install \
+		wget gcc make autoconf automake
 }

@@ -28,12 +28,9 @@ shvr_download_ash ()
 shvr_build_ash ()
 {
 	shvr_versioninfo_ash "$1"
+	shvr_deps_ash "$1"
 
 	mkdir -p "${build_srcdir}"
-
-	apt-get -y install \
-		wget bzip2 gcc make
-
 	mkdir -p /usr/src/busybox
 	tar --extract \
 		--file="${build_srcdir}.tar.bz2" \
@@ -108,4 +105,11 @@ shvr_build_ash ()
 
 	# Test the built shell
 	"${SHVR_DIR_OUT}/ash_${version}/bin/ash" -c "echo busybox ash version $version"
+}
+
+shvr_deps_ash ()
+{
+	shvr_versioninfo_ash "$1"
+	apt-get -y install \
+		wget bzip2 gcc make
 }
