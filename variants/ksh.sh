@@ -90,10 +90,16 @@ shvr_build_ksh ()
 
 	if test -f "bin/package"
 	then
-		bin/package make
+		if test "$fork_name" = "shvrChistory"
+		then
+			bin/package make CC=gcc-12
+			host_type="gnu.i386-64"
+		else
+			bin/package make
+			host_type="$(bin/package host type)"
+		fi
 
 		mkdir -p "${SHVR_DIR_OUT}/ksh_${version}/bin"
-		host_type="$(bin/package host type)"
 		cp "arch/${host_type}/bin/ksh" "${SHVR_DIR_OUT}/ksh_${version}/bin/ksh"
 	elif test -f "meson.build"
 	then
@@ -124,7 +130,7 @@ shvr_deps_ksh ()
 			;;
 		*'history')
 			apt-get -y install \
-				wget gcc patch
+				wget gcc-12 patch
 			;;
 	esac
 }

@@ -3,21 +3,21 @@
 # SPDX-FileCopyrightText: 2025 Alexandre Gomes Gaigalas <alganet@gmail.com>
 # SPDX-License-Identifier: ISC
 
+. "${SHVR_DIR_SELF}/common/rustup.sh"
+
 shvr_current_brush ()
 {
 	cat <<-@
+		brush_0.3.0
 		brush_0.2.23
-		brush_0.2.22
 	@
 }
 
 shvr_targets_brush ()
 {
 	cat <<-@
+		brush_0.3.0
 		brush_0.2.23
-		brush_0.2.22
-		brush_0.2.21
-		brush_0.2.20
 	@
 }
 
@@ -31,10 +31,7 @@ shvr_download_brush ()
 {
 	shvr_versioninfo_brush "$1"
 
-	if ! test -f "${SHVR_DIR_SRC}/rustup-init-1.28.2.sh"
-	then
-		shvr_fetch "https://raw.githubusercontent.com/rust-lang/rustup/refs/tags/1.28.2/rustup-init.sh" "${SHVR_DIR_SRC}/rustup-init-1.28.2.sh"
-	fi
+	shvr_download_rustup
 
 	mkdir -p "${SHVR_DIR_SRC}/brush"
 
@@ -75,6 +72,7 @@ shvr_deps_brush ()
 
 	if ! test -f "$HOME/.cargo/env"
 	then
+		shvr_download_rustup
 		sh "${SHVR_DIR_SRC}/rustup-init-1.28.2.sh" -y
 	fi
 

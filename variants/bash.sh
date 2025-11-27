@@ -6,7 +6,7 @@
 shvr_current_bash ()
 {
 	cat <<-@
-		bash_5.3
+		bash_5.3.8
 		bash_5.2.37
 	@
 }
@@ -14,7 +14,7 @@ shvr_current_bash ()
 shvr_targets_bash ()
 {
 	cat <<-@
-		bash_5.3
+		bash_5.3.8
 		bash_5.2.37
 		bash_5.1.16
 		bash_5.0.18
@@ -102,22 +102,28 @@ shvr_build_bash ()
 	done
 	cd "${build_srcdir}"
 
-	if test "$version_baseline" = "2.05b"
+	if test "$version_major" -lt 5 || { test "$version_major" -eq 5 && test "${version_minor}" -lt 3; }
 	then
 		rm configure
-		autoconf
+		export CFLAGS_FOR_BUILD='-std=gnu90' CFLAGS='-std=gnu90' AUTOCONF='autoconf2.69'
+		$AUTOCONF
 		./configure \
 			--prefix="${SHVR_DIR_OUT}/bash_${version}" \
 			--without-bash-malloc
 
-		make -j1
-	else
+		if test "$version_major" -lt 3
+		then make -j1
+		else make -j"$(nproc)"
+		fi
 
+		unset CFLAGS_FOR_BUILD CFLAGS AUTOCONF
+	else
 		./configure \
-			--prefix="${SHVR_DIR_OUT}/bash_${version}" \
+			--prefix="${SHVR_DIR_OUT}/bash_${version}"
 
 		make -j "$(nproc)"
 	fi
+
 	mkdir -p "${SHVR_DIR_OUT}/bash_${version}/bin"
 	cp bash "${SHVR_DIR_OUT}/bash_${version}/bin/bash"
 
@@ -127,16 +133,11 @@ shvr_build_bash ()
 shvr_deps_bash ()
 {
 	shvr_versioninfo_bash "$1"
-	if test "$version_baseline" = "4.0"
+
+	if test "$version_major" -lt 5 || { test "$version_major" -eq 5 && test "${version_minor}" -lt 3; }
 	then apt-get -y install \
-		wget patch gcc bison make autoconf
-	elif test "$version_baseline" = "3.0"
-	then apt-get -y install \
-		wget patch gcc bison make ncurses-dev
-	elif test "$version_baseline" = "2.05b"
-	then apt-get -y install \
-		wget patch gcc bison make autoconf
+		wget patch gcc bison make ncurses-dev autoconf2.69
 	else apt-get -y install \
-		wget patch gcc bison make
+		wget patch gcc bison make autoconf
 	fi
 }

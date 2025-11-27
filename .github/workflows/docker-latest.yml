@@ -55,10 +55,10 @@ jobs:
             targets: >
               ash_1.37.0
               ash_1.36.1
-              bash_5.3
+              bash_5.3.8
               bash_5.2.37
+              brush_0.3.0
               brush_0.2.23
-              brush_0.2.22
               dash_0.5.13
               dash_0.5.12
               hush_1.37.0
@@ -73,11 +73,11 @@ jobs:
               oksh_7.7
               osh_0.36.0
               osh_0.35.0
-              posh_0.14.1
+              posh_0.14.2
               posh_0.13.2
               yash_2.60
               yash_2.59
-              yashrs_3.0.3
+              yashrs_3.0.4
               yashrs_0.4.5
               zsh_5.9
               zsh_5.8.1

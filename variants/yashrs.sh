@@ -3,10 +3,12 @@
 # SPDX-FileCopyrightText: 2025 Alexandre Gomes Gaigalas <alganet@gmail.com>
 # SPDX-License-Identifier: ISC
 
+. "${SHVR_DIR_SELF}/common/rustup.sh"
+
 shvr_current_yashrs ()
 {
 	cat <<-@
-		yashrs_3.0.3
+		yashrs_3.0.4
 		yashrs_0.4.5
 	@
 }
@@ -14,15 +16,8 @@ shvr_current_yashrs ()
 shvr_targets_yashrs ()
 {
 	cat <<-@
-		yashrs_3.0.3
-		yashrs_3.0.2
-		yashrs_3.0.1
-		yashrs_3.0.0
+		yashrs_3.0.4
 		yashrs_0.4.5
-		yashrs_0.4.4
-		yashrs_0.4.3
-		yashrs_0.4.2
-		yashrs_0.4.1
 		yashrs_0.4.0
 		yashrs_0.3.0
 	@
@@ -37,11 +32,7 @@ shvr_versioninfo_yashrs ()
 shvr_download_yashrs ()
 {
 	shvr_versioninfo_yashrs "$1"
-
-	if ! test -f "${SHVR_DIR_SRC}/rustup-init-1.28.2.sh"
-	then
-		shvr_fetch "https://raw.githubusercontent.com/rust-lang/rustup/refs/tags/1.28.2/rustup-init.sh" "${SHVR_DIR_SRC}/rustup-init-1.28.2.sh"
-	fi
+	shvr_download_rustup
 
 	mkdir -p "${SHVR_DIR_SRC}/yashrs"
 
@@ -82,6 +73,7 @@ shvr_deps_yashrs ()
 
 	if ! test -f "$HOME/.cargo/env"
 	then
+		shvr_download_rustup
 		sh "${SHVR_DIR_SRC}/rustup-init-1.28.2.sh" -y
 	fi
 
