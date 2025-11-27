@@ -94,6 +94,7 @@ shvr_build_zsh ()
 
 	cd "${build_srcdir}"
 
+	export CC=gcc-12
 	./Util/preconfig
 	./configure \
 		--prefix="${SHVR_DIR_OUT}/zsh_$version" \
@@ -101,6 +102,7 @@ shvr_build_zsh ()
 		--with-tcsetpgrp
 
 	make -j "$(nproc)"
+	unset CC
 
 	mkdir -p "${SHVR_DIR_OUT}/zsh_${version}/bin"
 	cp "Src/zsh" "${SHVR_DIR_OUT}/zsh_$version/bin"
@@ -116,10 +118,10 @@ shvr_deps_zsh ()
 		test "$version_major" -gt 5
 	then
 		apt-get -y install \
-			wget gcc make autoconf libtinfo-dev xz-utils
+			wget gcc-12 make autoconf libtinfo-dev xz-utils
 	else
 		apt-get -y install \
-			wget gcc make autoconf libtinfo-dev
+			wget gcc-12 make autoconf libtinfo-dev
 	fi
 }
 

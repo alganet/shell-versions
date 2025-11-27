@@ -34,6 +34,18 @@ shvr_build ()
 	shvr_each build "${@:-}"
 }
 
+
+shvr_deps ()
+{
+	if test -z "$*"
+	then set -- $(printf '%s ' $(shvr_targets))
+	fi
+
+	set -x
+
+	shvr_each deps "${@:-}"
+}
+
 shvr_download ()
 {
 	if test -z "$*"

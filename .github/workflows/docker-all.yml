@@ -66,7 +66,7 @@ jobs:
               ash_1.27.2
               ash_1.26.2
               ash_1.25.1
-              bash_5.3
+              bash_5.3.8
               bash_5.2.37
               bash_5.1.16
               bash_5.0.18
@@ -79,10 +79,8 @@ jobs:
               bash_3.1.23
               bash_3.0.22
               bash_2.05b.13
+              brush_0.3.0
               brush_0.2.23
-              brush_0.2.22
-              brush_0.2.21
-              brush_0.2.20
               dash_0.5.13
               dash_0.5.12
               dash_0.5.11.5
@@ -176,7 +174,7 @@ jobs:
               osh_0.27.0
               osh_0.26.0
               osh_0.25.0
-              posh_0.14.1
+              posh_0.14.2
               posh_0.13.2
               posh_0.12.6
               yash_2.60
@@ -199,15 +197,8 @@ jobs:
               yash_2.43
               yash_2.42
               yash_2.41
-              yashrs_3.0.3
-              yashrs_3.0.2
-              yashrs_3.0.1
-              yashrs_3.0.0
+              yashrs_3.0.4
               yashrs_0.4.5
-              yashrs_0.4.4
-              yashrs_0.4.3
-              yashrs_0.4.2
-              yashrs_0.4.1
               yashrs_0.4.0
               yashrs_0.3.0
               zsh_5.9

@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2025 Alexandre Gomes Gaigalas <alganet@gmail.com>
 # SPDX-License-Identifier: ISC
 
-FROM debian:bookworm-slim AS builder
+FROM debian:trixie-slim AS builder
 
     # Update distro
     RUN apt-get -y update

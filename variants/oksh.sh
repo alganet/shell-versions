@@ -34,6 +34,18 @@ shvr_targets_oksh ()
 shvr_versioninfo_oksh ()
 {
 	version="$1"
+	version_major="${version%%\.*}"
+
+	if test "$version" = "$version_major"
+	then return 1
+	fi
+	version_minor="${version#$version_major\.}"
+	version_patch="${version_minor#*\.}"
+	if test "$version_patch" = "$version_minor"
+	then version_patch="0"
+	else version_minor="${version_minor%\.*}"
+	fi
+
 	build_srcdir="${SHVR_DIR_SRC}/oksh/${version}"
 }
 
@@ -64,11 +76,24 @@ shvr_build_oksh ()
 
 	cd "${build_srcdir}"
 
+	if {
+		test "$version_major" -eq 7 &&
+		test "$version_minor" -lt 3
+	} || {
+		test "$version_major" -lt 7
+	}
+	then
+		export CFLAGS="-fcommon"
+	fi
+
 	./configure \
 		--disable-curses \
 		--prefix="${SHVR_DIR_OUT}/oksh_$version"
 
 	make -j "$(nproc)"
+
+	unset CFLAGS
+
 	mkdir -p "${SHVR_DIR_OUT}/oksh_${version}/bin"
 	cp "oksh" "${SHVR_DIR_OUT}/oksh_$version/bin"
 
