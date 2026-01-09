@@ -83,8 +83,6 @@ shvr_build_bash ()
 	build_srcdir="${SHVR_DIR_SRC}/bash/${version_baseline}"
 	mkdir -p "${build_srcdir}"
 
-	shvr_deps_bash "$1"
-
 	tar --extract \
 		--file="${build_srcdir}.tar.gz" \
 		--strip-components=1 \

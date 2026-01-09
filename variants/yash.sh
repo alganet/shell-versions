@@ -61,8 +61,6 @@ shvr_build_yash ()
 
 	mkdir -p "${build_srcdir}"
 
-	shvr_deps_yash "$1"
-
 	tar --extract \
 		--file="${build_srcdir}.tar.gz" \
 		--strip-components=1 \

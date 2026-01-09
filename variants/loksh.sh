@@ -52,8 +52,6 @@ shvr_build_loksh ()
 
 	mkdir -p "${build_srcdir}"
 
-	shvr_deps_loksh "$1"
-
 	tar --extract \
 		--file="${build_srcdir}.tar.xz" \
 		--strip-components=1 \

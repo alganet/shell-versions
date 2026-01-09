@@ -56,8 +56,6 @@ shvr_build_mksh ()
 
 	mkdir -p "${build_srcdir}"
 
-	shvr_deps_mksh "$1"
-
 	tar --extract \
 		--file="${build_srcdir}.tar.gz" \
 		--strip-components=1 \

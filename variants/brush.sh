@@ -43,11 +43,11 @@ shvr_download_brush ()
 
 shvr_build_brush ()
 {
+	. "$HOME/.cargo/env"
+
 	shvr_versioninfo_brush "$1"
 
 	mkdir -p "${build_srcdir}"
-
-	shvr_deps_brush "$1"
 
 	tar --extract \
 		--file="${build_srcdir}.tar.gz" \
@@ -56,7 +56,7 @@ shvr_build_brush ()
 
 	cd "${build_srcdir}"
 
-	cargo build --release
+	RUSTFLAGS="-A unused_imports" cargo build --release
 
 	mkdir -p "${SHVR_DIR_OUT}/brush_${version}/bin"
 	cp "./target/release/brush" "${SHVR_DIR_OUT}/brush_$version/bin"
@@ -75,6 +75,4 @@ shvr_deps_brush ()
 		shvr_download_rustup
 		sh "${SHVR_DIR_SRC}/rustup-init-1.28.2.sh" -y
 	fi
-
-	. "$HOME/.cargo/env"
 }

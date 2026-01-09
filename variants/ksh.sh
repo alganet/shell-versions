@@ -72,8 +72,6 @@ shvr_build_ksh ()
 
 	mkdir -p "${build_srcdir}"
 
-	shvr_deps_ksh "$1"
-
 	tar --extract \
 		--file="${build_srcdir}.tar.gz" \
 		--strip-components=1 \

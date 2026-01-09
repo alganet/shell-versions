@@ -53,8 +53,6 @@ shvr_build_osh ()
 
 	mkdir -p "${build_srcdir}"
 
-	shvr_deps_osh "$1"
-
 	tar --extract \
 		--file="${build_srcdir}.tar.gz" \
 		--strip-components=1 \

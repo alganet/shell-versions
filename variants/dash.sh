@@ -50,8 +50,6 @@ shvr_build_dash ()
 
 	mkdir -p "${build_srcdir}"
 
-	shvr_deps_dash "$1"
-
 	tar --extract \
 		--file="${build_srcdir}.tar.gz" \
 		--strip-components=1 \
