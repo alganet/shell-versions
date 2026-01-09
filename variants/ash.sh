@@ -28,7 +28,6 @@ shvr_download_ash ()
 shvr_build_ash ()
 {
 	shvr_versioninfo_ash "$1"
-	shvr_deps_ash "$1"
 
 	mkdir -p "${build_srcdir}"
 	mkdir -p /usr/src/busybox

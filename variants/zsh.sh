@@ -76,7 +76,6 @@ shvr_build_zsh ()
 
 	mkdir -p "${build_srcdir}"
 
-	shvr_deps_zsh "$1"
 	if
 		{ test "$version_major" -gt 4 && test "${version_minor}" -gt 0; } ||
 		test "$version_major" -gt 5

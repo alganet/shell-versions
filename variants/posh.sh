@@ -44,8 +44,6 @@ shvr_build_posh ()
 
 	mkdir -p "${build_srcdir}"
 
-	shvr_deps_posh "$1"
-
 	tar --extract \
 		--file="${build_srcdir}.tar.gz" \
 		--strip-components=1 \

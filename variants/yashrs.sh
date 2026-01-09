@@ -44,11 +44,11 @@ shvr_download_yashrs ()
 
 shvr_build_yashrs ()
 {
+	. "$HOME/.cargo/env"
+
 	shvr_versioninfo_yashrs "$1"
 
 	mkdir -p "${build_srcdir}"
-
-	shvr_deps_yashrs "$1"
 
 	tar --extract \
 		--file="${build_srcdir}.tar.gz" \
@@ -76,6 +76,4 @@ shvr_deps_yashrs ()
 		shvr_download_rustup
 		sh "${SHVR_DIR_SRC}/rustup-init-1.28.2.sh" -y
 	fi
-
-	. "$HOME/.cargo/env"
 }

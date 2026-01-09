@@ -22,6 +22,7 @@ FROM debian:trixie-slim AS builder
     ARG TARGETS
 
     # Build
+    RUN bash "/shvr/shvr.sh" deps $TARGETS
     RUN bash "/shvr/shvr.sh" build $TARGETS
 
     # Extract unique library dependencies

@@ -67,8 +67,6 @@ shvr_build_oksh ()
 
 	mkdir -p "${build_srcdir}"
 
-	shvr_deps_oksh "$1"
-
 	tar --extract \
 		--file="${build_srcdir}.tar.gz" \
 		--strip-components=1 \

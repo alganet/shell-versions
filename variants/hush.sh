@@ -31,8 +31,6 @@ shvr_build_hush ()
 
 	mkdir -p "${build_srcdir}"
 
-	shvr_deps_hush "$1"
-
 	mkdir -p /usr/src/busybox
 	tar --extract \
 		--file="${build_srcdir}.tar.bz2" \
