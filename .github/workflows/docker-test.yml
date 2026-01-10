@@ -66,7 +66,7 @@ jobs:
               ash_1.27.2
               ash_1.26.2
               ash_1.25.1
-              bash_5.3.8
+              bash_5.3.9
               bash_5.2.37
               bash_5.1.16
               bash_5.0.18
@@ -162,6 +162,7 @@ jobs:
               oksh_6.7.1
               oksh_6.6
               oksh_6.5
+              osh_0.37.0
               osh_0.36.0
               osh_0.35.0
               osh_0.34.0
@@ -174,7 +175,7 @@ jobs:
               osh_0.27.0
               osh_0.26.0
               osh_0.25.0
-              posh_0.14.2
+              posh_0.14.3
               posh_0.13.2
               posh_0.12.6
               yash_2.60

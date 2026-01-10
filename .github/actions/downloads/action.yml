@@ -75,7 +75,7 @@ runs:
     - uses: ./.github/actions/single-download
       with:
         shvr_shell: bash
-        shvr_version: "5.3.8"
+        shvr_version: "5.3.9"
         cache_path: "bash/5.3"
     - uses: ./.github/actions/single-download
       with:
@@ -555,6 +555,11 @@ runs:
     - uses: ./.github/actions/single-download
       with:
         shvr_shell: osh
+        shvr_version: "0.37.0"
+        cache_path: "osh/0.37.0"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: osh
         shvr_version: "0.36.0"
         cache_path: "osh/0.36.0"
     - uses: ./.github/actions/single-download
@@ -615,8 +620,8 @@ runs:
     - uses: ./.github/actions/single-download
       with:
         shvr_shell: posh
-        shvr_version: "0.14.2"
-        cache_path: "posh/0.14.2"
+        shvr_version: "0.14.3"
+        cache_path: "posh/0.14.3"
     - uses: ./.github/actions/single-download
       with:
         shvr_shell: posh
