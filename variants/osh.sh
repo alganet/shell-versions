@@ -6,14 +6,15 @@
 shvr_current_osh ()
 {
 	cat <<-@
+		osh_0.37.0
 		osh_0.36.0
-		osh_0.35.0
 	@
 }
 
 shvr_targets_osh ()
 {
 	cat <<-@
+		osh_0.37.0
 		osh_0.36.0
 		osh_0.35.0
 		osh_0.34.0
