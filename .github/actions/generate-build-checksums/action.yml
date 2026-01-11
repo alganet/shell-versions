@@ -1,0 +1,46 @@
+# SPDX-FileCopyrightText: 2026 Alexandre Gomes Gaigalas <alganet@gmail.com>
+# SPDX-License-Identifier: ISC
+
+name: Generate and upload build checksums
+description: Extracts /opt from the built image, generates build checksums into checksums/build/, ensures correct ownership and uploads the artifact
+runs:
+  using: composite
+  steps:
+    - name: Extract image /opt
+      shell: bash
+      run: |
+        set -ex
+        container=$(docker create "${{ inputs.image }}")
+        docker cp $container:/opt ./image_out
+        docker rm $container
+
+    - name: Generate build checksums
+      shell: bash
+      env:
+        SHVR_DIR_OUT: ${{ github.workspace }}/image_out
+        SHVR_CHECKSUMS_DIR: ${{ github.workspace }}/checksums
+      run: |
+        set -ex
+        sh shvr.sh generate_build_checksums
+
+    - name: Ensure ownership of checksums
+      shell: bash
+      run: |
+        set -ex
+        # Some runners may create files as root when using docker, ensure runner can upload
+        sudo chown -R $(id -u):$(id -g) checksums/build || true
+
+    - name: Upload build checksums
+      uses: actions/upload-artifact@v6
+      with:
+        name: ${{ inputs.artifact_name }}
+        path: checksums/build
+
+inputs:
+  image:
+    description: Docker image tag to extract (required)
+    required: true
+  artifact_name:
+    description: Artifact name to upload
+    required: false
+    default: shvr-build-checksums

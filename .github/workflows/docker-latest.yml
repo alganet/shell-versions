@@ -44,6 +44,12 @@ jobs:
           build-args: |
             TARGETS=${{ matrix.targets }}
 
+      - name: Generate and upload build checksums
+        uses: ./.github/actions/generate-build-checksums
+        with:
+          image: ${{ matrix.tags }}
+          artifact_name: shvr-build-checksums
+
     strategy:
       fail-fast: true
       matrix:
