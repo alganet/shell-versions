@@ -32,6 +32,7 @@ shvr_build ()
 	set -x
 
 	shvr_each build "${@:-}"
+	shvr_generate_build_checksums "${@:-}"
 }
 
 
@@ -194,6 +195,41 @@ shvr_generate_checksums()
 		# write a file containing one line with: <sha256>  basename
 		sha256sum "$f" | sed "s/  .*/  $(basename "$f")/" > "${SHVR_CHECKSUMS_DIR}/sources/${rel}.sha256sums"
 	done
+}
+
+
+# Generate checksums for build outputs under ${SHVR_DIR_OUT} and write them
+# to ${SHVR_CHECKSUMS_DIR}/build/<rel>.sha256sums mirroring the out layout.
+# Usage: shvr_generate_build_checksums [<shell>_<version> ...]
+shvr_generate_build_checksums()
+{
+	if test -z "$*"
+	then
+		start_dir="${SHVR_DIR_OUT}"
+		find "$start_dir" -type f | while read -r f
+		do
+			rel="${f#${SHVR_DIR_OUT}/}"
+			dest_dir="$(dirname "${SHVR_CHECKSUMS_DIR}/build/${rel}.sha256sums")"
+			mkdir -p "$dest_dir"
+			sha256sum "$f" | sed "s/  .*/  $(basename "$f")/" > "${SHVR_CHECKSUMS_DIR}/build/${rel}.sha256sums"
+		done
+	else
+		# Only generate checksums for specific targets (e.g., bash_5.3.9)
+		for t in "$@"
+		do
+			dir="$SHVR_DIR_OUT/${t}"
+			if test -d "$dir"
+			then
+				find "$dir" -type f | while read -r f
+				do
+					rel="${f#${SHVR_DIR_OUT}/}"
+					dest_dir="$(dirname "${SHVR_CHECKSUMS_DIR}/build/${rel}.sha256sums")"
+					mkdir -p "$dest_dir"
+					sha256sum "$f" | sed "s/  .*/  $(basename "$f")/" > "${SHVR_CHECKSUMS_DIR}/build/${rel}.sha256sums"
+				done
+			fi
+		done
+	fi
 }
 
 shvr_github_regen_downloads ()
