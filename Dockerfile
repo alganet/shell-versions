@@ -43,9 +43,10 @@ FROM busybox:stable-musl
     # Setup environment
     ENV SHVR_DIR_OUT=/opt
 
-    # Copy built artifacts
+    # Copy built artifacts with preserved metadata for reproducibility
     WORKDIR /
-    COPY --from=builder "$SHVR_DIR_OUT" "$SHVR_DIR_OUT"
-    COPY --from=builder /deps /
+    COPY --from=builder --chown=0:0 "$SHVR_DIR_OUT" "$SHVR_DIR_OUT"
+    COPY --from=builder --chown=0:0 /shvr/checksums/build /opt/shvr/checksums/build
+    COPY --from=builder --chown=0:0 /deps /
 
     ENTRYPOINT [ "/bin/sh", "/opt/shvr/entrypoint.sh" ]
