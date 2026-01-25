@@ -70,9 +70,22 @@ shvr_build_oksh ()
 	tar --extract \
 		--file="${build_srcdir}.tar.gz" \
 		--strip-components=1 \
-		--directory="${build_srcdir}"
+		--directory="${build_srcdir}" \
+		--owner=0 \
+		--group=0 \
+		--mode=go-w \
+		--touch
 
 	cd "${build_srcdir}"
+
+	# Build with reproducible flags
+	# Use fixed source date epoch and disable compiler timestamp features
+	export SOURCE_DATE_EPOCH=1
+	export TZ=UTC
+	export CFLAGS="-frandom-seed=1 -fcommon"
+	export LDFLAGS="-Wl,--build-id=none"
+	export RANLIB="ranlib -D"
+	export AR="ar -D"
 
 	if {
 		test "$version_major" -eq 7 &&
@@ -81,19 +94,27 @@ shvr_build_oksh ()
 		test "$version_major" -lt 7
 	}
 	then
-		export CFLAGS="-fcommon"
+		export CFLAGS="-fcommon -frandom-seed=1"
 	fi
 
 	./configure \
 		--disable-curses \
 		--prefix="${SHVR_DIR_OUT}/oksh_$version"
 
-	make -j "$(nproc)"
+	# Single-threaded build for deterministic ordering
+	make
 
-	unset CFLAGS
+	unset SOURCE_DATE_EPOCH TZ CFLAGS LDFLAGS RANLIB AR
 
 	mkdir -p "${SHVR_DIR_OUT}/oksh_${version}/bin"
 	cp "oksh" "${SHVR_DIR_OUT}/oksh_$version/bin"
+
+	# Strip binary to ensure reproducible output
+	strip --strip-all "${SHVR_DIR_OUT}/oksh_${version}/bin/oksh"
+
+	# Ensure consistent permissions and timestamps
+	touch -d "@1" "${SHVR_DIR_OUT}/oksh_${version}/bin/oksh"
+	chmod 755 "${SHVR_DIR_OUT}/oksh_${version}/bin/oksh"
 
 	"${SHVR_DIR_OUT}/oksh_${version}/bin/oksh" -c "echo oksh version $version"
 }
@@ -102,5 +123,5 @@ shvr_deps_oksh ()
 {
 	shvr_versioninfo_oksh "$1"
 	apt-get -y install \
-		wget gcc make
+		wget gcc make binutils
 }
