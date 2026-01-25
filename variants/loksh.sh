@@ -55,9 +55,19 @@ shvr_build_loksh ()
 	tar --extract \
 		--file="${build_srcdir}.tar.xz" \
 		--strip-components=1 \
-		--directory="${build_srcdir}"
+		--directory="${build_srcdir}" \
+		--owner=0 \
+		--group=0 \
+		--mode=go-w \
+		--touch
 
 	cd "${build_srcdir}"
+
+	# Build with reproducible flags
+	export SOURCE_DATE_EPOCH=1
+	export TZ=UTC
+	export CFLAGS="-Os -frandom-seed=1"
+	export LDFLAGS="-Wl,--build-id=none"
 
 	meson \
 		--prefix="${SHVR_DIR_OUT}/loksh_$version" \
@@ -65,8 +75,17 @@ shvr_build_loksh ()
 
 	ninja -C build
 
+	unset SOURCE_DATE_EPOCH TZ CFLAGS LDFLAGS
+
 	mkdir -p "${SHVR_DIR_OUT}/loksh_${version}/bin"
 	cp "build/ksh" "${SHVR_DIR_OUT}/loksh_$version/bin/loksh"
+
+	# Strip binary to ensure reproducible output
+	strip --strip-all "${SHVR_DIR_OUT}/loksh_${version}/bin/loksh"
+
+	# Ensure consistent permissions and timestamps
+	touch -d "@1" "${SHVR_DIR_OUT}/loksh_${version}/bin/loksh"
+	chmod 755 "${SHVR_DIR_OUT}/loksh_${version}/bin/loksh"
 
 	"${SHVR_DIR_OUT}/loksh_${version}/bin/loksh" -c "echo loksh version $version"
 }
@@ -75,5 +94,5 @@ shvr_deps_loksh ()
 {
 	shvr_versioninfo_loksh "$1"
 	apt-get -y install \
-		wget gcc meson ninja-build xz-utils
+		wget gcc meson ninja-build xz-utils binutils
 }
