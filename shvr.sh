@@ -99,7 +99,12 @@ shvr_each ()
 		. "${SHVR_DIR_SELF}/variants/${interpreter}.sh"
 
 		"shvr_${subcommand}_${interpreter}" "$version"
-		rm -Rf "${SHVR_DIR_SRC}/${interpreter}/$version"
+		# Allow keeping the extracted build tree for debugging when
+		# SHVR_KEEP_BUILD=1. Otherwise clean it after each individual build.
+		if test $subcommand = "build" && test "${SHVR_KEEP_BUILD:-0}" != "1"
+		then
+			rm -Rf "${SHVR_DIR_SRC}/${interpreter}/$version"
+		fi
 		shift
 	done
 }

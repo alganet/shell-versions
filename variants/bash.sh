@@ -86,7 +86,11 @@ shvr_build_bash ()
 	tar --extract \
 		--file="${build_srcdir}.tar.gz" \
 		--strip-components=1 \
-		--directory="${build_srcdir}"
+		--directory="${build_srcdir}" \
+		--owner=0 \
+		--group=0 \
+		--mode=go-w \
+		--touch
 
 	patch_i=0
 	while test $patch_i -lt $version_patch
@@ -109,21 +113,43 @@ shvr_build_bash ()
 			--prefix="${SHVR_DIR_OUT}/bash_${version}" \
 			--without-bash-malloc
 
-		if test "$version_major" -lt 3
-		then make -j1
-		else make -j"$(nproc)"
-		fi
+		# Build with reproducible flags
+		# Use fixed source date epoch and disable compiler timestamp features
+		export SOURCE_DATE_EPOCH=1
+		export TZ=UTC
+		export LDFLAGS="-Wl,--build-id=none"
+		export RANLIB="ranlib -D"
+		export AR="ar -D"
 
-		unset CFLAGS_FOR_BUILD CFLAGS AUTOCONF
+		make -j1
+
+		unset SOURCE_DATE_EPOCH TZ LDFLAGS RANLIB AR CFLAGS_FOR_BUILD CFLAGS AUTOCONF
 	else
 		./configure \
 			--prefix="${SHVR_DIR_OUT}/bash_${version}"
 
-		make -j "$(nproc)"
+		# Build with reproducible flags
+		# Use fixed source date epoch and disable compiler timestamp features
+		export SOURCE_DATE_EPOCH=1
+		export TZ=UTC
+		export LDFLAGS="-Wl,--build-id=none"
+		export RANLIB="ranlib -D"
+		export AR="ar -D"
+
+		make -j1
+
+		unset SOURCE_DATE_EPOCH TZ LDFLAGS RANLIB AR
 	fi
 
 	mkdir -p "${SHVR_DIR_OUT}/bash_${version}/bin"
 	cp bash "${SHVR_DIR_OUT}/bash_${version}/bin/bash"
+
+	# Strip binary to ensure reproducible output
+	strip --strip-all "${SHVR_DIR_OUT}/bash_${version}/bin/bash"
+
+	# Ensure consistent permissions and timestamps
+	touch -d "@1" "${SHVR_DIR_OUT}/bash_${version}/bin/bash"
+	chmod 755 "${SHVR_DIR_OUT}/bash_${version}/bin/bash"
 
 	"${SHVR_DIR_OUT}/bash_${version}/bin/bash" --version
 }
@@ -134,8 +160,8 @@ shvr_deps_bash ()
 
 	if test "$version_major" -lt 5 || { test "$version_major" -eq 5 && test "${version_minor}" -lt 3; }
 	then apt-get -y install \
-		wget patch gcc bison make ncurses-dev autoconf2.69
+		wget patch gcc bison make ncurses-dev autoconf2.69 binutils
 	else apt-get -y install \
-		wget patch gcc bison make autoconf
+		wget patch gcc bison make autoconf binutils
 	fi
 }
