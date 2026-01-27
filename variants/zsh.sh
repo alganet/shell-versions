@@ -83,28 +83,54 @@ shvr_build_zsh ()
 		tar --extract \
 			--file="${build_srcdir}.tar.xz" \
 			--strip-components=1 \
-			--directory="${build_srcdir}"
+			--directory="${build_srcdir}" \
+			--owner=0 \
+			--group=0 \
+			--mode=go-w \
+			--touch
 	else
 		tar --extract \
 			--file="${build_srcdir}.tar.gz" \
 			--strip-components=1 \
-			--directory="${build_srcdir}"
+			--directory="${build_srcdir}" \
+			--owner=0 \
+			--group=0 \
+			--mode=go-w \
+			--touch
 	fi
 
 	cd "${build_srcdir}"
 
+	# Build with reproducible flags
+	# Use fixed source date epoch and disable compiler timestamp features
+	export SOURCE_DATE_EPOCH=1
+	export TZ=UTC
 	export CC=gcc-12
+	export CFLAGS='-frandom-seed=1 -ffile-prefix-map='"${build_srcdir}"'=.'
+	export LDFLAGS='-Wl,--build-id=none'
+	export RANLIB='ranlib -D'
+	export AR='ar -D'
+
 	./Util/preconfig
 	./configure \
 		--prefix="${SHVR_DIR_OUT}/zsh_$version" \
 		--disable-dynamic \
 		--with-tcsetpgrp
 
-	make -j "$(nproc)"
-	unset CC
+	# Single-threaded build for deterministic ordering
+	make
+
+	unset SOURCE_DATE_EPOCH TZ CC CFLAGS LDFLAGS RANLIB AR
 
 	mkdir -p "${SHVR_DIR_OUT}/zsh_${version}/bin"
 	cp "Src/zsh" "${SHVR_DIR_OUT}/zsh_$version/bin"
+
+	# Strip binary to ensure reproducible output
+	strip --strip-all "${SHVR_DIR_OUT}/zsh_${version}/bin/zsh"
+
+	# Ensure consistent permissions and timestamps
+	touch -d "@1" "${SHVR_DIR_OUT}/zsh_${version}/bin/zsh"
+	chmod 755 "${SHVR_DIR_OUT}/zsh_${version}/bin/zsh"
 
 	"${SHVR_DIR_OUT}/zsh_${version}/bin/zsh" --version
 }
@@ -117,10 +143,10 @@ shvr_deps_zsh ()
 		test "$version_major" -gt 5
 	then
 		apt-get -y install \
-			wget gcc-12 make autoconf libtinfo-dev xz-utils
+			wget gcc-12 make autoconf libtinfo-dev xz-utils binutils
 	else
 		apt-get -y install \
-			wget gcc-12 make autoconf libtinfo-dev
+			wget gcc-12 make autoconf libtinfo-dev binutils
 	fi
 }
 
