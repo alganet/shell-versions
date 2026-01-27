@@ -30,10 +30,6 @@ shvr_targets_yash ()
 		yash_2.47
 		yash_2.46
 		yash_2.45
-		yash_2.44
-		yash_2.43
-		yash_2.42
-		yash_2.41
 	@
 }
 
@@ -64,19 +60,42 @@ shvr_build_yash ()
 	tar --extract \
 		--file="${build_srcdir}.tar.gz" \
 		--strip-components=1 \
-		--directory="${build_srcdir}"
+		--directory="${build_srcdir}" \
+		--owner=0 \
+		--group=0 \
+		--mode=go-w \
+		--touch
 
 	cd "${build_srcdir}"
+
+	# Build with reproducible flags
+	# Use fixed source date epoch and disable compiler timestamp features
+	export SOURCE_DATE_EPOCH=1
+	export TZ=UTC
+	export CFLAGS="-frandom-seed=1"
+	export LDFLAGS="-Wl,--build-id=none"
+	export RANLIB="ranlib -D"
+	export AR="ar -D"
 
 	./configure \
 		--disable-nls \
 		--disable-lineedit \
 		--prefix="${SHVR_DIR_OUT}/yash_$version"
 
-	make -j "$(nproc)"
+	# Single-threaded build for deterministic ordering
+	make
+
+	unset SOURCE_DATE_EPOCH TZ CFLAGS LDFLAGS RANLIB AR
 
 	mkdir -p "${SHVR_DIR_OUT}/yash_${version}/bin"
 	cp "yash" "${SHVR_DIR_OUT}/yash_$version/bin"
+
+	# Strip binary to ensure reproducible output
+	strip --strip-all "${SHVR_DIR_OUT}/yash_${version}/bin/yash"
+
+	# Ensure consistent permissions and timestamps
+	touch -d "@1" "${SHVR_DIR_OUT}/yash_${version}/bin/yash"
+	chmod 755 "${SHVR_DIR_OUT}/yash_${version}/bin/yash"
 
 	"${SHVR_DIR_OUT}/yash_${version}/bin/yash" -c "echo yash version $version"
 }
@@ -85,5 +104,5 @@ shvr_deps_yash ()
 {
 	shvr_versioninfo_yash "$1"
 	apt-get -y install \
-		wget gcc make xz-utils
+		wget gcc make xz-utils binutils gettext
 }
