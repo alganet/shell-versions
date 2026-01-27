@@ -75,7 +75,11 @@ shvr_build_ksh ()
 	tar --extract \
 		--file="${build_srcdir}.tar.gz" \
 		--strip-components=1 \
-		--directory="${build_srcdir}"
+		--directory="${build_srcdir}" \
+		--owner=0 \
+		--group=0 \
+		--mode=go-w \
+		--touch
 
 	cd "${build_srcdir}"
 
@@ -86,30 +90,84 @@ shvr_build_ksh ()
 		done
 	fi
 
+	# Set reproducible build environment
+	export SOURCE_DATE_EPOCH=1
+	export TZ=UTC
+
+	# Normalize all file timestamps in source directory to epoch 1 before build
+	find "${build_srcdir}" -type f -exec touch -d "@1" {} \;
+
 	if test -f "bin/package"
 	then
+		# Set additional reproducible build flags for package system
+		# -fno-asynchronous-unwind-tables: Remove non-deterministic unwind tables
+		# -frandom-seed=0: Ensure consistent random seed for hash tables and such
+		# -fno-tree-vectorize/-fno-tree-slp-vectorize: Avoid compiler auto-vectorized constant pools that can vary across builds
+		# -Wl,--build-id=none: Remove build IDs which contain timestamps
+		export CCFLAGS="${CCFLAGS:-} -fno-asynchronous-unwind-tables -frandom-seed=0 -fno-tree-vectorize -fno-tree-slp-vectorize"
+		export CFLAGS="${CFLAGS:-} -fno-asynchronous-unwind-tables -frandom-seed=0 -fno-tree-vectorize -fno-tree-slp-vectorize"
+		export CXXFLAGS="${CXXFLAGS:-} -fno-asynchronous-unwind-tables -frandom-seed=0 -fno-tree-vectorize -fno-tree-slp-vectorize"
+		export LDFLAGS="-Wl,--build-id=none"
+
+		# Create wrapper scripts for ar and ranlib with deterministic flags
+		mkdir -p "${build_srcdir}/.shvr_bins"
+		cat > "${build_srcdir}/.shvr_bins/ar" << 'EOF'
+#!/bin/sh
+exec /usr/bin/ar -D "$@"
+EOF
+		chmod +x "${build_srcdir}/.shvr_bins/ar"
+		touch -d "@1" "${build_srcdir}/.shvr_bins/ar"
+
+		cat > "${build_srcdir}/.shvr_bins/ranlib" << 'EOF'
+#!/bin/sh
+exec /usr/bin/ranlib -D "$@"
+EOF
+		chmod +x "${build_srcdir}/.shvr_bins/ranlib"
+		touch -d "@1" "${build_srcdir}/.shvr_bins/ranlib"
+
+		# Add wrapper scripts to PATH before package script and directly
+		export AR="${build_srcdir}/.shvr_bins/ar"
+		export RANLIB="${build_srcdir}/.shvr_bins/ranlib"
+		export PATH="${build_srcdir}/.shvr_bins:${PATH}"
+
 		if test "$fork_name" = "shvrChistory"
 		then
-			bin/package make CC=gcc-12
+			bin/package make CC=gcc-12 "AR=${build_srcdir}/.shvr_bins/ar" "RANLIB=${build_srcdir}/.shvr_bins/ranlib"
 			host_type="gnu.i386-64"
 		else
-			bin/package make
+			bin/package make "AR=${build_srcdir}/.shvr_bins/ar" "RANLIB=${build_srcdir}/.shvr_bins/ranlib"
 			host_type="$(bin/package host type)"
 		fi
+
+		unset CCFLAGS CFLAGS CXXFLAGS AR RANLIB LDFLAGS
 
 		mkdir -p "${SHVR_DIR_OUT}/ksh_${version}/bin"
 		cp "arch/${host_type}/bin/ksh" "${SHVR_DIR_OUT}/ksh_${version}/bin/ksh"
 	elif test -f "meson.build"
 	then
+		# Set meson to use reproducible build options
+		export LDFLAGS="-Wl,--build-id=none"
 		meson \
 			--prefix="${SHVR_DIR_OUT}/ksh_$version" \
+			-Db_lto=false \
 			build
 
 		ninja -C build
 
+		unset LDFLAGS
+
 		mkdir -p "${SHVR_DIR_OUT}/ksh_${version}/bin"
 		cp "build/src/cmd/ksh93/ksh" "${SHVR_DIR_OUT}/ksh_${version}/bin/ksh"
 	fi
+
+	# Strip binary to ensure reproducible output
+	strip --strip-all "${SHVR_DIR_OUT}/ksh_${version}/bin/ksh"
+
+	# Ensure consistent permissions and timestamps
+	touch -d "@1" "${SHVR_DIR_OUT}/ksh_${version}/bin/ksh"
+	chmod 755 "${SHVR_DIR_OUT}/ksh_${version}/bin/ksh"
+
+	unset SOURCE_DATE_EPOCH TZ
 
 	"${SHVR_DIR_OUT}/ksh_${version}/bin/ksh" -c "echo ksh version $version"
 }
@@ -120,7 +178,7 @@ shvr_deps_ksh ()
 	case "$fork_name" in
 		*'93uplusm')
 			apt-get -y install \
-				wget gcc
+				wget gcc patch
 			;;
 		*'2020')
 			apt-get -y install \
