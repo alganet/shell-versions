@@ -1,0 +1,38 @@
+# SPDX-FileCopyrightText: 2026 Alexandre Gomes Gaigalas <alganet@gmail.com>
+# SPDX-License-Identifier: ISC
+--- src/lib/libast/features/float
++++ src/lib/libast/features/float
+@@ -68,6 +68,8 @@
+ 	#if _hdr_values
+ 	#include <values.h>
+ 	#endif
++
++	#include <string.h>
+ 
+ 	#if !defined(FLT_MIN_EXP) && defined(FMINEXP)
+ 	#define FLT_MIN_EXP	FMINEXP
+@@ -1058,6 +1060,9 @@
+ 		char*	e;
+ 	#endif
+ 
++		/* clear padding so strtold()/sscanf leave deterministic bytes */
++		memset(&f, 0, sizeof(f));
++
+ 	#if SCAN
+ 		if (sscanf(NAN, "%Lg", &f) != 1)
+ 			return 1;
+@@ -1138,9 +1143,13 @@
+ 	#endif
+ 	#ifdef LDBL_MAX
+ 		{
+-			long double	f = LDBL_MAX;
++			long double	f;
+ 	#if DIV
+ 			long double	z = 0;
++
++			/* zero padding before using long doubles to stabilize payload bits */
++			memset(&f, 0, sizeof(f));
++			f = LDBL_MAX;
+ 
+ 			f = 0.0 / z;
+ 			if (!f)
