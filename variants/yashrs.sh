@@ -88,7 +88,7 @@ shvr_deps_yashrs ()
 {
 	shvr_versioninfo_yashrs "$1"
 	apt-get -y install \
-		curl wget gcc binutils
+		curl gcc binutils
 
 	if ! test -f "$HOME/.cargo/env"
 	then

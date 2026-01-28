@@ -123,5 +123,5 @@ shvr_deps_oksh ()
 {
 	shvr_versioninfo_oksh "$1"
 	apt-get -y install \
-		wget gcc make binutils
+		curl gcc make binutils
 }

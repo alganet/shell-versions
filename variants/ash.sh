@@ -149,5 +149,5 @@ shvr_deps_ash ()
 {
 	shvr_versioninfo_ash "$1"
 	apt-get -y install \
-		wget bzip2 gcc make binutils
+		curl bzip2 gcc make binutils
 }

@@ -94,5 +94,5 @@ shvr_deps_loksh ()
 {
 	shvr_versioninfo_loksh "$1"
 	apt-get -y install \
-		wget gcc meson ninja-build xz-utils binutils
+		curl gcc meson ninja-build xz-utils binutils
 }

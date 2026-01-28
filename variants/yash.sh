@@ -104,5 +104,5 @@ shvr_deps_yash ()
 {
 	shvr_versioninfo_yash "$1"
 	apt-get -y install \
-		wget gcc make xz-utils binutils gettext
+		curl gcc make xz-utils binutils gettext
 }
