@@ -91,5 +91,5 @@ shvr_deps_posh ()
 {
 	shvr_versioninfo_posh "$1"
 	apt-get -y install \
-		wget gcc make autoconf automake binutils
+		curl gcc make autoconf automake binutils
 }

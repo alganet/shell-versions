@@ -178,15 +178,15 @@ shvr_deps_ksh ()
 	case "$fork_name" in
 		*'93uplusm')
 			apt-get -y install \
-				wget gcc patch
+				curl gcc patch
 			;;
 		*'2020')
 			apt-get -y install \
-				wget gcc meson
+				curl gcc meson
 			;;
 		*'history')
 			apt-get -y install \
-				wget gcc-12 patch
+				curl gcc-12 patch
 			;;
 	esac
 }

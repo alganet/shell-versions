@@ -87,7 +87,7 @@ shvr_deps_brush ()
 {
 	shvr_versioninfo_brush "$1"
 	apt-get -y install \
-		curl wget gcc binutils
+		curl gcc binutils
 
 	if ! test -f "$HOME/.cargo/env"
 	then

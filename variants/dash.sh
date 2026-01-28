@@ -109,5 +109,5 @@ shvr_deps_dash ()
 {
 	shvr_versioninfo_dash "$1"
 	apt-get -y install \
-		wget gcc automake autoconf dpkg-dev binutils
+		curl gcc automake autoconf dpkg-dev binutils
 }

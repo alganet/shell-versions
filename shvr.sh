@@ -134,14 +134,11 @@ shvr_fetch()
 
 	if ! test -f "$dest"
 	then
-		if command -v wget >/dev/null 2>&1
-		then
-			wget -q -O "$dest" "$url" || return 1
-		elif command -v curl >/dev/null 2>&1
+		if command -v curl >/dev/null 2>&1
 		then
 			curl -sSL -o "$dest" "$url" || return 1
 		else
-			echo "neither wget nor curl available to download $url" >&2
+			echo "curl is required to download $url" >&2
 			return 1
 		fi
 	fi

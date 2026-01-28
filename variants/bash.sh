@@ -160,8 +160,8 @@ shvr_deps_bash ()
 
 	if test "$version_major" -lt 5 || { test "$version_major" -eq 5 && test "${version_minor}" -lt 3; }
 	then apt-get -y install \
-		wget patch gcc bison make ncurses-dev autoconf2.69 binutils
+		curl patch gcc bison make ncurses-dev autoconf2.69 binutils
 	else apt-get -y install \
-		wget patch gcc bison make autoconf binutils
+		curl patch gcc bison make autoconf binutils
 	fi
 }

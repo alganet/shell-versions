@@ -98,5 +98,5 @@ shvr_deps_osh ()
 {
 	shvr_versioninfo_osh "$1"
 	apt-get -y install \
-		wget gcc g++ make binutils
+		curl gcc g++ make binutils
 }

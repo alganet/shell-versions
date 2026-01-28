@@ -97,5 +97,5 @@ shvr_deps_mksh ()
 {
 	shvr_versioninfo_mksh "$1"
 	apt-get -y install \
-		wget gcc make binutils
+		curl gcc make binutils
 }

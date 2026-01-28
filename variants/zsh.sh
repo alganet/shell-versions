@@ -143,10 +143,10 @@ shvr_deps_zsh ()
 		test "$version_major" -gt 5
 	then
 		apt-get -y install \
-			wget gcc-12 make autoconf libtinfo-dev xz-utils binutils
+			curl gcc-12 make autoconf libtinfo-dev xz-utils binutils
 	else
 		apt-get -y install \
-			wget gcc-12 make autoconf libtinfo-dev binutils
+			curl gcc-12 make autoconf libtinfo-dev binutils
 	fi
 }
 

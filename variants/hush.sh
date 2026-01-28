@@ -147,5 +147,5 @@ shvr_deps_hush ()
 {
 	shvr_versioninfo_hush "$1"
 	apt-get -y install \
-		wget bzip2 gcc make binutils
+		curl bzip2 gcc make binutils
 }
