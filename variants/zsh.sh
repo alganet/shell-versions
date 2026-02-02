@@ -80,23 +80,9 @@ shvr_build_zsh ()
 		{ test "$version_major" -gt 4 && test "${version_minor}" -gt 0; } ||
 		test "$version_major" -gt 5
 	then
-		tar --extract \
-			--file="${build_srcdir}.tar.xz" \
-			--strip-components=1 \
-			--directory="${build_srcdir}" \
-			--owner=0 \
-			--group=0 \
-			--mode=go-w \
-			--touch
+		shvr_untar "${build_srcdir}.tar.xz" "${build_srcdir}"
 	else
-		tar --extract \
-			--file="${build_srcdir}.tar.gz" \
-			--strip-components=1 \
-			--directory="${build_srcdir}" \
-			--owner=0 \
-			--group=0 \
-			--mode=go-w \
-			--touch
+		shvr_untar "${build_srcdir}.tar.gz" "${build_srcdir}"
 	fi
 
 	cd "${build_srcdir}"

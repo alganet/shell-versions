@@ -56,14 +56,7 @@ shvr_build_mksh ()
 
 	mkdir -p "${build_srcdir}"
 
-	tar --extract \
-		--file="${build_srcdir}.tar.gz" \
-		--strip-components=1 \
-		--directory="${build_srcdir}" \
-		--owner=0 \
-		--group=0 \
-		--mode=go-w \
-		--touch
+	shvr_untar "${build_srcdir}.tar.gz" "${build_srcdir}"
 
 	cd "${build_srcdir}"
 

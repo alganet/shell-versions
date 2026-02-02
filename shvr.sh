@@ -121,10 +121,17 @@ shvr_clear_versioninfo ()
 	build_srcdir=""
 }
 
-# Helper: download a file and verify sha256 against checksums sources dir.
-# Usage: shvr_fetch URL DEST
-# Will derive checksum path from the DEST path relative to SHVR_DIR_SRC and
-# will require a file at: ${SHVR_CHECKSUMS_DIR}/sources/${rel}.sha256sums
+shvr_untar()
+{
+	tar --extract \
+		--file="$1" \
+		--strip-components=1 \
+		--directory="$2" \
+		--owner=0 \
+		--group=0 \
+		--mode=go-w
+}
+
 shvr_fetch()
 {
 	url="$1"
