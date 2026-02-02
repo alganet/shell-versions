@@ -52,14 +52,7 @@ shvr_build_loksh ()
 
 	mkdir -p "${build_srcdir}"
 
-	tar --extract \
-		--file="${build_srcdir}.tar.xz" \
-		--strip-components=1 \
-		--directory="${build_srcdir}" \
-		--owner=0 \
-		--group=0 \
-		--mode=go-w \
-		--touch
+	shvr_untar "${build_srcdir}.tar.xz" "${build_srcdir}"
 
 	cd "${build_srcdir}"
 
