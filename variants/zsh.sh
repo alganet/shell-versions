@@ -92,8 +92,8 @@ shvr_build_zsh ()
 	export SOURCE_DATE_EPOCH=1
 	export TZ=UTC
 	export CC=gcc-12
-	export CFLAGS='-frandom-seed=1 -ffile-prefix-map='"${build_srcdir}"'=.'
-	export LDFLAGS='-Wl,--build-id=none'
+	export CFLAGS='-O3 -flto -frandom-seed=1 -ffile-prefix-map='"${build_srcdir}"'=.'
+	export LDFLAGS='-O3 -flto -Wl,--build-id=none'
 	export RANLIB='ranlib -D'
 	export AR='ar -D'
 
