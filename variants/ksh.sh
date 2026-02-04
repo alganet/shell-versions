@@ -78,17 +78,22 @@ shvr_build_ksh ()
 
 	if test -d "${SHVR_DIR_SELF}/patches/ksh/$version"
 	then
-		find "${SHVR_DIR_SELF}/patches/ksh/$version" -type f | sort | while read -r patch_file
-		do patch -p0 < "$patch_file"
+		# Use C locale to ensure deterministic sort ordering of patch files
+		find "${SHVR_DIR_SELF}/patches/ksh/$version" -type f | LC_ALL=C sort | while read -r patch_file
+		do
+			patch -p0 < "$patch_file"
 		done
 	fi
 
 	# Set reproducible build environment
 	export SOURCE_DATE_EPOCH=1
 	export TZ=UTC
+	export LC_ALL=C
+	# Force single-threaded build to avoid nondeterministic object ordering
+	export MAKEFLAGS="-j1"
 
-	# Normalize all file timestamps in source directory to epoch 1 before build
-	find "${build_srcdir}" -type f -exec touch -d "@1" {} \;
+	# Normalize all file and directory timestamps in source directory to epoch 1 before build
+	find "${build_srcdir}" -exec touch -d "@1" {} \;
 
 	if test -f "bin/package"
 	then
@@ -97,9 +102,10 @@ shvr_build_ksh ()
 		# -frandom-seed=0: Ensure consistent random seed for hash tables and such
 		# -fno-tree-vectorize/-fno-tree-slp-vectorize: Avoid compiler auto-vectorized constant pools that can vary across builds
 		# -Wl,--build-id=none: Remove build IDs which contain timestamps
-		export CCFLAGS="${CCFLAGS:-} -fno-asynchronous-unwind-tables -frandom-seed=0 -fno-tree-vectorize -fno-tree-slp-vectorize"
-		export CFLAGS="${CFLAGS:-} -fno-asynchronous-unwind-tables -frandom-seed=0 -fno-tree-vectorize -fno-tree-slp-vectorize"
-		export CXXFLAGS="${CXXFLAGS:-} -fno-asynchronous-unwind-tables -frandom-seed=0 -fno-tree-vectorize -fno-tree-slp-vectorize"
+		# -fdebug-prefix-map: Remove build directory paths from debug info/macros
+		export CCFLAGS="${CCFLAGS:-} -fno-asynchronous-unwind-tables -frandom-seed=0 -fno-tree-vectorize -fno-tree-slp-vectorize -fdebug-prefix-map=${build_srcdir}="
+		export CFLAGS="${CFLAGS:-} -fno-asynchronous-unwind-tables -frandom-seed=0 -fno-tree-vectorize -fno-tree-slp-vectorize -fdebug-prefix-map=${build_srcdir}="
+		export CXXFLAGS="${CXXFLAGS:-} -fno-asynchronous-unwind-tables -frandom-seed=0 -fno-tree-vectorize -fno-tree-slp-vectorize -fdebug-prefix-map=${build_srcdir}="
 		export LDFLAGS="-Wl,--build-id=none"
 
 		# Create wrapper scripts for ar and ranlib with deterministic flags
@@ -125,6 +131,8 @@ EOF
 
 		if test "$fork_name" = "shvrChistory"
 		then
+			# Do not pass -j flags to bin/package (it wraps mamake which doesn't accept -j1)
+			# Rely on MAKEFLAGS (set earlier) to force single-threaded builds
 			bin/package make CC=gcc-12 "AR=${build_srcdir}/.shvr_bins/ar" "RANLIB=${build_srcdir}/.shvr_bins/ranlib"
 			host_type="gnu.i386-64"
 		else
@@ -145,7 +153,7 @@ EOF
 			-Db_lto=false \
 			build
 
-		ninja -C build
+		ninja -C build -j1
 
 		unset LDFLAGS
 
@@ -160,7 +168,7 @@ EOF
 	touch -d "@1" "${SHVR_DIR_OUT}/ksh_${version}/bin/ksh"
 	chmod 755 "${SHVR_DIR_OUT}/ksh_${version}/bin/ksh"
 
-	unset SOURCE_DATE_EPOCH TZ
+	unset SOURCE_DATE_EPOCH TZ LC_ALL MAKEFLAGS
 
 	"${SHVR_DIR_OUT}/ksh_${version}/bin/ksh" -c "echo ksh version $version"
 }

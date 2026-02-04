@@ -241,6 +241,18 @@ shvr_generate_build_checksums()
 	fi
 }
 
+shvr_extract_build_checksums_from_image()
+{
+	image="$1"
+	dest_dir="${SHVR_CHECKSUMS_DIR}/build"
+
+	mkdir -p "$dest_dir"
+
+	container_id="$(docker create "$image")"
+	docker cp "${container_id}:/opt/shvr/checksums/build/." "$dest_dir"
+	docker rm "$container_id" >/dev/null 2>&1
+}
+
 shvr_github_regen_downloads ()
 {
 	set -- $(printf '%s ' $(shvr_targets | sort -t'_' -k1,1 -k2Vr))

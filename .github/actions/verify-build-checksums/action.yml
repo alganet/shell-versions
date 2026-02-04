@@ -1,0 +1,41 @@
+# SPDX-FileCopyrightText: 2026 Alexandre Gomes Gaigalas <alganet@gmail.com>
+# SPDX-License-Identifier: ISC
+
+name: Verifies build checksums
+description: Verifies build checksums from a Docker image
+runs:
+  using: composite
+  steps:
+    - name: Verify build checksums
+      shell: bash
+      run: |
+        set -ex
+        container=$(docker create "${{ inputs.image }}")
+        docker cp "$container":/opt/shvr/checksums/build ./image_out
+        docker rm "$container"
+        sha256list="$(mktemp)"
+        find ./image_out -name '*.sha256sums' > "$sha256list"
+        error=0
+        while IFS= read -r checksum_file; do
+          relative_path="${checksum_file#./image_out/}"
+          if [ ! -f "./checksums/build/${relative_path}" ]; then
+            echo "Checksum file missing: ./checksums/build/${relative_path}"
+            error=1
+          elif ! cmp -s "$checksum_file" "./checksums/build/${relative_path}"; then
+            echo "Checksum file mismatch: ./checksums/build/${relative_path}"
+            echo "Expected:"
+            cat "./checksums/build/${relative_path}"
+            echo "Got:"
+            cat "$checksum_file"
+            error=1
+          fi
+        done < "$sha256list"
+        rm -f "$sha256list"
+        if [ "$error" -ne 0 ]; then
+          exit 1
+        fi
+
+inputs:
+  image:
+    description: Docker image tag to extract (required)
+    required: true
