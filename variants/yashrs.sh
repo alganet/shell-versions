@@ -8,6 +8,7 @@
 shvr_current_yashrs ()
 {
 	cat <<-@
+		yashrs_3.0.5
 		yashrs_3.0.4
 		yashrs_0.4.5
 	@
@@ -16,10 +17,9 @@ shvr_current_yashrs ()
 shvr_targets_yashrs ()
 {
 	cat <<-@
+		yashrs_3.0.5
 		yashrs_3.0.4
 		yashrs_0.4.5
-		yashrs_0.4.0
-		yashrs_0.3.0
 	@
 }
 
