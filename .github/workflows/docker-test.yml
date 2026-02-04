@@ -205,10 +205,9 @@ jobs:
               yash_2.47
               yash_2.46
               yash_2.45
+              yashrs_3.0.5
               yashrs_3.0.4
               yashrs_0.4.5
-              yashrs_0.4.0
-              yashrs_0.3.0
               zsh_5.9
               zsh_5.8.1
               zsh_5.7.1

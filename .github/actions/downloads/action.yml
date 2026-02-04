@@ -715,6 +715,11 @@ runs:
     - uses: ./.github/actions/single-download
       with:
         shvr_shell: yashrs
+        shvr_version: "3.0.5"
+        cache_path: "yashrs/3.0.5"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: yashrs
         shvr_version: "3.0.4"
         cache_path: "yashrs/3.0.4"
     - uses: ./.github/actions/single-download
@@ -722,16 +727,6 @@ runs:
         shvr_shell: yashrs
         shvr_version: "0.4.5"
         cache_path: "yashrs/0.4.5"
-    - uses: ./.github/actions/single-download
-      with:
-        shvr_shell: yashrs
-        shvr_version: "0.4.0"
-        cache_path: "yashrs/0.4.0"
-    - uses: ./.github/actions/single-download
-      with:
-        shvr_shell: yashrs
-        shvr_version: "0.3.0"
-        cache_path: "yashrs/0.3.0"
     - uses: ./.github/actions/single-download
       with:
         shvr_shell: zsh

@@ -88,6 +88,7 @@ jobs:
               posh_0.13.2
               yash_2.60
               yash_2.59
+              yashrs_3.0.5
               yashrs_3.0.4
               yashrs_0.4.5
               zsh_5.9
