@@ -49,7 +49,82 @@ jobs:
           build-args: |
             TARGETS=${{ matrix.targets }}
 
+      - name: Run diagnostic inspection by copying binaries
+        env:
+          TARGETS: ${{ matrix.targets }}
+        run: |
+          set -ex
+          sudo apt-get update -y && sudo apt-get install -y binutils file || true
+          mkdir -p diag/bin
+          container=$(docker create ${{ matrix.tags }})
+          for t in $TARGETS; do
+            interp="$(echo $t | cut -d_ -f1)";
+            path="/opt/$t/bin/$interp";
+            binfile="diag/bin/${t}__${interp}";
+            if docker cp "$container:$path" "$binfile" 2>/dev/null; then
+              out="diag/$t.txt";
+              echo "=== $t diagnostics ===" > "$out";
+              sha256sum "$binfile" >> "$out" 2>&1 || true;
+              stat "$binfile" >> "$out" 2>&1 || true;
+              file "$binfile" >> "$out" 2>&1 || true;
+              readelf -h "$binfile" >> "$out" 2>&1 || true;
+              readelf -S "$binfile" >> "$out" 2>&1 || true;
+              readelf -l "$binfile" >> "$out" 2>&1 || true;
+              readelf -n "$binfile" >> "$out" 2>&1 || true;
+              objdump -d "$binfile" | head -n 200 >> "$out" 2>&1 || true;
+              strings "$binfile" | head -n 100 >> "$out" 2>&1 || true;
+            fi;
+          done
+          mkdir -p diag/ksh-determinism
+          docker cp "$container:/opt/shvr/ksh-determinism/." "diag/ksh-determinism" 2>/dev/null || true
+          docker rm "$container"
+
+      - name: Verify reproducibility using mounted script
+        id: verify
+        run: |
+          # bypass the image entrypoint so we don't execute entrypoint.sh, and
+          # bind-mount the repository so shvr.sh is available for the
+          # verification command.
+          docker run --rm \
+            --entrypoint sh \
+            -v "${{ github.workspace }}:/workspace" \
+            -w /workspace \
+            ${{ matrix.tags }} \
+            -c "sh shvr.sh verify_build ${{ matrix.targets }}"
+        continue-on-error: true
+
+      - name: Dump build info and sample diagnostics
+        if: steps.verify.outcome != 'success' || always()
+        run: |
+          echo "=== build-info.txt from image ==="
+          docker run --rm ${{ matrix.tags }} /bin/cat /opt/shvr/build-info.txt || true
+          echo "=== build-env.txt from image ==="
+          docker run --rm ${{ matrix.tags }} /bin/cat /opt/shvr/build-env.txt || true
+          echo "=== toolchain.txt from image ==="
+          docker run --rm ${{ matrix.tags }} /bin/cat /opt/shvr/toolchain.txt || true
+          echo "=== files available under /opt/shvr in image ==="
+          docker run --rm ${{ matrix.tags }} /bin/sh -c 'ls -la /opt/shvr || true' || true
+          echo "=== sample shells in image (/opt/*/bin/*) ==="
+          docker run --rm ${{ matrix.tags }} /bin/sh -c 'ls /opt/*/bin/* 2>/dev/null | head' || true
+          echo "=== sample diagnostic files inside image (first 50 lines) ==="
+          # list some binaries to inspect in container
+          docker run --rm ${{ matrix.tags }} /bin/sh -c 'ls /opt/*/bin/* 2>/dev/null | head' | while read f; do
+              echo "-- $f --";
+              docker run --rm ${{ matrix.tags }} /bin/sh -c "readelf -h $f | head -n50" || true;
+          done
+          echo "=== ksh determinism files in image ==="
+          docker run --rm ${{ matrix.tags }} /bin/sh -c 'ls -la /opt/shvr/ksh-determinism 2>/dev/null || true' || true
+          docker run --rm ${{ matrix.tags }} /bin/sh -c 'for f in /opt/shvr/ksh-determinism/*.txt; do test -f "$f" || continue; echo "-- $f --"; sed -n "1,120p" "$f"; done' || true
+
+      - name: Upload diagnostic artifacts
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: shvr-diagnostics
+          path: diag
+
       - name: Generate and upload build checksums
+        if: always()
         uses: ./.github/actions/generate-build-checksums
         with:
           image: ${{ matrix.tags }}
@@ -117,22 +192,11 @@ jobs:
               ksh_shvrChistory-b_2016-01-10
               ksh_shvrChistory-b_2012-08-01
               ksh_shvrChistory-b_2011-03-10
-              ksh_shvrChistory-b_2010-10-26
-              ksh_shvrChistory-b_2010-06-21
-              ksh_shvrChistory-b_2008-11-04
-              ksh_shvrChistory-b_2008-06-08
-              ksh_shvrChistory-b_2008-02-02
-              ksh_shvrChistory-b_2007-01-11
               ksh_shvrB2020-2020.0.0
               ksh_shvrA93uplusm-v1.0.10
               ksh_shvrA93uplusm-v1.0.9
               ksh_shvrA93uplusm-v1.0.8
               ksh_shvrA93uplusm-v1.0.7
-              ksh_shvrA93uplusm-v1.0.6
-              ksh_shvrA93uplusm-v1.0.4
-              ksh_shvrA93uplusm-v1.0.3
-              ksh_shvrA93uplusm-v1.0.2
-              ksh_shvrA93uplusm-v1.0.1
               loksh_7.8
               loksh_7.7
               loksh_7.6

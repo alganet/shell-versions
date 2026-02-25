@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: ISC
 
 name: Generate and upload build checksums
-description: Extracts /opt from the built image, generates build checksums into checksums/build/, ensures correct ownership and uploads the artifact
+description: Extracts /opt from the built image, generates build checksums and diagnostics, ensures correct ownership and uploads the artifact
 runs:
   using: composite
   steps:
@@ -10,31 +10,135 @@ runs:
       shell: bash
       run: |
         set -ex
+        mkdir -p image_out
         container=$(docker create "${{ inputs.image }}")
-        docker cp $container:/opt ./image_out
-        docker rm $container
+        docker cp "$container":/opt ./image_out
+        docker cp "$container":/opt/shvr/build-info.txt ./ 2>/dev/null || true
+        docker cp "$container":/opt/shvr/build-env.txt ./ 2>/dev/null || true
+        docker rm "$container"
+
+    - name: Generate host-side build metadata
+      shell: bash
+      run: |
+        set -ex
+        mkdir -p checksums/diag
+        {
+          echo "image=${{ inputs.image }}"
+          echo "generated_at_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "runner_uname=$(uname -a)"
+          echo "sha256sum_version=$(sha256sum --version 2>/dev/null | head -n1 || true)"
+          echo "docker_version=$(docker --version 2>/dev/null || true)"
+          echo "docker_server_version=$(docker version --format '{{.Server.Version}}' 2>/dev/null || true)"
+          echo "image_id=$(docker image inspect --format '{{.Id}}' "${{ inputs.image }}" 2>/dev/null || true)"
+          echo "image_created=$(docker image inspect --format '{{.Created}}' "${{ inputs.image }}" 2>/dev/null || true)"
+          echo "image_os_arch=$(docker image inspect --format '{{.Os}}/{{.Architecture}}' "${{ inputs.image }}" 2>/dev/null || true)"
+          echo "extracted_file_count=$(find image_out/opt -type f 2>/dev/null | wc -l || true)"
+          echo "extracted_bin_count=$(find image_out/opt -type f -path '*/bin/*' 2>/dev/null | wc -l || true)"
+        } > build-info.txt
+        env | sort > build-env.txt
 
     - name: Generate build checksums
       shell: bash
       env:
-        SHVR_DIR_OUT: ${{ github.workspace }}/image_out
-        SHVR_CHECKSUMS_DIR: ${{ github.workspace }}/checksums
+        SHVR_DIR_OUT: ${{ github.workspace }}/image_out/opt
+        SHVR_CHECKSUMS_DIR: ${{ github.workspace }}/checksums-generated
       run: |
         set -ex
         sh shvr.sh generate_build_checksums
+
+    - name: Compare generated checksums with expected
+      shell: bash
+      run: |
+        set -ex
+        mkdir -p checksums/diag
+        report=checksums/diag/build-checksum-diff.txt
+        : > "$report"
+        mismatch_count=0
+        missing_expected_count=0
+        generated_count=0
+
+        while IFS= read -r generated
+        do
+          generated_count=$((generated_count + 1))
+          rel=${generated#checksums-generated/build/}
+          expected="checksums/build/$rel"
+
+          if ! test -f "$expected"
+          then
+            missing_expected_count=$((missing_expected_count + 1))
+            echo "MISSING expected checksum: $rel" >> "$report"
+            continue
+          fi
+
+          gsum=$(awk '{print $1}' "$generated")
+          esum=$(awk '{print $1}' "$expected")
+          if test "x$gsum" != "x$esum"
+          then
+            mismatch_count=$((mismatch_count + 1))
+            echo "MISMATCH $rel" >> "$report"
+            echo "  generated: $gsum" >> "$report"
+            echo "  expected : $esum" >> "$report"
+          fi
+        done < <(find checksums-generated/build -type f -name '*.sha256sums' | sort)
+
+        {
+          echo "generated_checksum_files=$generated_count"
+          echo "mismatch_count=$mismatch_count"
+          echo "missing_expected_count=$missing_expected_count"
+        } > checksums/diag/build-checksum-summary.txt
+
+        if test "$generated_count" = 0
+        then
+          echo "No generated checksum files were found under checksums-generated/build" >> "$report"
+        fi
+
+    - name: Run binary diagnostics on host
+      shell: bash
+      run: |
+        set -ex
+        sudo apt-get update -y && sudo apt-get install -y binutils file || true
+        mkdir -p checksums/diag
+
+        find image_out/opt -type f -path '*/bin/*' | sort | while read -r bin
+        do
+          rel=${bin#image_out/opt/}
+          out=checksums/diag/${rel//\//_}.txt
+          mkdir -p "$(dirname "$out")"
+          echo "=== $rel ===" > "$out"
+          sha256sum "$bin" >> "$out" 2>&1 || true
+          stat "$bin" >> "$out" 2>&1 || true
+          file "$bin" >> "$out" 2>&1 || true
+          readelf -h "$bin" >> "$out" 2>&1 || true
+          readelf -S "$bin" >> "$out" 2>&1 || true
+          readelf -l "$bin" >> "$out" 2>&1 || true
+          readelf -n "$bin" >> "$out" 2>&1 || true
+          readelf -p .comment "$bin" >> "$out" 2>&1 || true
+          objdump -d "$bin" | head -n 200 >> "$out" 2>&1 || true
+          strings "$bin" | head -n 100 >> "$out" 2>&1 || true
+        done
+
+        if test -d image_out/opt/shvr/ksh-determinism
+        then
+          mkdir -p checksums/diag/ksh-determinism
+          cp -a image_out/opt/shvr/ksh-determinism/. checksums/diag/ksh-determinism/
+        fi
 
     - name: Ensure ownership of checksums
       shell: bash
       run: |
         set -ex
-        # Some runners may create files as root when using docker, ensure runner can upload
-        sudo chown -R $(id -u):$(id -g) checksums/build || true
+        sudo chown -R "$(id -u):$(id -g)" checksums checksums-generated build-info.txt build-env.txt || true
 
-    - name: Upload build checksums
+    - name: Upload build checksums (and diagnostics)
       uses: actions/upload-artifact@v6
       with:
         name: ${{ inputs.artifact_name }}
-        path: checksums/build
+        path: |
+          checksums-generated/build
+          checksums/build
+          checksums/diag
+          build-info.txt
+          build-env.txt
 
 inputs:
   image:

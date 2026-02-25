@@ -241,6 +241,87 @@ shvr_generate_build_checksums()
 	fi
 }
 
+# Verify outputs under ${SHVR_DIR_OUT} match committed checksums in
+# ${SHVR_CHECKSUMS_DIR}/build.  When called with specific targets it will
+# only check those directories; otherwise it checks everything found in out.
+# Returns zero if all files match, nonzero on any mismatch or missing entry.
+shvr_verify_build()
+{
+	bad=0
+	check_file() {
+		f="$1"
+		rel="${f#${SHVR_DIR_OUT}/}"
+		csfile="${SHVR_CHECKSUMS_DIR}/build/${rel}.sha256sums"
+		if ! test -f "$csfile"
+		then
+			echo "missing checksum for $rel" >&2
+			bad=1
+			return
+		fi
+		echo "checking $rel"
+		# run check in the directory of the file so sha256sum -c works
+		( cd "$(dirname "$f")" && {
+			if ! sha256sum -c "$csfile"; then
+				# provide extra detail about the mismatch
+				computed=$(sha256sum "$(basename "$f")" | awk '{print $1}')
+				expected=$(awk '{print $1}' "$csfile")
+				echo "    computed: $computed"
+				echo "    expected: $expected"
+				echo "    file: $f"
+				if command -v stat >/dev/null 2>&1
+				then
+					echo "    stat:"
+					stat "$f" | sed 's/^/      /'
+				fi
+				if command -v file >/dev/null 2>&1
+				then
+					echo "    file(1):"
+					file "$f" | sed 's/^/      /'
+				fi
+				if command -v readelf >/dev/null 2>&1
+				then
+					echo "    readelf -n (first 80 lines):"
+					readelf -n "$f" 2>/dev/null | sed -n '1,80p' | sed 's/^/      /'
+				fi
+				return 1
+			fi
+		} ) || bad=1
+	}
+
+	# iterate without a pipeline so we stay in the current shell and
+	# modifications to "bad" are preserved. Use temp files to safely handle
+	# arbitrary filenames.
+	if test -z "$*"
+	then
+		tmpfile="$(mktemp)"
+		find "$SHVR_DIR_OUT" -type f > "$tmpfile"
+		while IFS= read -r f
+		do
+			check_file "$f"
+		done < "$tmpfile"
+		rm -f "$tmpfile"
+	else
+		for t in "$@"
+		do
+			dir="$SHVR_DIR_OUT/$t"
+			if test -d "$dir"
+			then
+				tmpfile="$(mktemp)"
+				find "$dir" -type f > "$tmpfile"
+				while IFS= read -r f
+				do
+					check_file "$f"
+				done < "$tmpfile"
+				rm -f "$tmpfile"
+			else
+				echo "missing build output for $t" >&2
+				bad=1
+			fi
+		done
+	fi
+	return $bad
+}
+
 shvr_github_regen_downloads ()
 {
 	set -- $(printf '%s ' $(shvr_targets | sort -t'_' -k1,1 -k2Vr))
