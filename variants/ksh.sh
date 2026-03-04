@@ -3,6 +3,8 @@
 # SPDX-FileCopyrightText: 2025 Alexandre Gomes Gaigalas <alganet@gmail.com>
 # SPDX-License-Identifier: ISC
 
+. "${SHVR_DIR_SELF}/common/musl-cross-make.sh"
+
 shvr_current_ksh ()
 {
 	cat <<-@
@@ -23,16 +25,6 @@ shvr_targets_ksh ()
 		ksh_shvrA93uplusm-v1.0.3
 		ksh_shvrA93uplusm-v1.0.2
 		ksh_shvrA93uplusm-v1.0.1
-		ksh_shvrB2020-2020.0.0
-		ksh_shvrChistory-b_2016-01-10
-		ksh_shvrChistory-b_2012-08-01
-		ksh_shvrChistory-b_2011-03-10
-		ksh_shvrChistory-b_2010-10-26
-		ksh_shvrChistory-b_2010-06-21
-		ksh_shvrChistory-b_2008-11-04
-		ksh_shvrChistory-b_2008-06-08
-		ksh_shvrChistory-b_2008-02-02
-		ksh_shvrChistory-b_2007-01-11
 	@
 }
 
@@ -52,23 +44,17 @@ shvr_download_ksh ()
 
 	if ! test -f "${build_srcdir}.tar.gz"
 	then
-		case "$fork_name" in
-			*'93uplusm')
-				shvr_fetch "https://github.com/ksh93/ksh/archive/refs/tags/${fork_version}.tar.gz" "${build_srcdir}.tar.gz"
-				;;
-			*'2020')
-				shvr_fetch "https://github.com/ksh2020/ksh/archive/refs/tags/${fork_version}.tar.gz" "${build_srcdir}.tar.gz"
-				;;
-			*'history')
-				shvr_fetch "https://api.github.com/repos/ksh93/ksh93-history/tarball/${fork_version}" "${build_srcdir}.tar.gz"
-				;;
-		esac
+		shvr_fetch "https://github.com/ksh93/ksh/archive/refs/tags/${fork_version}.tar.gz" "${build_srcdir}.tar.gz"
 	fi
+
+	shvr_download_musl_cross_make
 }
 
 shvr_build_ksh ()
 {
 	shvr_versioninfo_ksh "$1"
+
+	shvr_build_musl_cross_make
 
 	mkdir -p "${build_srcdir}"
 
@@ -76,11 +62,12 @@ shvr_build_ksh ()
 
 	cd "${build_srcdir}"
 
-	if test -d "${SHVR_DIR_SELF}/patches/ksh/$version"
+	# Skip shared library creation - we only need static binaries.
+	# Replace dylink.sh with a no-op before it gets installed to arch/bin/
+	if test -f "src/cmd/INIT/dylink.sh"
 	then
-		find "${SHVR_DIR_SELF}/patches/ksh/$version" -type f | sort | while read -r patch_file
-		do patch -p0 < "$patch_file"
-		done
+		printf '#!/bin/sh\nexit 0\n' > "src/cmd/INIT/dylink.sh"
+		chmod +x "src/cmd/INIT/dylink.sh"
 	fi
 
 	# Set reproducible build environment
@@ -90,71 +77,85 @@ shvr_build_ksh ()
 	# Normalize all file timestamps in source directory to epoch 1 before build
 	find "${build_srcdir}" -type f -exec touch -d "@1" {} \;
 
-	if test -f "bin/package"
-	then
-		# Set additional reproducible build flags for package system
-		# -fno-asynchronous-unwind-tables: Remove non-deterministic unwind tables
-		# -frandom-seed=0: Ensure consistent random seed for hash tables and such
-		# -fno-tree-vectorize/-fno-tree-slp-vectorize: Avoid compiler auto-vectorized constant pools that can vary across builds
-		# -Wl,--build-id=none: Remove build IDs which contain timestamps
-		export CCFLAGS="${CCFLAGS:-} -fno-asynchronous-unwind-tables -frandom-seed=0 -fno-tree-vectorize -fno-tree-slp-vectorize"
-		export CFLAGS="${CFLAGS:-} -fno-asynchronous-unwind-tables -frandom-seed=0 -fno-tree-vectorize -fno-tree-slp-vectorize"
-		export CXXFLAGS="${CXXFLAGS:-} -fno-asynchronous-unwind-tables -frandom-seed=0 -fno-tree-vectorize -fno-tree-slp-vectorize"
-		export LDFLAGS="-Wl,--build-id=none"
+	MUSL_CC="$(shvr_musl_cc)"
+	MUSL_AR="$(shvr_musl_ar)"
+	MUSL_RANLIB="$(shvr_musl_ranlib)"
 
-		# Create wrapper scripts for ar and ranlib with deterministic flags
-		mkdir -p "${build_srcdir}/.shvr_bins"
-		cat > "${build_srcdir}/.shvr_bins/ar" << 'EOF'
+	# Set additional reproducible build flags for package system
+	# -fno-asynchronous-unwind-tables: Remove non-deterministic unwind tables
+	# -frandom-seed=0: Ensure consistent random seed for hash tables and such
+	# -fno-tree-vectorize/-fno-tree-slp-vectorize: Avoid compiler auto-vectorized constant pools that can vary across builds
+	# -Wl,--build-id=none: Remove build IDs which contain timestamps
+	# Note: -static is handled by the cc wrapper (not LDFLAGS) to
+	# avoid conflicts with -shared when building .dll/.so files
+	export CCFLAGS="${CCFLAGS:-} -fno-asynchronous-unwind-tables -frandom-seed=0 -fno-tree-vectorize -fno-tree-slp-vectorize"
+	export CFLAGS="${CFLAGS:-} -fno-asynchronous-unwind-tables -frandom-seed=0 -fno-tree-vectorize -fno-tree-slp-vectorize"
+	export CXXFLAGS="${CXXFLAGS:-} -fno-asynchronous-unwind-tables -frandom-seed=0 -fno-tree-vectorize -fno-tree-slp-vectorize"
+	export LDFLAGS="-Wl,--build-id=none"
+
+	# Create wrapper scripts for cc, ar, and ranlib
+	# The cc wrapper always passes -static so that bin/package's
+	# cross-compiler test produces a runnable static binary
+	mkdir -p "${build_srcdir}/.shvr_bins"
+	cat > "${build_srcdir}/.shvr_bins/cc" << EOF
 #!/bin/sh
-exec /usr/bin/ar -D "$@"
+# Add -static unless building a shared library
+case " \$* " in
+*' -shared '*) exec "${MUSL_CC}" "\$@" ;;
+*)             exec "${MUSL_CC}" -static "\$@" ;;
+esac
 EOF
-		chmod +x "${build_srcdir}/.shvr_bins/ar"
-		touch -d "@1" "${build_srcdir}/.shvr_bins/ar"
+	chmod +x "${build_srcdir}/.shvr_bins/cc"
+	touch -d "@1" "${build_srcdir}/.shvr_bins/cc"
 
-		cat > "${build_srcdir}/.shvr_bins/ranlib" << 'EOF'
+	cat > "${build_srcdir}/.shvr_bins/ar" << EOF
 #!/bin/sh
-exec /usr/bin/ranlib -D "$@"
+exec ${MUSL_AR} -D "\$@"
 EOF
-		chmod +x "${build_srcdir}/.shvr_bins/ranlib"
-		touch -d "@1" "${build_srcdir}/.shvr_bins/ranlib"
+	chmod +x "${build_srcdir}/.shvr_bins/ar"
+	touch -d "@1" "${build_srcdir}/.shvr_bins/ar"
 
-		# Add wrapper scripts to PATH before package script and directly
-		export AR="${build_srcdir}/.shvr_bins/ar"
-		export RANLIB="${build_srcdir}/.shvr_bins/ranlib"
-		export PATH="${build_srcdir}/.shvr_bins:${PATH}"
+	cat > "${build_srcdir}/.shvr_bins/ranlib" << EOF
+#!/bin/sh
+exec ${MUSL_RANLIB} -D "\$@"
+EOF
+	chmod +x "${build_srcdir}/.shvr_bins/ranlib"
+	touch -d "@1" "${build_srcdir}/.shvr_bins/ranlib"
 
-		if test "$fork_name" = "shvrChistory"
-		then
-			bin/package make CC=gcc-12 "AR=${build_srcdir}/.shvr_bins/ar" "RANLIB=${build_srcdir}/.shvr_bins/ranlib"
-			host_type="gnu.i386-64"
-		else
-			bin/package make "AR=${build_srcdir}/.shvr_bins/ar" "RANLIB=${build_srcdir}/.shvr_bins/ranlib"
-			host_type="$(bin/package host type)"
-		fi
+	# Skip shared library creation (dylink) - we only need static binaries
+	cat > "${build_srcdir}/.shvr_bins/dylink" << 'EOF'
+#!/bin/sh
+exit 0
+EOF
+	chmod +x "${build_srcdir}/.shvr_bins/dylink"
+	touch -d "@1" "${build_srcdir}/.shvr_bins/dylink"
 
-		unset CCFLAGS CFLAGS CXXFLAGS AR RANLIB LDFLAGS
+	# Add wrapper scripts to PATH before package script and directly
+	export AR="${build_srcdir}/.shvr_bins/ar"
+	export RANLIB="${build_srcdir}/.shvr_bins/ranlib"
+	export PATH="${build_srcdir}/.shvr_bins:${PATH}"
 
-		mkdir -p "${SHVR_DIR_OUT}/ksh_${version}/bin"
-		cp "arch/${host_type}/bin/ksh" "${SHVR_DIR_OUT}/ksh_${version}/bin/ksh"
-	elif test -f "meson.build"
+	# Set TMPDIR inside the build tree to avoid noexec /tmp in Docker
+	export TMPDIR="${build_srcdir}/.shvr_tmp"
+	mkdir -p "${TMPDIR}"
+	bin/package make CC="${build_srcdir}/.shvr_bins/cc" "AR=${build_srcdir}/.shvr_bins/ar" "RANLIB=${build_srcdir}/.shvr_bins/ranlib"
+	unset TMPDIR
+	# Detect the arch directory used by the build system.
+	# Older ksh versions (pre-1.0.6) create arch/musl.* but
+	# "bin/package host type" reports linux.* instead.
+	host_type="$(bin/package host type)"
+	if ! test -f "arch/${host_type}/bin/ksh"
 	then
-		# Set meson to use reproducible build options
-		export LDFLAGS="-Wl,--build-id=none"
-		meson \
-			--prefix="${SHVR_DIR_OUT}/ksh_$version" \
-			-Db_lto=false \
-			build
-
-		ninja -C build
-
-		unset LDFLAGS
-
-		mkdir -p "${SHVR_DIR_OUT}/ksh_${version}/bin"
-		cp "build/src/cmd/ksh93/ksh" "${SHVR_DIR_OUT}/ksh_${version}/bin/ksh"
+		host_type="$(find arch -path '*/bin/ksh' -type f 2>/dev/null | head -1 | cut -d/ -f2)"
 	fi
 
-	# Strip binary to ensure reproducible output
-	strip --strip-all "${SHVR_DIR_OUT}/ksh_${version}/bin/ksh"
+	unset CCFLAGS CFLAGS CXXFLAGS AR RANLIB LDFLAGS
+
+	mkdir -p "${SHVR_DIR_OUT}/ksh_${version}/bin"
+	cp "arch/${host_type}/bin/ksh" "${SHVR_DIR_OUT}/ksh_${version}/bin/ksh"
+
+	# Strip binary to ensure reproducible output (use musl strip)
+	"$(shvr_musl_strip)" --strip-all "${SHVR_DIR_OUT}/ksh_${version}/bin/ksh"
 
 	# Ensure consistent permissions and timestamps
 	touch -d "@1" "${SHVR_DIR_OUT}/ksh_${version}/bin/ksh"
@@ -168,18 +169,6 @@ EOF
 shvr_deps_ksh ()
 {
 	shvr_versioninfo_ksh "$1"
-	case "$fork_name" in
-		*'93uplusm')
-			apt-get -y install \
-				curl gcc patch
-			;;
-		*'2020')
-			apt-get -y install \
-				curl gcc meson
-			;;
-		*'history')
-			apt-get -y install \
-				curl gcc-12 patch
-			;;
-	esac
+	apt-get -y install \
+		curl gcc g++ make patch xz-utils bzip2
 }

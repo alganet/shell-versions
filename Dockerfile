@@ -10,7 +10,6 @@ FROM debian:trixie-slim AS builder
     COPY "build/" "/usr/src/shvr"
     COPY "checksums/" "/shvr/checksums"
     COPY "common/" "/shvr/common"
-    COPY "patches/" "/shvr/patches"
     COPY "variants/" "/shvr/variants"
 
     COPY "shvr.sh" "/shvr/shvr.sh"
