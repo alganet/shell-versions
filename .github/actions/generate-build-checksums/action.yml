@@ -30,11 +30,13 @@ runs:
         # Some runners may create files as root when using docker, ensure runner can upload
         sudo chown -R $(id -u):$(id -g) checksums/build || true
 
-    - name: Upload build checksums
+    - name: Upload build checksums and diagnostics
       uses: actions/upload-artifact@v6
       with:
         name: ${{ inputs.artifact_name }}
-        path: checksums/build
+        path: |
+          checksums/build
+          image_out/shvr/build-env.log
 
 inputs:
   image:
