@@ -215,7 +215,7 @@ shvr_generate_build_checksums()
 	if test -z "$*"
 	then
 		start_dir="${SHVR_DIR_OUT}"
-		find "$start_dir" -type f | while read -r f
+		find "$start_dir" -type f -not -path '*/shvr/*' | while read -r f
 		do
 			rel="${f#${SHVR_DIR_OUT}/}"
 			dest_dir="$(dirname "${SHVR_CHECKSUMS_DIR}/build/${rel}.sha256sums")"
@@ -238,6 +238,82 @@ shvr_generate_build_checksums()
 				done
 			fi
 		done
+	fi
+}
+
+# Verify build outputs against committed checksums in ${SHVR_CHECKSUMS_DIR}/build/.
+# Reports all failures before exiting so CI logs show every mismatch.
+# Usage: shvr_verify_build_checksums [<shell>_<version> ...]
+shvr_verify_build_checksums()
+{
+	if test "${SHVR_SKIP_VERIFY_SHA256}" = "1"
+	then
+		return 0
+	fi
+
+	checksums_dir="${SHVR_CHECKSUMS_DIR}/build"
+
+	if ! test -d "$checksums_dir"
+	then
+		echo "no build checksums directory at $checksums_dir" >&2
+		return 1
+	fi
+
+	fail_count=0
+
+	if test -z "$*"
+	then
+		search_dir="$checksums_dir"
+	else
+		search_dir=""
+		for t in "$@"
+		do
+			target_dir="${checksums_dir}/${t}"
+			if ! test -d "$target_dir"
+			then
+				echo "no build checksums for target $t at $target_dir" >&2
+				fail_count=$((fail_count + 1))
+				continue
+			fi
+			search_dir="${search_dir} ${target_dir}"
+		done
+	fi
+
+	for d in $search_dir
+	do
+		for checksum_file in $(find "$d" -name '*.sha256sums')
+		do
+			rel="${checksum_file#${checksums_dir}/}"
+			# Strip .sha256sums suffix to get the relative path of the binary
+			bin_rel="${rel%.sha256sums}"
+			bin_path="${SHVR_DIR_OUT}/${bin_rel}"
+
+			if ! test -f "$bin_path"
+			then
+				echo "FAIL missing binary: $bin_path (expected by $checksum_file)" >&2
+				fail_count=$((fail_count + 1))
+				continue
+			fi
+
+			savedir="$(pwd)"
+			cd "$(dirname "$bin_path")"
+			if ! sha256sum -c "$checksum_file" >/dev/null 2>&1
+			then
+				expected=$(cat "$checksum_file")
+				actual=$(sha256sum "$(basename "$bin_path")" | sed "s/  .*/  $(basename "$bin_path")/")
+				echo "FAIL $bin_rel" >&2
+				echo "  expected: $expected" >&2
+				echo "  actual:   $actual" >&2
+				fail_count=$((fail_count + 1))
+			fi
+			cd "$savedir"
+		done
+	done
+
+	if test "$fail_count" -gt 0
+	then
+		echo "build checksum verification failed: $fail_count error(s)" >&2
+		return 1
 	fi
 }
 

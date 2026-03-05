@@ -1,0 +1,29 @@
+# SPDX-FileCopyrightText: 2026 Alexandre Gomes Gaigalas <alganet@gmail.com>
+# SPDX-License-Identifier: ISC
+
+name: Verify build checksums
+description: Extracts /opt from the built image and verifies binaries against committed checksums in checksums/build/
+runs:
+  using: composite
+  steps:
+    - name: Extract image /opt
+      shell: bash
+      run: |
+        set -ex
+        container=$(docker create "${{ inputs.image }}")
+        docker cp $container:/opt ./image_out
+        docker rm $container
+
+    - name: Verify build checksums
+      shell: bash
+      env:
+        SHVR_DIR_OUT: ${{ github.workspace }}/image_out
+        SHVR_CHECKSUMS_DIR: ${{ github.workspace }}/checksums
+      run: |
+        set -ex
+        sh shvr.sh verify_build_checksums
+
+inputs:
+  image:
+    description: Docker image tag to verify (required)
+    required: true

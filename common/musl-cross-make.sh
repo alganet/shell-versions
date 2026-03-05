@@ -35,11 +35,19 @@ shvr_build_musl_cross_make ()
 
 	(
 		cd "${SHVR_DIR_SRC}/musl-cross-make" || exit 1
+
+		# Reproducible environment for toolchain build
+		export SOURCE_DATE_EPOCH=1
+		export TZ=UTC
+		export LC_ALL=C
+		export LANG=C
+
 		cat > config.mak << MCMEOF
 TARGET = ${SHVR_MCM_TARGET}
 OUTPUT = ${SHVR_MCM_OUTPUT}
 DL_CMD = curl -sSL -o
 GNU_SITE = https://ftp.gnu.org/gnu
+COMMON_CONFIG += CFLAGS_FOR_TARGET="-fno-asynchronous-unwind-tables -frandom-seed=1"
 MCMEOF
 		make -j"$(nproc)"
 		make install
@@ -64,4 +72,40 @@ shvr_musl_ar ()
 shvr_musl_ranlib ()
 {
 	echo "${SHVR_MCM_OUTPUT}/bin/${SHVR_MCM_TARGET}-ranlib"
+}
+
+# Write build environment diagnostics to a log file for reproducibility debugging.
+# Only writes the environment section once; subsequent calls are no-ops.
+shvr_log_build_env ()
+{
+	log_file="${SHVR_DIR_OUT}/shvr/build-env.log"
+	# Only write environment info once
+	if test -f "$log_file"
+	then
+		return 0
+	fi
+	mkdir -p "$(dirname "$log_file")"
+	(
+		# Disable xtrace inside the log so it stays clean
+		set +x
+		echo "=== Build Environment ==="
+		echo "--- uname -a ---"
+		uname -a
+		echo "--- /etc/os-release ---"
+		cat /etc/os-release 2>/dev/null || echo "(not available)"
+		echo "--- CPU model ---"
+		grep -m1 'model name' /proc/cpuinfo 2>/dev/null || echo "(not available)"
+		echo "--- CPU flags ---"
+		grep -m1 '^flags' /proc/cpuinfo 2>/dev/null || echo "(not available)"
+		echo "--- System GCC ---"
+		gcc --version 2>/dev/null | head -1 || echo "(not installed)"
+		echo "--- Cross-compiler GCC ---"
+		"${SHVR_MCM_OUTPUT}/bin/${SHVR_MCM_TARGET}-gcc" --version 2>/dev/null | head -1 || echo "(not available)"
+		echo "--- Cross-compiler binary SHA256 ---"
+		sha256sum "${SHVR_MCM_OUTPUT}/bin/${SHVR_MCM_TARGET}-gcc" 2>/dev/null || echo "(not available)"
+		echo "--- Cross-compiler config (cc -v) ---"
+		"${SHVR_MCM_OUTPUT}/bin/${SHVR_MCM_TARGET}-gcc" -v 2>&1 || echo "(not available)"
+		echo "--- nproc ---"
+		nproc 2>/dev/null || echo "(not available)"
+	) > "$log_file" 2>&1
 }
