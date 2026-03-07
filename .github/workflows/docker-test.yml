@@ -53,6 +53,7 @@ jobs:
         uses: ./.github/actions/verify-build-checksums
         with:
           image: ${{ matrix.tags }}
+          targets: ${{ matrix.targets }}
 
       - name: Generate and upload build checksums
         if: always()
@@ -120,6 +121,16 @@ jobs:
               hush_1.27.2
               hush_1.26.2
               hush_1.25.1
+              ksh_shvrChistory-b_2016-01-10
+              ksh_shvrChistory-b_2012-08-01
+              ksh_shvrChistory-b_2011-03-10
+              ksh_shvrChistory-b_2010-10-26
+              ksh_shvrChistory-b_2010-06-21
+              ksh_shvrChistory-b_2008-11-04
+              ksh_shvrChistory-b_2008-06-08
+              ksh_shvrChistory-b_2008-02-02
+              ksh_shvrChistory-b_2007-01-11
+              ksh_shvrB2020-2020.0.0
               ksh_shvrA93uplusm-v1.0.10
               ksh_shvrA93uplusm-v1.0.9
               ksh_shvrA93uplusm-v1.0.8

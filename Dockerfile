@@ -11,6 +11,7 @@ FROM debian:trixie-slim@sha256:1d3c811171a08a5adaa4a163fbafd96b61b87aa871bbc7aa1
     COPY "build/" "/usr/src/shvr"
     COPY "checksums/" "/shvr/checksums"
     COPY "common/" "/shvr/common"
+    COPY "patches/" "/shvr/patches"
     COPY "variants/" "/shvr/variants"
 
     COPY "shvr.sh" "/shvr/shvr.sh"

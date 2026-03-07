@@ -21,9 +21,13 @@ runs:
         SHVR_CHECKSUMS_DIR: ${{ github.workspace }}/checksums
       run: |
         set -ex
-        sh shvr.sh verify_build_checksums
+        sh shvr.sh verify_build_checksums ${{ inputs.targets }}
 
 inputs:
   image:
     description: Docker image tag to verify (required)
     required: true
+  targets:
+    description: Space-separated list of targets to verify (optional, verifies all if omitted)
+    required: false
+    default: ''

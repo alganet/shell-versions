@@ -260,6 +260,56 @@ runs:
     - uses: ./.github/actions/single-download
       with:
         shvr_shell: ksh
+        shvr_version: "shvrChistory-b_2016-01-10"
+        cache_path: "ksh/shvrChistory-b_2016-01-10"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: ksh
+        shvr_version: "shvrChistory-b_2012-08-01"
+        cache_path: "ksh/shvrChistory-b_2012-08-01"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: ksh
+        shvr_version: "shvrChistory-b_2011-03-10"
+        cache_path: "ksh/shvrChistory-b_2011-03-10"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: ksh
+        shvr_version: "shvrChistory-b_2010-10-26"
+        cache_path: "ksh/shvrChistory-b_2010-10-26"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: ksh
+        shvr_version: "shvrChistory-b_2010-06-21"
+        cache_path: "ksh/shvrChistory-b_2010-06-21"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: ksh
+        shvr_version: "shvrChistory-b_2008-11-04"
+        cache_path: "ksh/shvrChistory-b_2008-11-04"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: ksh
+        shvr_version: "shvrChistory-b_2008-06-08"
+        cache_path: "ksh/shvrChistory-b_2008-06-08"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: ksh
+        shvr_version: "shvrChistory-b_2008-02-02"
+        cache_path: "ksh/shvrChistory-b_2008-02-02"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: ksh
+        shvr_version: "shvrChistory-b_2007-01-11"
+        cache_path: "ksh/shvrChistory-b_2007-01-11"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: ksh
+        shvr_version: "shvrB2020-2020.0.0"
+        cache_path: "ksh/shvrB2020-2020.0.0"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: ksh
         shvr_version: "shvrA93uplusm-v1.0.10"
         cache_path: "ksh/shvrA93uplusm-v1.0.10"
     - uses: ./.github/actions/single-download

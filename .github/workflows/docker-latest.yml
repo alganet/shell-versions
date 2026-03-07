@@ -53,6 +53,7 @@ jobs:
         uses: ./.github/actions/verify-build-checksums
         with:
           image: ${{ matrix.tags }}
+          targets: ${{ matrix.targets }}
 
       - name: Generate and upload build checksums
         if: always()
