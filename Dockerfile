@@ -22,6 +22,9 @@ FROM debian:trixie-slim@sha256:1d3c811171a08a5adaa4a163fbafd96b61b87aa871bbc7aa1
     ENV SHVR_DIR_OUT="/opt"
     ARG TARGETS
 
+    # Build musl cross-compiler once (shared by all static variants)
+    RUN bash "/shvr/shvr.sh" musl-setup $TARGETS
+
     # Build
     RUN bash "/shvr/shvr.sh" deps $TARGETS
     RUN bash "/shvr/shvr.sh" build $TARGETS
