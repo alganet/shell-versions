@@ -385,6 +385,34 @@ shvr_github_regen_workflow ()
 	rm "$yml_file.bak"
 }
 
+shvr_musl_setup ()
+{
+	. "${SHVR_DIR_SELF}/common/musl-cross-make.sh"
+
+	needs_musl=0
+	for target in "$@"
+	do
+		interpreter="${target%%_*}"
+		version="${target#*_}"
+		. "${SHVR_DIR_SELF}/variants/${interpreter}.sh"
+		if command -v "shvr_static_${interpreter}" >/dev/null 2>&1
+		then
+			if "shvr_static_${interpreter}" "$version"
+			then
+				needs_musl=1
+				break
+			fi
+		fi
+	done
+
+	if test "$needs_musl" = 1
+	then
+		apt-get -y install gcc g++ make curl patch xz-utils
+		shvr_download_musl_cross_make
+		shvr_build_musl_cross_make
+	fi
+}
+
 shvr_github_regen_all ()
 {
 	(shvr_github_regen_downloads)
