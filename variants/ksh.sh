@@ -110,33 +110,20 @@ shvr_build_ksh ()
 
 	if test -f "bin/package"
 	then
-		export CCFLAGS="${CCFLAGS:-} -fno-asynchronous-unwind-tables -frandom-seed=1 -fno-tree-vectorize -fno-tree-slp-vectorize -ffile-prefix-map=${build_srcdir}=."
-		export CFLAGS="${CFLAGS:-} -fno-asynchronous-unwind-tables -frandom-seed=1 -fno-tree-vectorize -fno-tree-slp-vectorize -ffile-prefix-map=${build_srcdir}=."
-		export CXXFLAGS="${CXXFLAGS:-} -fno-asynchronous-unwind-tables -frandom-seed=1 -fno-tree-vectorize -fno-tree-slp-vectorize -ffile-prefix-map=${build_srcdir}=."
+		export CCFLAGS="${CCFLAGS:-} -ffile-prefix-map=${build_srcdir}=."
 		export LDFLAGS="-Wl,--build-id=none"
 
-		# Install deterministic ar/ranlib wrappers
-		mkdir -p "${build_srcdir}/.shvr_bins"
-		cp "${SHVR_DIR_SELF}/patches/ksh/_common/ar-deterministic.sh" "${build_srcdir}/.shvr_bins/ar"
-		cp "${SHVR_DIR_SELF}/patches/ksh/_common/ranlib-deterministic.sh" "${build_srcdir}/.shvr_bins/ranlib"
-		chmod +x "${build_srcdir}/.shvr_bins/ar" "${build_srcdir}/.shvr_bins/ranlib"
-		touch -d "@1" "${build_srcdir}/.shvr_bins/ar" "${build_srcdir}/.shvr_bins/ranlib"
-
 		shvr_install_getconf_wrapper
-
-		export AR="${build_srcdir}/.shvr_bins/ar"
-		export RANLIB="${build_srcdir}/.shvr_bins/ranlib"
-		export PATH="${build_srcdir}/.shvr_bins:${PATH}"
 
 		export TMPDIR="${build_srcdir}/.shvr_tmp"
 		mkdir -p "${TMPDIR}"
 
 		if test "$fork_name" = "shvrChistory"
 		then
-			bin/package make CC=gcc-12 "AR=${build_srcdir}/.shvr_bins/ar" "RANLIB=${build_srcdir}/.shvr_bins/ranlib"
+			bin/package make CC=gcc-12
 			host_type="gnu.i386-64"
 		else
-			bin/package make CC=/usr/bin/gcc "AR=${build_srcdir}/.shvr_bins/ar" "RANLIB=${build_srcdir}/.shvr_bins/ranlib"
+			bin/package make CC=/usr/bin/gcc
 			host_type="$(bin/package host type)"
 			if ! test -f "arch/${host_type}/bin/ksh"
 			then
@@ -145,7 +132,7 @@ shvr_build_ksh ()
 		fi
 
 		unset TMPDIR
-		unset CCFLAGS CFLAGS CXXFLAGS AR RANLIB LDFLAGS
+		unset CCFLAGS LDFLAGS
 		shvr_uninstall_getconf_wrapper
 
 		mkdir -p "${SHVR_DIR_OUT}/ksh_${version}/bin"
