@@ -2,10 +2,28 @@
 # SPDX-License-Identifier: ISC
 
 # Pinned 2026-03-06 for reproducible builds
-FROM debian:trixie-slim@sha256:1d3c811171a08a5adaa4a163fbafd96b61b87aa871bbc7aa15431ac275d3d430 AS builder
+FROM debian:trixie-slim@sha256:1d3c811171a08a5adaa4a163fbafd96b61b87aa871bbc7aa15431ac275d3d430 AS toolchain
 
     # Update distro
     RUN apt-get -y update
+
+    # Copy only musl-cross-make dependencies for maximum cacheability
+    COPY "build/musl-cross-make-*" "/usr/src/shvr/"
+    COPY "checksums/sources/musl-cross-make-*" "/shvr/checksums/sources/"
+    COPY "common/musl-cross-make.sh" "/shvr/common/musl-cross-make.sh"
+
+    COPY "shvr.sh" "/shvr/shvr.sh"
+    RUN chmod +x "/shvr/shvr.sh"
+
+    # Setup environment
+    ENV SHVR_DIR_SRC="/usr/src/shvr"
+    ENV SHVR_DIR_OUT="/opt"
+
+    # Build musl cross-compiler once (shared by all static variants)
+    RUN bash "/shvr/shvr.sh" musl-build
+
+
+FROM toolchain AS builder
 
     # Copy contents
     COPY "build/" "/usr/src/shvr"
@@ -14,16 +32,7 @@ FROM debian:trixie-slim@sha256:1d3c811171a08a5adaa4a163fbafd96b61b87aa871bbc7aa1
     COPY "patches/" "/shvr/patches"
     COPY "variants/" "/shvr/variants"
 
-    COPY "shvr.sh" "/shvr/shvr.sh"
-    RUN chmod +x "/shvr/shvr.sh"
-
-    # Setup environment
-    ENV SHVR_DIR_SRC="/usr/src/shvr"
-    ENV SHVR_DIR_OUT="/opt"
     ARG TARGETS
-
-    # Build musl cross-compiler once (shared by all static variants)
-    RUN bash "/shvr/shvr.sh" musl-setup $TARGETS
 
     # Build
     RUN bash "/shvr/shvr.sh" deps $TARGETS
