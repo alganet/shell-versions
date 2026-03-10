@@ -3,6 +3,13 @@
 # SPDX-FileCopyrightText: 2025 Alexandre Gomes Gaigalas <alganet@gmail.com>
 # SPDX-License-Identifier: ISC
 
+. "${SHVR_DIR_SELF}/common/musl-cross-make.sh"
+
+shvr_static_loksh ()
+{
+	return 0
+}
+
 shvr_current_loksh ()
 {
 	cat <<-@
@@ -56,27 +63,41 @@ shvr_build_loksh ()
 
 	cd "${build_srcdir}"
 
-	# Build with reproducible flags
+	# Static musl build with reproducible flags
 	export SOURCE_DATE_EPOCH=1
 	export TZ=UTC
-	export CFLAGS="-Os -frandom-seed=1"
-	export LDFLAGS="-Wl,--build-id=none"
+
+	# Create meson cross-file for musl static build
+	cat > musl-cross.txt <<-EOF
+		[binaries]
+		c = '$(shvr_musl_cc)'
+		ar = '$(shvr_musl_ar)'
+		strip = '$(shvr_musl_strip)'
+
+		[built-in options]
+		c_args = ['-static', '-frandom-seed=1']
+		c_link_args = ['-static', '-Wl,--build-id=none']
+
+		[host_machine]
+		system = 'linux'
+		cpu_family = 'x86_64'
+		cpu = 'x86_64'
+		endian = 'little'
+	EOF
 
 	meson \
 		--prefix="${SHVR_DIR_OUT}/loksh_$version" \
+		--cross-file musl-cross.txt \
 		build
 
 	ninja -C build
 
-	unset SOURCE_DATE_EPOCH TZ CFLAGS LDFLAGS
+	unset SOURCE_DATE_EPOCH TZ
 
 	mkdir -p "${SHVR_DIR_OUT}/loksh_${version}/bin"
 	cp "build/ksh" "${SHVR_DIR_OUT}/loksh_$version/bin/loksh"
 
-	# Strip binary to ensure reproducible output
-	strip --strip-all "${SHVR_DIR_OUT}/loksh_${version}/bin/loksh"
-
-	# Ensure consistent permissions and timestamps
+	"$(shvr_musl_strip)" --strip-all "${SHVR_DIR_OUT}/loksh_${version}/bin/loksh"
 	touch -d "@1" "${SHVR_DIR_OUT}/loksh_${version}/bin/loksh"
 	chmod 755 "${SHVR_DIR_OUT}/loksh_${version}/bin/loksh"
 
@@ -87,5 +108,5 @@ shvr_deps_loksh ()
 {
 	shvr_versioninfo_loksh "$1"
 	apt-get -y install \
-		curl gcc meson ninja-build xz-utils binutils
+		curl meson ninja-build xz-utils
 }
