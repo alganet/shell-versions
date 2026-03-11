@@ -3,6 +3,14 @@
 # SPDX-FileCopyrightText: 2025 Alexandre Gomes Gaigalas <alganet@gmail.com>
 # SPDX-License-Identifier: ISC
 
+. "${SHVR_DIR_SELF}/common/musl-cross-make.sh"
+. "${SHVR_DIR_SELF}/common/ncurses.sh"
+
+shvr_static_bash ()
+{
+	return 0
+}
+
 shvr_current_bash ()
 {
 	cat <<-@
@@ -74,11 +82,16 @@ shvr_download_bash ()
 			shvr_fetch "$url" "${build_srcdir}-patches/$patch_n"
 		fi
 	done
+
+	shvr_download_ncurses
 }
 
 shvr_build_bash ()
 {
 	shvr_versioninfo_bash "$1"
+
+	# Build static ncurses first
+	shvr_build_ncurses
 
 	build_srcdir="${SHVR_DIR_SRC}/bash/${version_baseline}"
 	mkdir -p "${build_srcdir}"
@@ -97,48 +110,46 @@ shvr_build_bash ()
 	done
 	cd "${build_srcdir}"
 
+	# Static musl build with reproducible flags
+	export SOURCE_DATE_EPOCH=1
+	export TZ=UTC
+	export CC="$(shvr_musl_cc) -static"
+	export AR="$(shvr_musl_ar)"
+	export RANLIB="$(shvr_musl_ranlib)"
+	export LDFLAGS="-Wl,--build-id=none $(shvr_ncurses_ldflags)"
+	export CPPFLAGS="$(shvr_ncurses_cflags)"
+
+	# Replace config.sub with a modern version that recognizes musl
+	cp "$(automake --print-libdir)/config.sub" support/
+
 	if test "$version_major" -lt 5 || { test "$version_major" -eq 5 && test "${version_minor}" -lt 3; }
 	then
 		rm configure
-		export CFLAGS_FOR_BUILD='-std=gnu90' CFLAGS='-std=gnu90' AUTOCONF='autoconf2.69'
+		export CFLAGS="-std=gnu90 -frandom-seed=1 $(shvr_ncurses_cflags)"
+		export CFLAGS_FOR_BUILD='-std=gnu90'
+		export AUTOCONF='autoconf2.69'
 		$AUTOCONF
 		./configure \
+			--host=x86_64-linux-musl \
 			--prefix="${SHVR_DIR_OUT}/bash_${version}" \
 			--without-bash-malloc
-
-		# Build with reproducible flags
-		# Use fixed source date epoch and disable compiler timestamp features
-		export SOURCE_DATE_EPOCH=1
-		export TZ=UTC
-		export LDFLAGS="-Wl,--build-id=none"
-		export RANLIB="ranlib -D"
-		export AR="ar -D"
-
-		make -j1
-
-		unset SOURCE_DATE_EPOCH TZ LDFLAGS RANLIB AR CFLAGS_FOR_BUILD CFLAGS AUTOCONF
 	else
+		export CFLAGS="-frandom-seed=1 $(shvr_ncurses_cflags)"
 		./configure \
-			--prefix="${SHVR_DIR_OUT}/bash_${version}"
-
-		# Build with reproducible flags
-		# Use fixed source date epoch and disable compiler timestamp features
-		export SOURCE_DATE_EPOCH=1
-		export TZ=UTC
-		export LDFLAGS="-Wl,--build-id=none"
-		export RANLIB="ranlib -D"
-		export AR="ar -D"
-
-		make -j1
-
-		unset SOURCE_DATE_EPOCH TZ LDFLAGS RANLIB AR
+			--host=x86_64-linux-musl \
+			--prefix="${SHVR_DIR_OUT}/bash_${version}" \
+			--without-bash-malloc
 	fi
+
+	make -j1
+
+	unset SOURCE_DATE_EPOCH TZ CC AR RANLIB CFLAGS LDFLAGS CPPFLAGS CFLAGS_FOR_BUILD AUTOCONF
 
 	mkdir -p "${SHVR_DIR_OUT}/bash_${version}/bin"
 	cp bash "${SHVR_DIR_OUT}/bash_${version}/bin/bash"
 
 	# Strip binary to ensure reproducible output
-	strip --strip-all "${SHVR_DIR_OUT}/bash_${version}/bin/bash"
+	"$(shvr_musl_strip)" --strip-all "${SHVR_DIR_OUT}/bash_${version}/bin/bash"
 
 	# Ensure consistent permissions and timestamps
 	touch -d "@1" "${SHVR_DIR_OUT}/bash_${version}/bin/bash"
@@ -153,8 +164,8 @@ shvr_deps_bash ()
 
 	if test "$version_major" -lt 5 || { test "$version_major" -eq 5 && test "${version_minor}" -lt 3; }
 	then apt-get -y install \
-		curl patch gcc bison make ncurses-dev autoconf2.69 binutils
+		curl patch bison autoconf2.69 automake
 	else apt-get -y install \
-		curl patch gcc bison make autoconf binutils
+		curl patch bison automake
 	fi
 }
