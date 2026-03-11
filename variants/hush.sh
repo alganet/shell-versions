@@ -4,6 +4,12 @@
 # SPDX-License-Identifier: ISC
 
 . "${SHVR_DIR_SELF}/common/busybox.sh"
+. "${SHVR_DIR_SELF}/common/musl-cross-make.sh"
+
+shvr_static_hush ()
+{
+	return 0
+}
 
 shvr_current_hush ()
 {
@@ -39,6 +45,7 @@ shvr_build_hush ()
 	# Configurations to enable for hush-focused builds.
 	# Includes hush features, static linking, and individual applet support.
 	setConfs='
+		CONFIG_STATIC=y
 		CONFIG_FEATURE_SH_IS_HUSH=y
 		CONFIG_LAST_SUPPORTED_WCHAR=0
 		CONFIG_ECHO=y
@@ -103,35 +110,27 @@ shvr_build_hush ()
 	# This must be done before the build to affect the compiled binary
 	sed -i -e 's/#define AUTOCONF_TIMESTAMP.*/#define AUTOCONF_TIMESTAMP "1970-01-01 00:00:01 UTC"/' include/autoconf.h 2>/dev/null || true
 
-	# Build busybox with reproducible flags
-	# Use fixed source date epoch and disable compiler timestamp features
+	# Static musl build with reproducible flags
 	export SOURCE_DATE_EPOCH=1
 	export TZ=UTC
 	export CFLAGS="-Os -frandom-seed=1"
 	export LDFLAGS="-Wl,--build-id=none"
-	export RANLIB="ranlib -D"
-	export AR="ar -D"
 
-	# Single-threaded build for deterministic ordering
 	make \
+		CROSS_COMPILE="/usr/local/musl-cross/bin/x86_64-linux-musl-" \
 		KBUILD_BUILD_TIMESTAMP="Thu Jan  1 00:00:01 UTC 1970" \
 		KBUILD_BUILD_USER="builder" \
 		KBUILD_BUILD_HOST="builder"
 
-	unset SOURCE_DATE_EPOCH TZ CFLAGS LDFLAGS RANLIB AR
+	unset SOURCE_DATE_EPOCH TZ CFLAGS LDFLAGS
 
-	# Install binary
 	mkdir -p "${SHVR_DIR_OUT}/hush_${version}/bin"
 	cp "busybox" "${SHVR_DIR_OUT}/hush_${version}/bin/hush"
 
-	# Strip binary to ensure reproducible output
-	strip --strip-all "${SHVR_DIR_OUT}/hush_${version}/bin/hush"
-
-	# Ensure consistent permissions and timestamps
+	"$(shvr_musl_strip)" --strip-all "${SHVR_DIR_OUT}/hush_${version}/bin/hush"
 	touch -d "@1" "${SHVR_DIR_OUT}/hush_${version}/bin/hush"
 	chmod 755 "${SHVR_DIR_OUT}/hush_${version}/bin/hush"
 
-	# Test the built shell
 	"${SHVR_DIR_OUT}/hush_${version}/bin/hush" -c "echo busybox hush version $version"
 }
 
@@ -139,5 +138,5 @@ shvr_deps_hush ()
 {
 	shvr_versioninfo_hush "$1"
 	apt-get -y install \
-		curl bzip2 gcc make binutils
+		curl bzip2 make
 }
