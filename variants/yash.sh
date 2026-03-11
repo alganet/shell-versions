@@ -3,6 +3,13 @@
 # SPDX-FileCopyrightText: 2025 Alexandre Gomes Gaigalas <alganet@gmail.com>
 # SPDX-License-Identifier: ISC
 
+. "${SHVR_DIR_SELF}/common/musl-cross-make.sh"
+
+shvr_static_yash ()
+{
+	return 0
+}
+
 shvr_current_yash ()
 {
 	cat <<-@
@@ -61,32 +68,28 @@ shvr_build_yash ()
 
 	cd "${build_srcdir}"
 
-	# Build with reproducible flags
-	# Use fixed source date epoch and disable compiler timestamp features
+	# Static musl build with reproducible flags
 	export SOURCE_DATE_EPOCH=1
 	export TZ=UTC
+	export CC="$(shvr_musl_cc) -static"
+	export AR="$(shvr_musl_ar)"
+	export RANLIB="$(shvr_musl_ranlib)"
 	export CFLAGS="-frandom-seed=1"
 	export LDFLAGS="-Wl,--build-id=none"
-	export RANLIB="ranlib -D"
-	export AR="ar -D"
 
 	./configure \
 		--disable-nls \
 		--disable-lineedit \
 		--prefix="${SHVR_DIR_OUT}/yash_$version"
 
-	# Single-threaded build for deterministic ordering
 	make
 
-	unset SOURCE_DATE_EPOCH TZ CFLAGS LDFLAGS RANLIB AR
+	unset SOURCE_DATE_EPOCH TZ CC AR RANLIB CFLAGS LDFLAGS
 
 	mkdir -p "${SHVR_DIR_OUT}/yash_${version}/bin"
 	cp "yash" "${SHVR_DIR_OUT}/yash_$version/bin"
 
-	# Strip binary to ensure reproducible output
-	strip --strip-all "${SHVR_DIR_OUT}/yash_${version}/bin/yash"
-
-	# Ensure consistent permissions and timestamps
+	"$(shvr_musl_strip)" --strip-all "${SHVR_DIR_OUT}/yash_${version}/bin/yash"
 	touch -d "@1" "${SHVR_DIR_OUT}/yash_${version}/bin/yash"
 	chmod 755 "${SHVR_DIR_OUT}/yash_${version}/bin/yash"
 
@@ -97,5 +100,5 @@ shvr_deps_yash ()
 {
 	shvr_versioninfo_yash "$1"
 	apt-get -y install \
-		curl gcc make xz-utils binutils gettext
+		curl make xz-utils gettext
 }
