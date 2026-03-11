@@ -3,6 +3,14 @@
 # SPDX-FileCopyrightText: 2025 Alexandre Gomes Gaigalas <alganet@gmail.com>
 # SPDX-License-Identifier: ISC
 
+. "${SHVR_DIR_SELF}/common/musl-cross-make.sh"
+. "${SHVR_DIR_SELF}/common/ncurses.sh"
+
+shvr_static_zsh ()
+{
+	return 0
+}
+
 shvr_current_zsh ()
 {
 	cat <<-@
@@ -68,11 +76,16 @@ shvr_download_zsh ()
 			shvr_fetch "https://downloads.sourceforge.net/project/zsh/zsh/$version/zsh-$version.tar.gz" "${build_srcdir}.tar.gz"
 		fi
 	fi
+
+	shvr_download_ncurses
 }
 
 shvr_build_zsh ()
 {
 	shvr_versioninfo_zsh "$1"
+
+	# Build static ncurses first
+	shvr_build_ncurses
 
 	mkdir -p "${build_srcdir}"
 
@@ -87,32 +100,38 @@ shvr_build_zsh ()
 
 	cd "${build_srcdir}"
 
-	# Build with reproducible flags
-	# Use fixed source date epoch and disable compiler timestamp features
+	# Static musl build with reproducible flags
 	export SOURCE_DATE_EPOCH=1
 	export TZ=UTC
-	export CC=gcc-12
-	export CFLAGS='-O3 -flto -frandom-seed=1 -ffile-prefix-map='"${build_srcdir}"'=.'
-	export LDFLAGS='-O3 -flto -Wl,--build-id=none'
-	export RANLIB='ranlib -D'
-	export AR='ar -D'
+	export CC="$(shvr_musl_cc) -static"
+	export AR="$(shvr_musl_ar)"
+	export RANLIB="$(shvr_musl_ranlib)"
+	export CFLAGS="-frandom-seed=1 $(shvr_ncurses_cflags)"
+	export LDFLAGS="-Wl,--build-id=none $(shvr_ncurses_ldflags)"
+	export CPPFLAGS="$(shvr_ncurses_cflags)"
 
 	./Util/preconfig
+
+	# Replace config.sub with a modern version that recognizes musl
+	cp "$(automake --print-libdir)/config.sub" .
+
 	./configure \
+		--host=x86_64-linux-musl \
 		--prefix="${SHVR_DIR_OUT}/zsh_$version" \
 		--disable-dynamic \
-		--with-tcsetpgrp
+		--with-tcsetpgrp \
+		--with-term-lib="ncurses"
 
 	# Single-threaded build for deterministic ordering
 	make
 
-	unset SOURCE_DATE_EPOCH TZ CC CFLAGS LDFLAGS RANLIB AR
+	unset SOURCE_DATE_EPOCH TZ CC CFLAGS LDFLAGS CPPFLAGS RANLIB AR
 
 	mkdir -p "${SHVR_DIR_OUT}/zsh_${version}/bin"
 	cp "Src/zsh" "${SHVR_DIR_OUT}/zsh_$version/bin"
 
 	# Strip binary to ensure reproducible output
-	strip --strip-all "${SHVR_DIR_OUT}/zsh_${version}/bin/zsh"
+	"$(shvr_musl_strip)" --strip-all "${SHVR_DIR_OUT}/zsh_${version}/bin/zsh"
 
 	# Ensure consistent permissions and timestamps
 	touch -d "@1" "${SHVR_DIR_OUT}/zsh_${version}/bin/zsh"
@@ -129,10 +148,9 @@ shvr_deps_zsh ()
 		test "$version_major" -gt 5
 	then
 		apt-get -y install \
-			curl gcc-12 make autoconf libtinfo-dev xz-utils binutils
+			curl autoconf automake xz-utils
 	else
 		apt-get -y install \
-			curl gcc-12 make autoconf libtinfo-dev binutils
+			curl autoconf automake
 	fi
 }
-
