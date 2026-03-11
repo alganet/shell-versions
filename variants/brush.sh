@@ -41,6 +41,11 @@ shvr_download_brush ()
 	fi
 }
 
+shvr_static_brush ()
+{
+	return 0
+}
+
 shvr_build_brush ()
 {
 	. "$HOME/.cargo/env"
@@ -53,18 +58,17 @@ shvr_build_brush ()
 
 	cd "${build_srcdir}"
 
-	# Build with reproducible flags
-	# Use fixed source date epoch and disable compiler timestamp features
+	# Static musl build with reproducible flags
 	export SOURCE_DATE_EPOCH=1
 	export TZ=UTC
-	export RUSTFLAGS="-A unused_imports -C target-feature=-crt-static"
+	export RUSTFLAGS="-A unused_imports -C target-feature=+crt-static -C link-arg=-Wl,--build-id=none"
 
-	cargo build --release
+	cargo build --release --target x86_64-unknown-linux-musl
 
 	unset SOURCE_DATE_EPOCH TZ RUSTFLAGS
 
 	mkdir -p "${SHVR_DIR_OUT}/brush_${version}/bin"
-	cp "./target/release/brush" "${SHVR_DIR_OUT}/brush_$version/bin"
+	cp "./target/x86_64-unknown-linux-musl/release/brush" "${SHVR_DIR_OUT}/brush_$version/bin"
 
 	# Strip binary to ensure reproducible output
 	strip --strip-all "${SHVR_DIR_OUT}/brush_${version}/bin/brush"
@@ -87,4 +91,7 @@ shvr_deps_brush ()
 		shvr_download_rustup
 		sh "${SHVR_DIR_SRC}/rustup-init-1.28.2.sh" -y
 	fi
+
+	. "$HOME/.cargo/env"
+	rustup target add x86_64-unknown-linux-musl
 }
