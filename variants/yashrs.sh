@@ -42,6 +42,11 @@ shvr_download_yashrs ()
 	fi
 }
 
+shvr_static_yashrs ()
+{
+	return 0
+}
+
 shvr_build_yashrs ()
 {
 	. "$HOME/.cargo/env"
@@ -54,18 +59,17 @@ shvr_build_yashrs ()
 
 	cd "${build_srcdir}"
 
-	# Build with reproducible flags
-	# Use fixed source date epoch and disable compiler timestamp features
+	# Static musl build with reproducible flags
 	export SOURCE_DATE_EPOCH=1
 	export TZ=UTC
-	export RUSTFLAGS="-C target-feature=-crt-static"
+	export RUSTFLAGS="-C target-feature=+crt-static -C link-arg=-Wl,--build-id=none"
 
-	cargo build --release
+	cargo build --release --target x86_64-unknown-linux-musl
 
 	unset SOURCE_DATE_EPOCH TZ RUSTFLAGS
 
 	mkdir -p "${SHVR_DIR_OUT}/yashrs_${version}/bin"
-	cp "./target/release/yash3" "${SHVR_DIR_OUT}/yashrs_$version/bin"
+	cp "./target/x86_64-unknown-linux-musl/release/yash3" "${SHVR_DIR_OUT}/yashrs_$version/bin"
 
 	# Strip binary to ensure reproducible output
 	strip --strip-all "${SHVR_DIR_OUT}/yashrs_${version}/bin/yash3"
@@ -88,4 +92,7 @@ shvr_deps_yashrs ()
 		shvr_download_rustup
 		sh "${SHVR_DIR_SRC}/rustup-init-1.28.2.sh" -y
 	fi
+
+	. "$HOME/.cargo/env"
+	rustup target add x86_64-unknown-linux-musl
 }
