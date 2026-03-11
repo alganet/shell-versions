@@ -51,6 +51,11 @@ shvr_musl_cc ()
 	echo "${SHVR_MCM_OUTPUT}/bin/${SHVR_MCM_TARGET}-gcc"
 }
 
+shvr_musl_cxx ()
+{
+	echo "${SHVR_MCM_OUTPUT}/bin/${SHVR_MCM_TARGET}-g++"
+}
+
 shvr_musl_strip ()
 {
 	echo "${SHVR_MCM_OUTPUT}/bin/${SHVR_MCM_TARGET}-strip"
