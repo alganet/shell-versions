@@ -4,6 +4,12 @@
 # SPDX-License-Identifier: ISC
 
 . "${SHVR_DIR_SELF}/common/busybox.sh"
+. "${SHVR_DIR_SELF}/common/musl-cross-make.sh"
+
+shvr_static_ash ()
+{
+	return 0
+}
 
 shvr_current_ash ()
 {
@@ -46,6 +52,7 @@ shvr_build_ash ()
 	# Configurations to enable for ash-focused builds.
 	# Includes ash features, static linking, and individual applet support.
 	setConfs='
+		CONFIG_STATIC=y
 		CONFIG_FEATURE_SH_IS_ASH=y
 		CONFIG_LAST_SUPPORTED_WCHAR=0
 		CONFIG_ASH_ALIAS=y
@@ -113,35 +120,27 @@ shvr_build_ash ()
 	do ! grep -q "^$conf=" .config
 	done
 
-	# Build busybox with reproducible flags
-	# Use fixed source date epoch and disable compiler timestamp features
+	# Static musl build with reproducible flags
 	export SOURCE_DATE_EPOCH=1
 	export TZ=UTC
 	export CFLAGS="-Os -frandom-seed=1"
 	export LDFLAGS="-Wl,--build-id=none"
-	export RANLIB="ranlib -D"
-	export AR="ar -D"
 
-	# Single-threaded build for deterministic ordering
 	make \
+		CROSS_COMPILE="/usr/local/musl-cross/bin/x86_64-linux-musl-" \
 		KBUILD_BUILD_TIMESTAMP="Thu Jan  1 00:00:01 UTC 1970" \
 		KBUILD_BUILD_USER="builder" \
 		KBUILD_BUILD_HOST="builder"
 
-	unset SOURCE_DATE_EPOCH TZ CFLAGS LDFLAGS RANLIB AR
+	unset SOURCE_DATE_EPOCH TZ CFLAGS LDFLAGS
 
-	# Install binary
 	mkdir -p "${SHVR_DIR_OUT}/ash_${version}/bin"
 	cp "busybox" "${SHVR_DIR_OUT}/ash_${version}/bin/ash"
 
-	# Strip binary to ensure reproducible output
-	strip --strip-all "${SHVR_DIR_OUT}/ash_${version}/bin/ash"
-
-	# Ensure consistent permissions and timestamps
+	"$(shvr_musl_strip)" --strip-all "${SHVR_DIR_OUT}/ash_${version}/bin/ash"
 	touch -d "@1" "${SHVR_DIR_OUT}/ash_${version}/bin/ash"
 	chmod 755 "${SHVR_DIR_OUT}/ash_${version}/bin/ash"
 
-	# Test the built shell
 	"${SHVR_DIR_OUT}/ash_${version}/bin/ash" -c "echo busybox ash version $version"
 }
 
@@ -149,5 +148,5 @@ shvr_deps_ash ()
 {
 	shvr_versioninfo_ash "$1"
 	apt-get -y install \
-		curl bzip2 gcc make binutils
+		curl bzip2 make
 }
