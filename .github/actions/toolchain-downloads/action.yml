@@ -1,0 +1,26 @@
+# SPDX-FileCopyrightText: 2025 Alexandre Gomes Gaigalas <alganet@gmail.com>
+# SPDX-License-Identifier: ISC
+
+name: Toolchain downloads
+description: Downloads and caches musl-cross-make and rustup
+runs:
+  using: composite
+  steps:
+    - name: Restore toolchain download cache
+      uses: actions/cache/restore@v4
+      id: restore-toolchain
+      with:
+        path: |
+          build/musl-cross-make-*
+          build/rustup-init-*
+        key: build-toolchain-${{ hashFiles('common/musl-cross-make.sh', 'common/rustup.sh') }}
+    - name: Download toolchain dependencies
+      shell: sh
+      run: sh shvr.sh toolchain-download
+    - uses: actions/cache/save@v4
+      if: steps.restore-toolchain.outputs.cache-hit != 'true'
+      with:
+        path: |
+          build/musl-cross-make-*
+          build/rustup-init-*
+        key: build-toolchain-${{ hashFiles('common/musl-cross-make.sh', 'common/rustup.sh') }}
