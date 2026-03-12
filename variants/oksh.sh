@@ -3,6 +3,13 @@
 # SPDX-FileCopyrightText: 2025 Alexandre Gomes Gaigalas <alganet@gmail.com>
 # SPDX-License-Identifier: ISC
 
+. "${SHVR_DIR_SELF}/common/musl-cross-make.sh"
+
+shvr_static_oksh ()
+{
+	return 0
+}
+
 shvr_current_oksh ()
 {
 	cat <<-@
@@ -71,14 +78,14 @@ shvr_build_oksh ()
 
 	cd "${build_srcdir}"
 
-	# Build with reproducible flags
-	# Use fixed source date epoch and disable compiler timestamp features
+	# Static musl build with reproducible flags
 	export SOURCE_DATE_EPOCH=1
 	export TZ=UTC
+	export CC="$(shvr_musl_cc) -static"
+	export AR="$(shvr_musl_ar)"
+	export RANLIB="$(shvr_musl_ranlib)"
 	export CFLAGS="-frandom-seed=1 -fcommon"
 	export LDFLAGS="-Wl,--build-id=none"
-	export RANLIB="ranlib -D"
-	export AR="ar -D"
 
 	if {
 		test "$version_major" -eq 7 &&
@@ -94,18 +101,14 @@ shvr_build_oksh ()
 		--disable-curses \
 		--prefix="${SHVR_DIR_OUT}/oksh_$version"
 
-	# Single-threaded build for deterministic ordering
 	make
 
-	unset SOURCE_DATE_EPOCH TZ CFLAGS LDFLAGS RANLIB AR
+	unset SOURCE_DATE_EPOCH TZ CC AR RANLIB CFLAGS LDFLAGS
 
 	mkdir -p "${SHVR_DIR_OUT}/oksh_${version}/bin"
 	cp "oksh" "${SHVR_DIR_OUT}/oksh_$version/bin"
 
-	# Strip binary to ensure reproducible output
-	strip --strip-all "${SHVR_DIR_OUT}/oksh_${version}/bin/oksh"
-
-	# Ensure consistent permissions and timestamps
+	"$(shvr_musl_strip)" --strip-all "${SHVR_DIR_OUT}/oksh_${version}/bin/oksh"
 	touch -d "@1" "${SHVR_DIR_OUT}/oksh_${version}/bin/oksh"
 	chmod 755 "${SHVR_DIR_OUT}/oksh_${version}/bin/oksh"
 
@@ -116,5 +119,5 @@ shvr_deps_oksh ()
 {
 	shvr_versioninfo_oksh "$1"
 	apt-get -y install \
-		curl gcc make binutils
+		curl make
 }
