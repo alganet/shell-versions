@@ -54,8 +54,7 @@ sh shvr.sh github_regen_all
 ```
 
 This updates:
-- `docker-all.yml`: All versions for the `:all` image
-- `docker-test.yml` & `docker-latest.yml`: Current versions only
+- `docker.yml`: Build matrix, `:latest`/`:all` assemblies (push), and PR test builds
 - `actions/downloads/action.yml`: Download steps with caching
 
 ### Local Building (Example)

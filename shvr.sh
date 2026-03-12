@@ -358,17 +358,16 @@ shvr_github_regen_downloads ()
 }
 
 
-shvr_github_regen_workflow ()
+shvr_github_regen_docker_workflow ()
 {
-	local yml_file="${SHVR_DIR_SELF}/.github/workflows/$1.yml"
-	local with_assemble="${3:-yes}"
-	set -- $(printf '%s ' $(shvr_${2:-targets} | sort -t'_' -k1,1 -k2Vr))
+	local yml_file="${SHVR_DIR_SELF}/.github/workflows/docker.yml"
+	local all_targets="$(printf '%s ' $(shvr_targets | sort -t'_' -k1,1 -k2Vr))"
+	local current_targets="$(printf '%s ' $(shvr_current | sort -t'_' -k1,1 -k2Vr))"
 	cp -f "$yml_file" "${yml_file}.bak"
-	IFS=
 	cat "$yml_file.bak" |
 	{
-		# Read until first auto-generated marker (matrix entries)
-		while read -r yml_line
+		# Read until matrix marker (inclusive)
+		while IFS= read -r yml_line
 		do
 			echo "${yml_line}"
 			case ${yml_line} in
@@ -377,8 +376,9 @@ shvr_github_regen_workflow ()
 					;;
 			esac
 		done
-		# Emit per-version matrix entries
-		for target do
+		# Emit all targets as matrix entries
+		for target in $all_targets
+		do
 			shvr_clear_versioninfo
 			interpreter="${target%%_*}"
 			version="${target#*_}"
@@ -391,36 +391,55 @@ shvr_github_regen_workflow ()
 			|            cache_path: "${build_srcdir#${SHVR_DIR_SRC}/}"
 			@
 		done
-		if test "$with_assemble" = "yes"
-		then
-			# Skip all old generated content (matrix + assemble header + targets)
-			# until we reach the static 'steps:' line of the assemble job
-			while read -r yml_line
-			do
-				case ${yml_line} in
-					'    steps:'*)
-						break
-						;;
-				esac
-			done
-			# Emit assemble job header and ALL_TARGETS env
-			echo ""
-			echo "  assemble:"
-			echo "    needs: build"
-			echo "    runs-on: ubuntu-24.04"
-			echo "    env:"
-			echo "      # AUTO-GENERATED TARGETS. DO NOT EDIT MANUALLY."
-			echo "      ALL_TARGETS: >"
-			for target do
-				echo "        $target"
-			done
-			# Emit the 'steps:' line and remaining content
+		# Skip old build matrix entries until assemble job boundary
+		while IFS= read -r yml_line
+		do
+			case ${yml_line} in
+				'  assemble:'*)
+					break
+					;;
+			esac
+		done
+		# Echo static assemble job header until assemblies marker
+		echo ""
+		echo "${yml_line}"
+		while IFS= read -r yml_line
+		do
 			echo "${yml_line}"
-			while read -r yml_line
-			do
-				echo "${yml_line}"
-			done
-		fi
+			case ${yml_line} in
+				*'# AUTO-GENERATED ASSEMBLIES. DO NOT EDIT MANUALLY.'*)
+					break
+					;;
+			esac
+		done
+		# Emit assembly matrix entries
+		echo "          - flavor: latest"
+		echo "            targets: >"
+		for target in $current_targets
+		do
+			echo "              $target"
+		done
+		echo "          - flavor: all"
+		echo "            targets: >"
+		for target in $all_targets
+		do
+			echo "              $target"
+		done
+		# Skip old assembly entries until steps:
+		while IFS= read -r yml_line
+		do
+			case ${yml_line} in
+				'    steps:'*)
+					break
+					;;
+			esac
+		done
+		# Echo steps and remaining content
+		echo "${yml_line}"
+		while IFS= read -r yml_line
+		do
+			echo "${yml_line}"
+		done
 	} > "$yml_file"
 	rm "$yml_file.bak"
 }
@@ -444,9 +463,7 @@ shvr_musl_build ()
 shvr_github_regen_all ()
 {
 	(shvr_github_regen_downloads)
-	(shvr_github_regen_workflow docker-all targets yes)
-	(shvr_github_regen_workflow docker-test targets yes)
-	(shvr_github_regen_workflow docker-latest current yes)
+	(shvr_github_regen_docker_workflow)
 }
 
 shvr "${@:-}"
