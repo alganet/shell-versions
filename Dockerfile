@@ -22,6 +22,13 @@ FROM debian:trixie-slim@sha256:1d3c811171a08a5adaa4a163fbafd96b61b87aa871bbc7aa1
     # Build musl cross-compiler once (shared by all static variants)
     RUN bash "/shvr/shvr.sh" musl-build
 
+    # Pre-install Rust toolchain (used by brush and yashrs)
+    COPY "build/rustup-init-*" "/usr/src/shvr/"
+    COPY "checksums/sources/rustup-init-*" "/shvr/checksums/sources/"
+    RUN sh "${SHVR_DIR_SRC}/rustup-init-1.28.2.sh" -y && \
+        . "$HOME/.cargo/env" && \
+        rustup target add x86_64-unknown-linux-musl
+
 
 FROM toolchain AS builder
 
@@ -44,8 +51,13 @@ FROM toolchain AS builder
         grep -o '/\(lib\|usr/lib\)[^ ]*\.so[^ ]*' | sort | uniq | \
         xargs -I {} cp --parents {} /deps/
 
-    RUN mkdir -p /deps/opt/shvr && \
-        find /opt \( -type l -o -type f \) | sort -t'_' -k1,1 -k2Vr > /deps/opt/shvr/manifest.txt
+
+# Minimal stage for per-version CI images (scratch + build artifacts only)
+FROM scratch AS artifacts
+    COPY --from=builder /opt /opt
+    COPY --from=builder /deps /deps
+    COPY --from=builder /shvr/checksums/build /shvr/checksums/build
+    CMD ["/nonexistent"]
 
 
 FROM busybox:stable-musl
@@ -61,5 +73,8 @@ FROM busybox:stable-musl
     COPY --from=builder --chown=0:0 "$SHVR_DIR_OUT" "$SHVR_DIR_OUT"
     COPY --from=builder --chown=0:0 /shvr/checksums/build /opt/shvr/checksums/build
     COPY --from=builder --chown=0:0 /deps /
+
+    # Generate manifest of all built shells
+    RUN find /opt \( -type l -o -type f \) -not -path '*/shvr/*' | sort > /opt/shvr/manifest.txt
 
     ENTRYPOINT [ "/bin/sh", "/opt/shvr/entrypoint.sh" ]

@@ -5,6 +5,7 @@ name: Push alganet/shell-versions:latest
 
 permissions:
   contents: read
+  packages: write
 
 on:
   push:
@@ -21,14 +22,232 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: ./.github/actions/downloads
-  build:
-    needs: download
-    runs-on: ubuntu-24.04
 
-    continue-on-error: ${{ matrix.can_fail_build }}
+  toolchain:
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v3
-      - uses: ./.github/actions/downloads
+      - uses: ./.github/actions/toolchain-downloads
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build toolchain image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          target: toolchain
+          push: false
+          cache-to: type=gha,scope=toolchain,mode=max
+          cache-from: type=gha,scope=toolchain
+
+  build:
+    needs: [download, toolchain]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/actions/single-download
+        with:
+          shvr_shell: ${{ matrix.shell }}
+          shvr_version: "${{ matrix.version }}"
+          cache_path: "${{ matrix.cache_path }}"
+      - uses: ./.github/actions/toolchain-downloads
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PASS }}
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build and push shell image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          target: artifacts
+          push: true
+          tags: alganet/shell-versions:${{ matrix.target }}
+          build-args: |
+            TARGETS=${{ matrix.target }}
+          cache-from: |
+            type=gha,scope=toolchain
+            type=registry,ref=ghcr.io/${{ github.repository }}:buildcache-${{ matrix.target }}
+          cache-to: type=registry,ref=ghcr.io/${{ github.repository }}:buildcache-${{ matrix.target }},mode=max
+
+      - name: Verify build checksums
+        uses: ./.github/actions/verify-build-checksums
+        with:
+          image: alganet/shell-versions:${{ matrix.target }}
+          targets: ${{ matrix.target }}
+
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          # AUTO-GENERATED MATRIX. DO NOT EDIT MANUALLY.
+          - target: ash_1.37.0
+            shell: ash
+            version: "1.37.0"
+            cache_path: "busybox/1.37.0"
+          - target: ash_1.36.1
+            shell: ash
+            version: "1.36.1"
+            cache_path: "busybox/1.36.1"
+          - target: bash_5.3.9
+            shell: bash
+            version: "5.3.9"
+            cache_path: "bash/5.3"
+          - target: bash_5.2.37
+            shell: bash
+            version: "5.2.37"
+            cache_path: "bash/5.2"
+          - target: brush_0.3.0
+            shell: brush
+            version: "0.3.0"
+            cache_path: "brush/0.3.0"
+          - target: brush_0.2.23
+            shell: brush
+            version: "0.2.23"
+            cache_path: "brush/0.2.23"
+          - target: dash_0.5.13
+            shell: dash
+            version: "0.5.13"
+            cache_path: "dash/0.5.13"
+          - target: dash_0.5.12
+            shell: dash
+            version: "0.5.12"
+            cache_path: "dash/0.5.12"
+          - target: hush_1.37.0
+            shell: hush
+            version: "1.37.0"
+            cache_path: "busybox/1.37.0"
+          - target: hush_1.36.1
+            shell: hush
+            version: "1.36.1"
+            cache_path: "busybox/1.36.1"
+          - target: ksh_shvrA93uplusm-v1.0.10
+            shell: ksh
+            version: "shvrA93uplusm-v1.0.10"
+            cache_path: "ksh/shvrA93uplusm-v1.0.10"
+          - target: ksh_shvrA93uplusm-v1.0.9
+            shell: ksh
+            version: "shvrA93uplusm-v1.0.9"
+            cache_path: "ksh/shvrA93uplusm-v1.0.9"
+          - target: loksh_7.8
+            shell: loksh
+            version: "7.8"
+            cache_path: "loksh/7.8"
+          - target: loksh_7.7
+            shell: loksh
+            version: "7.7"
+            cache_path: "loksh/7.7"
+          - target: mksh_R59c
+            shell: mksh
+            version: "R59c"
+            cache_path: "mksh/R59c"
+          - target: mksh_R58
+            shell: mksh
+            version: "R58"
+            cache_path: "mksh/R58"
+          - target: oksh_7.8
+            shell: oksh
+            version: "7.8"
+            cache_path: "oksh/7.8"
+          - target: oksh_7.7
+            shell: oksh
+            version: "7.7"
+            cache_path: "oksh/7.7"
+          - target: osh_0.37.0
+            shell: osh
+            version: "0.37.0"
+            cache_path: "osh/0.37.0"
+          - target: osh_0.36.0
+            shell: osh
+            version: "0.36.0"
+            cache_path: "osh/0.36.0"
+          - target: posh_0.14.3
+            shell: posh
+            version: "0.14.3"
+            cache_path: "posh/0.14.3"
+          - target: posh_0.13.2
+            shell: posh
+            version: "0.13.2"
+            cache_path: "posh/0.13.2"
+          - target: yash_2.60
+            shell: yash
+            version: "2.60"
+            cache_path: "yash/2.60"
+          - target: yash_2.59
+            shell: yash
+            version: "2.59"
+            cache_path: "yash/2.59"
+          - target: yashrs_3.0.5
+            shell: yashrs
+            version: "3.0.5"
+            cache_path: "yashrs/3.0.5"
+          - target: yashrs_3.0.4
+            shell: yashrs
+            version: "3.0.4"
+            cache_path: "yashrs/3.0.4"
+          - target: yashrs_0.4.5
+            shell: yashrs
+            version: "0.4.5"
+            cache_path: "yashrs/0.4.5"
+          - target: zsh_5.9
+            shell: zsh
+            version: "5.9"
+            cache_path: "zsh/5.9"
+          - target: zsh_5.8.1
+            shell: zsh
+            version: "5.8.1"
+            cache_path: "zsh/5.8.1"
+
+  assemble:
+    needs: build
+    runs-on: ubuntu-24.04
+    env:
+      # AUTO-GENERATED TARGETS. DO NOT EDIT MANUALLY.
+      ALL_TARGETS: >
+        ash_1.37.0
+        ash_1.36.1
+        bash_5.3.9
+        bash_5.2.37
+        brush_0.3.0
+        brush_0.2.23
+        dash_0.5.13
+        dash_0.5.12
+        hush_1.37.0
+        hush_1.36.1
+        ksh_shvrA93uplusm-v1.0.10
+        ksh_shvrA93uplusm-v1.0.9
+        loksh_7.8
+        loksh_7.7
+        mksh_R59c
+        mksh_R58
+        oksh_7.8
+        oksh_7.7
+        osh_0.37.0
+        osh_0.36.0
+        posh_0.14.3
+        posh_0.13.2
+        yash_2.60
+        yash_2.59
+        yashrs_3.0.5
+        yashrs_3.0.4
+        yashrs_0.4.5
+        zsh_5.9
+        zsh_5.8.1
+    steps:
+      - uses: actions/checkout@v3
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
@@ -39,64 +258,44 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      - name: Build and Push Docker image
+      - name: Generate assembly Dockerfile
+        run: |
+          {
+            echo 'FROM scratch AS collected'
+            for target in $ALL_TARGETS; do
+              echo "COPY --from=alganet/shell-versions:${target} --chown=0:0 /opt /opt"
+              echo "COPY --from=alganet/shell-versions:${target} --chown=0:0 /deps /deps"
+              echo "COPY --from=alganet/shell-versions:${target} --chown=0:0 /shvr/checksums/build /shvr/checksums/build"
+            done
+            echo 'FROM busybox:stable-musl'
+            echo 'COPY "entrypoint.sh" "/opt/shvr/entrypoint.sh"'
+            echo 'ENV SHVR_DIR_OUT=/opt'
+            echo 'WORKDIR /'
+            echo 'COPY --from=collected --chown=0:0 /opt /opt'
+            echo 'COPY --from=collected --chown=0:0 /deps /'
+            echo 'COPY --from=collected --chown=0:0 /shvr/checksums/build /opt/shvr/checksums/build'
+            echo "RUN find /opt \( -type l -o -type f \) -not -path '*/shvr/*' | sort > /opt/shvr/manifest.txt"
+            echo 'ENTRYPOINT [ "/bin/sh", "/opt/shvr/entrypoint.sh" ]'
+          } > Dockerfile.assembly
+
+      - name: Build and push assembled image
         uses: docker/build-push-action@v4
         with:
           context: .
+          file: Dockerfile.assembly
           push: true
-          tags: ${{ matrix.tags }}
-          labels: ${{ matrix.name }}
-          build-args: |
-            TARGETS=${{ matrix.targets }}
+          tags: alganet/shell-versions:latest
+          labels: latest
 
       - name: Verify build checksums
         uses: ./.github/actions/verify-build-checksums
         with:
-          image: ${{ matrix.tags }}
-          targets: ${{ matrix.targets }}
+          image: alganet/shell-versions:latest
+          targets: ${{ env.ALL_TARGETS }}
 
       - name: Generate and upload build checksums
         if: always()
         uses: ./.github/actions/generate-build-checksums
         with:
-          image: ${{ matrix.tags }}
+          image: alganet/shell-versions:latest
           artifact_name: shvr-build-checksums
-
-    strategy:
-      fail-fast: true
-      matrix:
-        include:
-          - name: latest
-            can_fail_build: false
-            tags: alganet/shell-versions:latest
-            # AUTO-GENERATED LIST. DO NOT EDIT MANUALLY.
-            targets: >
-              ash_1.37.0
-              ash_1.36.1
-              bash_5.3.9
-              bash_5.2.37
-              brush_0.3.0
-              brush_0.2.23
-              dash_0.5.13
-              dash_0.5.12
-              hush_1.37.0
-              hush_1.36.1
-              ksh_shvrA93uplusm-v1.0.10
-              ksh_shvrA93uplusm-v1.0.9
-              loksh_7.8
-              loksh_7.7
-              mksh_R59c
-              mksh_R58
-              oksh_7.8
-              oksh_7.7
-              osh_0.37.0
-              osh_0.36.0
-              posh_0.14.3
-              posh_0.13.2
-              yash_2.60
-              yash_2.59
-              yashrs_3.0.5
-              yashrs_3.0.4
-              yashrs_0.4.5
-              zsh_5.9
-              zsh_5.8.1

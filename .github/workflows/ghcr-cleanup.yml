@@ -1,0 +1,44 @@
+# SPDX-FileCopyrightText: 2025 Alexandre Gomes Gaigalas <alganet@gmail.com>
+# SPDX-License-Identifier: ISC
+
+name: Clean GHCR build cache
+
+permissions:
+  packages: write
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  cleanup-untagged:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/delete-package-versions@v5
+        with:
+          package-name: shell-versions
+          package-type: container
+          min-versions-to-keep: 1
+          delete-only-untagged-versions: true
+
+  cleanup-test-images:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Delete test-* tagged GHCR versions older than 7 days
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api --paginate \
+            "/users/${{ github.repository_owner }}/packages/container/shell-versions/versions" \
+            --jq '
+              .[]
+              | select(.metadata.container.tags | length > 0)
+              | select(.metadata.container.tags | all(startswith("test-")))
+              | select((now - (.updated_at | fromdateiso8601)) > (7 * 86400))
+              | .id
+            ' | while read -r version_id; do
+              echo "Deleting version $version_id"
+              gh api --method DELETE \
+                "/users/${{ github.repository_owner }}/packages/container/shell-versions/versions/$version_id" || true
+            done
