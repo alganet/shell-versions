@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2025 Alexandre Gomes Gaigalas <alganet@gmail.com>
 # SPDX-License-Identifier: ISC
 
-name: Push alganet/shell-versions:all
+name: Build shell versions
 
 permissions:
   contents: read
@@ -9,6 +9,9 @@ permissions:
 
 on:
   push:
+    branches:
+      - "main"
+  pull_request:
     branches:
       - "main"
 
@@ -53,18 +56,19 @@ jobs:
           cache_path: "${{ matrix.cache_path }}"
       - uses: ./.github/actions/toolchain-downloads
 
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKER_USER }}
-          password: ${{ secrets.DOCKER_PASS }}
-
       - name: Log in to GHCR
         uses: docker/login-action@v2
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to Docker Hub
+        if: github.event_name == 'push'
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PASS }}
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -75,22 +79,30 @@ jobs:
           context: .
           target: artifacts
           push: true
-          tags: alganet/shell-versions:${{ matrix.target }}
+          tags: |
+            ghcr.io/${{ github.repository }}:${{ github.event_name == 'push' && matrix.target || format('run-{0}-{1}', github.run_id, matrix.target) }}
+            ${{ github.event_name == 'push' && format('alganet/shell-versions:{0}', matrix.target) || '' }}
           build-args: |
             TARGETS=${{ matrix.target }}
           cache-from: |
             type=gha,scope=toolchain
             type=registry,ref=ghcr.io/${{ github.repository }}:buildcache-${{ matrix.target }}
-          cache-to: type=registry,ref=ghcr.io/${{ github.repository }}:buildcache-${{ matrix.target }},mode=max
+          cache-to: >-
+            ${{ github.event_name == 'push'
+              && format('type=registry,ref=ghcr.io/{0}:buildcache-{1},mode=max', github.repository, matrix.target)
+              || '' }}
 
       - name: Verify build checksums
         uses: ./.github/actions/verify-build-checksums
         with:
-          image: alganet/shell-versions:${{ matrix.target }}
+          image: >-
+            ${{ github.event_name == 'push'
+              && format('ghcr.io/{0}:{1}', github.repository, matrix.target)
+              || format('ghcr.io/{0}:run-{1}-{2}', github.repository, github.run_id, matrix.target) }}
           targets: ${{ matrix.target }}
 
     strategy:
-      fail-fast: true
+      fail-fast: ${{ github.event_name == 'push' }}
       matrix:
         include:
           # AUTO-GENERATED MATRIX. DO NOT EDIT MANUALLY.
@@ -719,167 +731,220 @@ jobs:
     needs: build
     runs-on: ubuntu-24.04
     env:
-      # AUTO-GENERATED TARGETS. DO NOT EDIT MANUALLY.
-      ALL_TARGETS: >
-        ash_1.37.0
-        ash_1.36.1
-        ash_1.35.0
-        ash_1.34.1
-        ash_1.33.2
-        ash_1.32.1
-        ash_1.31.1
-        ash_1.30.1
-        ash_1.29.3
-        ash_1.28.4
-        ash_1.27.2
-        ash_1.26.2
-        ash_1.25.1
-        bash_5.3.9
-        bash_5.2.37
-        bash_5.1.16
-        bash_5.0.18
-        bash_4.4.23
-        bash_4.3.48
-        bash_4.2.53
-        bash_4.1.17
-        bash_4.0.44
-        bash_3.2.57
-        bash_3.1.23
-        bash_3.0.22
-        bash_2.05b.13
-        brush_0.3.0
-        brush_0.2.23
-        dash_0.5.13
-        dash_0.5.12
-        dash_0.5.11.5
-        dash_0.5.10.2
-        dash_0.5.9.1
-        dash_0.5.8
-        dash_0.5.7
-        dash_0.5.6.1
-        dash_0.5.5.1
-        hush_1.37.0
-        hush_1.36.1
-        hush_1.35.0
-        hush_1.34.1
-        hush_1.33.2
-        hush_1.32.1
-        hush_1.31.1
-        hush_1.30.1
-        hush_1.29.3
-        hush_1.28.4
-        hush_1.27.2
-        hush_1.26.2
-        hush_1.25.1
-        ksh_shvrChistory-b_2016-01-10
-        ksh_shvrChistory-b_2012-08-01
-        ksh_shvrChistory-b_2011-03-10
-        ksh_shvrChistory-b_2010-10-26
-        ksh_shvrChistory-b_2010-06-21
-        ksh_shvrChistory-b_2008-11-04
-        ksh_shvrChistory-b_2008-06-08
-        ksh_shvrChistory-b_2008-02-02
-        ksh_shvrChistory-b_2007-01-11
-        ksh_shvrB2020-2020.0.0
-        ksh_shvrA93uplusm-v1.0.10
-        ksh_shvrA93uplusm-v1.0.9
-        ksh_shvrA93uplusm-v1.0.8
-        ksh_shvrA93uplusm-v1.0.7
-        ksh_shvrA93uplusm-v1.0.6
-        ksh_shvrA93uplusm-v1.0.4
-        ksh_shvrA93uplusm-v1.0.3
-        ksh_shvrA93uplusm-v1.0.2
-        ksh_shvrA93uplusm-v1.0.1
-        loksh_7.8
-        loksh_7.7
-        loksh_7.6
-        loksh_7.5
-        loksh_7.4
-        loksh_7.3
-        loksh_7.1
-        loksh_7.0
-        loksh_6.9
-        loksh_6.8.1
-        loksh_6.7.5
-        mksh_R59c
-        mksh_R58
-        mksh_R57
-        mksh_R56c
-        mksh_R55
-        mksh_R54
-        mksh_R53a
-        mksh_R52c
-        mksh_R51
-        mksh_R50f
-        mksh_R49
-        mksh_R48b
-        mksh_R47
-        mksh_R46
-        mksh_R45
-        oksh_7.8
-        oksh_7.7
-        oksh_7.6
-        oksh_7.5
-        oksh_7.4
-        oksh_7.3
-        oksh_7.2
-        oksh_7.1
-        oksh_7.0
-        oksh_6.9
-        oksh_6.8.1
-        oksh_6.7.1
-        oksh_6.6
-        oksh_6.5
-        osh_0.37.0
-        osh_0.36.0
-        osh_0.35.0
-        osh_0.34.0
-        osh_0.33.0
-        osh_0.32.0
-        osh_0.31.0
-        osh_0.30.0
-        osh_0.29.0
-        osh_0.28.0
-        osh_0.27.0
-        osh_0.26.0
-        osh_0.25.0
-        posh_0.14.3
-        posh_0.13.2
-        posh_0.12.6
-        yash_2.60
-        yash_2.59
-        yash_2.58.1
-        yash_2.57
-        yash_2.56.1
-        yash_2.55
-        yash_2.54
-        yash_2.53
-        yash_2.52
-        yash_2.51
-        yash_2.50
-        yash_2.49
-        yash_2.48
-        yash_2.47
-        yash_2.46
-        yash_2.45
-        yashrs_3.0.5
-        yashrs_3.0.4
-        yashrs_0.4.5
-        zsh_5.9
-        zsh_5.8.1
-        zsh_5.7.1
-        zsh_5.6.2
-        zsh_5.5.1
-        zsh_5.4.2
-        zsh_5.3.1
-        zsh_5.2
-        zsh_5.1.1
-        zsh_5.0.8
-        zsh_4.2.7
+      ALL_TARGETS: ${{ matrix.targets }}
+      GHCR_TAG_PREFIX: >-
+        ${{ github.event_name == 'push'
+          && ''
+          || format('run-{0}-', github.run_id) }}
+      ASSEMBLY_TAG: >-
+        ${{ github.event_name == 'push'
+          && format('alganet/shell-versions:{0}', matrix.flavor)
+          || format('ghcr.io/{0}:run-{1}-{2}', github.repository, github.run_id, matrix.flavor) }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # AUTO-GENERATED ASSEMBLIES. DO NOT EDIT MANUALLY.
+          - flavor: latest
+            targets: >
+              ash_1.37.0
+              ash_1.36.1
+              bash_5.3.9
+              bash_5.2.37
+              brush_0.3.0
+              brush_0.2.23
+              dash_0.5.13
+              dash_0.5.12
+              hush_1.37.0
+              hush_1.36.1
+              ksh_shvrA93uplusm-v1.0.10
+              ksh_shvrA93uplusm-v1.0.9
+              loksh_7.8
+              loksh_7.7
+              mksh_R59c
+              mksh_R58
+              oksh_7.8
+              oksh_7.7
+              osh_0.37.0
+              osh_0.36.0
+              posh_0.14.3
+              posh_0.13.2
+              yash_2.60
+              yash_2.59
+              yashrs_3.0.5
+              yashrs_3.0.4
+              yashrs_0.4.5
+              zsh_5.9
+              zsh_5.8.1
+          - flavor: all
+            targets: >
+              ash_1.37.0
+              ash_1.36.1
+              ash_1.35.0
+              ash_1.34.1
+              ash_1.33.2
+              ash_1.32.1
+              ash_1.31.1
+              ash_1.30.1
+              ash_1.29.3
+              ash_1.28.4
+              ash_1.27.2
+              ash_1.26.2
+              ash_1.25.1
+              bash_5.3.9
+              bash_5.2.37
+              bash_5.1.16
+              bash_5.0.18
+              bash_4.4.23
+              bash_4.3.48
+              bash_4.2.53
+              bash_4.1.17
+              bash_4.0.44
+              bash_3.2.57
+              bash_3.1.23
+              bash_3.0.22
+              bash_2.05b.13
+              brush_0.3.0
+              brush_0.2.23
+              dash_0.5.13
+              dash_0.5.12
+              dash_0.5.11.5
+              dash_0.5.10.2
+              dash_0.5.9.1
+              dash_0.5.8
+              dash_0.5.7
+              dash_0.5.6.1
+              dash_0.5.5.1
+              hush_1.37.0
+              hush_1.36.1
+              hush_1.35.0
+              hush_1.34.1
+              hush_1.33.2
+              hush_1.32.1
+              hush_1.31.1
+              hush_1.30.1
+              hush_1.29.3
+              hush_1.28.4
+              hush_1.27.2
+              hush_1.26.2
+              hush_1.25.1
+              ksh_shvrChistory-b_2016-01-10
+              ksh_shvrChistory-b_2012-08-01
+              ksh_shvrChistory-b_2011-03-10
+              ksh_shvrChistory-b_2010-10-26
+              ksh_shvrChistory-b_2010-06-21
+              ksh_shvrChistory-b_2008-11-04
+              ksh_shvrChistory-b_2008-06-08
+              ksh_shvrChistory-b_2008-02-02
+              ksh_shvrChistory-b_2007-01-11
+              ksh_shvrB2020-2020.0.0
+              ksh_shvrA93uplusm-v1.0.10
+              ksh_shvrA93uplusm-v1.0.9
+              ksh_shvrA93uplusm-v1.0.8
+              ksh_shvrA93uplusm-v1.0.7
+              ksh_shvrA93uplusm-v1.0.6
+              ksh_shvrA93uplusm-v1.0.4
+              ksh_shvrA93uplusm-v1.0.3
+              ksh_shvrA93uplusm-v1.0.2
+              ksh_shvrA93uplusm-v1.0.1
+              loksh_7.8
+              loksh_7.7
+              loksh_7.6
+              loksh_7.5
+              loksh_7.4
+              loksh_7.3
+              loksh_7.1
+              loksh_7.0
+              loksh_6.9
+              loksh_6.8.1
+              loksh_6.7.5
+              mksh_R59c
+              mksh_R58
+              mksh_R57
+              mksh_R56c
+              mksh_R55
+              mksh_R54
+              mksh_R53a
+              mksh_R52c
+              mksh_R51
+              mksh_R50f
+              mksh_R49
+              mksh_R48b
+              mksh_R47
+              mksh_R46
+              mksh_R45
+              oksh_7.8
+              oksh_7.7
+              oksh_7.6
+              oksh_7.5
+              oksh_7.4
+              oksh_7.3
+              oksh_7.2
+              oksh_7.1
+              oksh_7.0
+              oksh_6.9
+              oksh_6.8.1
+              oksh_6.7.1
+              oksh_6.6
+              oksh_6.5
+              osh_0.37.0
+              osh_0.36.0
+              osh_0.35.0
+              osh_0.34.0
+              osh_0.33.0
+              osh_0.32.0
+              osh_0.31.0
+              osh_0.30.0
+              osh_0.29.0
+              osh_0.28.0
+              osh_0.27.0
+              osh_0.26.0
+              osh_0.25.0
+              posh_0.14.3
+              posh_0.13.2
+              posh_0.12.6
+              yash_2.60
+              yash_2.59
+              yash_2.58.1
+              yash_2.57
+              yash_2.56.1
+              yash_2.55
+              yash_2.54
+              yash_2.53
+              yash_2.52
+              yash_2.51
+              yash_2.50
+              yash_2.49
+              yash_2.48
+              yash_2.47
+              yash_2.46
+              yash_2.45
+              yashrs_3.0.5
+              yashrs_3.0.4
+              yashrs_0.4.5
+              zsh_5.9
+              zsh_5.8.1
+              zsh_5.7.1
+              zsh_5.6.2
+              zsh_5.5.1
+              zsh_5.4.2
+              zsh_5.3.1
+              zsh_5.2
+              zsh_5.1.1
+              zsh_5.0.8
+              zsh_4.2.7
     steps:
       - uses: actions/checkout@v3
 
+      - name: Log in to GHCR
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Log in to Docker Hub
+        if: github.event_name == 'push'
         uses: docker/login-action@v2
         with:
           username: ${{ secrets.DOCKER_USER }}
@@ -893,9 +958,9 @@ jobs:
           {
             echo 'FROM scratch AS collected'
             for target in $ALL_TARGETS; do
-              echo "COPY --from=alganet/shell-versions:${target} --chown=0:0 /opt /opt"
-              echo "COPY --from=alganet/shell-versions:${target} --chown=0:0 /deps /deps"
-              echo "COPY --from=alganet/shell-versions:${target} --chown=0:0 /shvr/checksums/build /shvr/checksums/build"
+              echo "COPY --from=ghcr.io/${{ github.repository }}:${GHCR_TAG_PREFIX}${target} --chown=0:0 /opt /opt"
+              echo "COPY --from=ghcr.io/${{ github.repository }}:${GHCR_TAG_PREFIX}${target} --chown=0:0 /deps /deps"
+              echo "COPY --from=ghcr.io/${{ github.repository }}:${GHCR_TAG_PREFIX}${target} --chown=0:0 /shvr/checksums/build /shvr/checksums/build"
             done
             echo 'FROM busybox:stable-musl'
             echo 'COPY "entrypoint.sh" "/opt/shvr/entrypoint.sh"'
@@ -914,18 +979,17 @@ jobs:
           context: .
           file: Dockerfile.assembly
           push: true
-          tags: alganet/shell-versions:all
-          labels: all
+          tags: ${{ env.ASSEMBLY_TAG }}
 
       - name: Verify build checksums
         uses: ./.github/actions/verify-build-checksums
         with:
-          image: alganet/shell-versions:all
+          image: ${{ env.ASSEMBLY_TAG }}
           targets: ${{ env.ALL_TARGETS }}
 
       - name: Generate and upload build checksums
-        if: always()
+        if: github.event_name == 'push' && matrix.flavor == 'all'
         uses: ./.github/actions/generate-build-checksums
         with:
-          image: alganet/shell-versions:all
+          image: ${{ env.ASSEMBLY_TAG }}
           artifact_name: shvr-build-checksums

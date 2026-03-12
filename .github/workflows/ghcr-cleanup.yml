@@ -22,10 +22,10 @@ jobs:
           min-versions-to-keep: 1
           delete-only-untagged-versions: true
 
-  cleanup-test-images:
+  cleanup-ephemeral-images:
     runs-on: ubuntu-24.04
     steps:
-      - name: Delete test-* tagged GHCR versions older than 7 days
+      - name: Delete ephemeral GHCR versions older than 7 days
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -34,7 +34,7 @@ jobs:
             --jq '
               .[]
               | select(.metadata.container.tags | length > 0)
-              | select(.metadata.container.tags | all(startswith("test-")))
+              | select(.metadata.container.tags | all(startswith("run-") or startswith("test-")))
               | select((now - (.updated_at | fromdateiso8601)) > (7 * 86400))
               | .id
             ' | while read -r version_id; do
