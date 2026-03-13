@@ -36,7 +36,7 @@ jobs:
         uses: docker/setup-buildx-action@v4
 
       - name: Build toolchain image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           target: toolchain
@@ -74,7 +74,7 @@ jobs:
         uses: docker/setup-buildx-action@v4
 
       - name: Build and push shell image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           target: artifacts
@@ -974,7 +974,7 @@ jobs:
           } > Dockerfile.assembly
 
       - name: Build and push assembled image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: Dockerfile.assembly
