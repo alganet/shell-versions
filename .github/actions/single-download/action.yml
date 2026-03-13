@@ -16,7 +16,7 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: actions/cache/restore@v4
+    - uses: actions/cache/restore@v5
       id: restore-shell
       env:
         cache-name: cache-shell
@@ -26,7 +26,7 @@ runs:
         key: build-${{ env.cache-name }}-${{ inputs.shvr_shell }}-${{ inputs.shvr_version }}
     - shell: sh
       run: sh shvr.sh download "${{ inputs.shvr_shell }}_${{ inputs.shvr_version }}"
-    - uses: actions/cache/save@v4
+    - uses: actions/cache/save@v5
       if: steps.restore-shell.outputs.cache-hit != 'true'
       id: cache-shell
       env:
