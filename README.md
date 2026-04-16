@@ -3,7 +3,7 @@
 
 # alganet/shell-versions
 
-[![Docker Build](https://github.com/alganet/shell-versions/actions/workflows/docker.yml/badge.svg?branch=main)](https://github.com/alganet/shell-versions/actions/workflows/docker.yml)
+<!-- [![Docker Build](https://github.com/alganet/shell-versions/actions/workflows/docker.yml/badge.svg?branch=main)](https://github.com/alganet/shell-versions/actions/workflows/docker.yml) -->
 
 Multiple versions of multiple shells. Ideal for testing portable shell scripts.
 
