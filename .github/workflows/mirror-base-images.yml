@@ -1,0 +1,57 @@
+# SPDX-FileCopyrightText: 2026 Alexandre Gomes Gaigalas <alganet@gmail.com>
+# SPDX-License-Identifier: ISC
+
+name: Mirror base images to GHCR
+
+permissions:
+  contents: read
+  packages: write
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Weekly, Mondays 00:00 UTC. Frequent enough to pick up upstream
+    # security updates on moving tags (busybox:stable-musl, buildkit:buildx-stable-1)
+    # while remaining cheap on docker.io rate limits (3 manifest reads/week).
+    - cron: '0 0 * * 1'
+
+jobs:
+  mirror:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # debian is pinned by digest in the project's Dockerfile; mirror the same digest
+          - source: debian:trixie-slim@sha256:1d3c811171a08a5adaa4a163fbafd96b61b87aa871bbc7aa15431ac275d3d430
+            target: base-debian:trixie-slim
+          # busybox is a moving upstream tag; the GHCR mirror tag becomes our effective pin
+          - source: busybox:stable-musl
+            target: base-busybox:stable-musl
+          # moby/buildkit is what docker/setup-buildx-action boots when the docker-container driver is requested
+          - source: moby/buildkit:buildx-stable-1
+            target: base-buildkit:buildx-stable-1
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PASS }}
+
+      - name: Mirror manifest to GHCR
+        run: |
+          set -ex
+          docker buildx imagetools create \
+            --tag "ghcr.io/${{ github.repository }}/${{ matrix.target }}" \
+            "${{ matrix.source }}"
+
+      - name: Inspect mirrored image
+        run: |
+          docker buildx imagetools inspect "ghcr.io/${{ github.repository }}/${{ matrix.target }}"
