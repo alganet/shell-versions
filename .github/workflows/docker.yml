@@ -799,9 +799,9 @@ jobs:
       ALL_TARGETS: ${{ matrix.targets }}
       RUNTIME_REF: ${{ needs.mirror.outputs.runtime_ref }}
       GHCR_TAG_PREFIX: >-
-        ${{ github.event_name == 'push'
-          && ''
-          || format('run-{0}-', github.run_id) }}
+        ${{ github.event_name == 'pull_request'
+          && format('run-{0}-', github.run_id)
+          || '' }}
       ASSEMBLY_TAG: >-
         ${{ github.event_name == 'push'
           && format('alganet/shell-versions:{0}', matrix.flavor)
