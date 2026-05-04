@@ -76,6 +76,25 @@ shvr_current ()
 	shvr_each current "${@:-}"
 }
 
+shvr_update ()
+{
+	if test -z "$*"
+	then set -- $(printf '%s ' $(shvr_interpreters))
+	fi
+
+	while test $# -gt 0
+	do
+		interpreter="$1"
+		shvr_clear_versioninfo
+		. "${SHVR_DIR_SELF}/variants/${interpreter}.sh"
+		if command -v "shvr_update_${interpreter}" >/dev/null 2>&1
+		then "shvr_update_${interpreter}"
+		else echo "skip: ${interpreter} has no updater yet" >&2
+		fi
+		shift
+	done
+}
+
 shvr_interpreters ()
 {
 	find "${SHVR_DIR_SELF}/variants" -type f |
@@ -130,6 +149,102 @@ shvr_untar()
 		--owner=0 \
 		--group=0 \
 		--mode=go-w
+}
+
+shvr_read_versions ()
+{
+	interpreter="$1"
+	which="$2"
+	file="${SHVR_DIR_SELF}/versions/${interpreter}.${which}"
+	if test -f "$file"
+	then sed -e '/^[[:space:]]*$/d' -e '/^[[:space:]]*#/d' -e "s/^/${interpreter}_/" "$file"
+	fi
+}
+
+shvr_filter_latest_per_series ()
+{
+	keyfn="$1"
+	while IFS= read -r ver
+	do
+		if key="$("$keyfn" "$ver" 2>/dev/null)" && test -n "$key"
+		then printf '%s\t%s\n' "$key" "$ver"
+		fi
+	done |
+		sort -V -r |
+		awk -F '\t' '!seen[$1]++ { print $2 }'
+}
+
+shvr_merge_versions ()
+{
+	interpreter="$1"
+	file="${SHVR_DIR_SELF}/versions/${interpreter}.all"
+	mkdir -p "$(dirname "$file")"
+
+	if ! test -f "$file"
+	then : > "$file"
+	fi
+
+	# Subshell so the EXIT trap is function-scoped (POSIX traps are
+	# process-scoped otherwise).
+	(
+		tmp="${file}.tmp.$$"
+		discovered="${tmp}.discovered"
+		existing="${tmp}.existing"
+		merged="${tmp}.merged"
+		new_only="${tmp}.new"
+		dropped="${tmp}.dropped"
+
+		trap 'rm -f "$discovered" "$existing" "$merged" "$new_only" "$dropped"' EXIT INT TERM
+
+		cat > "$discovered"
+
+		if ! test -s "$discovered"
+		then
+			echo "${interpreter}: no versions discovered (upstream fetch may have failed); refusing to overwrite ${file}" >&2
+			exit 1
+		fi
+
+		sed -e '/^[[:space:]]*$/d' -e '/^[[:space:]]*#/d' "$file" > "$existing"
+
+		if command -v "shvr_series_${interpreter}" >/dev/null 2>&1
+		then filter_cmd="shvr_filter_latest_per_series shvr_series_${interpreter}"
+		else filter_cmd="cat"
+		fi
+
+		# Union existing + discovered, optionally filter to one entry per
+		# series, then sort descending by version.
+		cat "$existing" "$discovered" | $filter_cmd | sort -V -u -r > "$merged"
+
+		if test -s "$existing"
+		then grep -v -F -x -f "$existing" "$merged" > "$new_only" || true
+		else cp "$merged" "$new_only"
+		fi
+
+		if test -s "$existing"
+		then grep -v -F -x -f "$merged" "$existing" > "$dropped" || true
+		else : > "$dropped"
+		fi
+
+		cp "$merged" "$file"
+
+		if test -s "$new_only"
+		then
+			n_new=$(wc -l < "$new_only" | tr -d ' ')
+			echo "${interpreter}: added ${n_new} new version(s):" >&2
+			sed 's/^/  /' "$new_only" >&2
+		fi
+
+		if test -s "$dropped"
+		then
+			n_drop=$(wc -l < "$dropped" | tr -d ' ')
+			echo "${interpreter}: dropped ${n_drop} superseded version(s):" >&2
+			sed 's/^/  /' "$dropped" >&2
+		fi
+
+		if ! test -s "$new_only" && ! test -s "$dropped"
+		then echo "${interpreter}: no changes" >&2
+		fi
+	)
 }
 
 shvr_fetch()
