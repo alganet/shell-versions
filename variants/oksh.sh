@@ -12,30 +12,25 @@ shvr_static_oksh ()
 
 shvr_current_oksh ()
 {
-	cat <<-@
-		oksh_7.8
-		oksh_7.7
-	@
+	shvr_read_versions oksh current
 }
 
 shvr_targets_oksh ()
 {
-	cat <<-@
-		oksh_7.8
-		oksh_7.7
-		oksh_7.6
-		oksh_7.5
-		oksh_7.4
-		oksh_7.3
-		oksh_7.2
-		oksh_7.1
-		oksh_7.0
-		oksh_6.9
-		oksh_6.8.1
-		oksh_6.7.1
-		oksh_6.6
-		oksh_6.5
-	@
+	shvr_read_versions oksh all
+}
+
+shvr_update_oksh ()
+{
+	. "${SHVR_DIR_SELF}/common/version_sources/github_releases.sh"
+	shvr_versions_from_github_tags ibara/oksh 'oksh-([0-9.]+)' |
+		shvr_merge_versions oksh
+}
+
+shvr_series_oksh ()
+{
+	shvr_versioninfo_oksh "$1" || return 1
+	printf '%s.%s\n' "${version_major}" "${version_minor}"
 }
 
 shvr_versioninfo_oksh ()
