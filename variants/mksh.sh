@@ -12,36 +12,39 @@ shvr_static_mksh ()
 
 shvr_current_mksh ()
 {
-	cat <<-@
-		mksh_R59c
-		mksh_R58
-	@
+	shvr_read_versions mksh current
 }
 
 shvr_targets_mksh ()
 {
-	cat <<-@
-		mksh_R59c
-		mksh_R58
-		mksh_R57
-		mksh_R56c
-		mksh_R55
-		mksh_R54
-		mksh_R53a
-		mksh_R52c
-		mksh_R51
-		mksh_R50f
-		mksh_R49
-		mksh_R48b
-		mksh_R47
-		mksh_R46
-		mksh_R45
-	@
+	shvr_read_versions mksh all
+}
+
+shvr_update_mksh ()
+{
+	. "${SHVR_DIR_SELF}/common/version_sources/github_releases.sh"
+	shvr_versions_from_github_tags MirBSD/mksh 'mksh-(R[0-9]+[a-z]?)' |
+		shvr_merge_versions mksh
+}
+
+shvr_series_mksh ()
+{
+	shvr_versioninfo_mksh "$1" || return 1
+	printf 'R%s\n' "${version_major}"
 }
 
 shvr_versioninfo_mksh ()
 {
 	version="$1"
+	rest="${version#R}"
+	if test "$rest" = "$version"
+	then return 1
+	fi
+	version_major="${rest%%[!0-9]*}"
+	if test -z "$version_major"
+	then return 1
+	fi
+	version_patch="${rest#$version_major}"
 	build_srcdir="${SHVR_DIR_SRC}/mksh/${version}"
 }
 

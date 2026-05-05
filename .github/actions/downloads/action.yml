@@ -484,6 +484,51 @@ runs:
         cache_path: "mksh/R45"
     - uses: ./.github/actions/single-download
       with:
+        shvr_shell: mksh
+        shvr_version: "R39c"
+        cache_path: "mksh/R39c"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: mksh
+        shvr_version: "R38c"
+        cache_path: "mksh/R38c"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: mksh
+        shvr_version: "R37c"
+        cache_path: "mksh/R37c"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: mksh
+        shvr_version: "R36b"
+        cache_path: "mksh/R36b"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: mksh
+        shvr_version: "R35b"
+        cache_path: "mksh/R35b"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: mksh
+        shvr_version: "R33d"
+        cache_path: "mksh/R33d"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: mksh
+        shvr_version: "R32"
+        cache_path: "mksh/R32"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: mksh
+        shvr_version: "R31d"
+        cache_path: "mksh/R31d"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: mksh
+        shvr_version: "R30"
+        cache_path: "mksh/R30"
+    - uses: ./.github/actions/single-download
+      with:
         shvr_shell: oksh
         shvr_version: "7.8"
         cache_path: "oksh/7.8"
