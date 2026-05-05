@@ -1,0 +1,45 @@
+# Versions that don't build with the current toolchain. Established by
+# docker-probing the toolchain stage with the existing variant. Re-probe
+# and revise when the toolchain pin (common/musl-cross-make.sh) changes.
+
+# R40..R44: a conftest.c "compile-time assertion" check (cta macro) is
+# rejected by modern gcc.
+R44
+R43
+R42b
+R42
+R41c
+R41b
+R41
+R40f
+R40e
+R40d
+R40c
+R40b
+R40
+
+# <R30: gensigs.sh signal-list extraction yields NSIG=0 against modern
+# musl headers, leaving an empty signames.inc.
+R29g
+R29f
+R29e
+R29d
+R29c
+R29b
+R29
+R28
+R27e
+R27d
+R27
+R26c
+R26b
+R26
+R25
+R24c
+R24b
+R24
+R23
+R22
+R21
+R20
+R19

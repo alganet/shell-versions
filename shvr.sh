@@ -174,6 +174,15 @@ shvr_filter_latest_per_series ()
 		awk -F '\t' '!seen[$1]++ { print $2 }'
 }
 
+shvr_filter_excluded ()
+{
+	excluded_file="$1"
+	if test -s "$excluded_file"
+	then grep -v -F -x -f "$excluded_file"
+	else cat
+	fi
+}
+
 shvr_merge_versions ()
 {
 	interpreter="$1"
@@ -184,17 +193,20 @@ shvr_merge_versions ()
 	then : > "$file"
 	fi
 
+	excluded_file="${SHVR_DIR_SELF}/versions/${interpreter}.excluded"
+
 	# Subshell so the EXIT trap is function-scoped (POSIX traps are
 	# process-scoped otherwise).
 	(
 		tmp="${file}.tmp.$$"
 		discovered="${tmp}.discovered"
 		existing="${tmp}.existing"
+		excluded="${tmp}.excluded"
 		merged="${tmp}.merged"
 		new_only="${tmp}.new"
 		dropped="${tmp}.dropped"
 
-		trap 'rm -f "$discovered" "$existing" "$merged" "$new_only" "$dropped"' EXIT INT TERM
+		trap 'rm -f "$discovered" "$existing" "$excluded" "$merged" "$new_only" "$dropped"' EXIT INT TERM
 
 		cat > "$discovered"
 
@@ -206,14 +218,23 @@ shvr_merge_versions ()
 
 		sed -e '/^[[:space:]]*$/d' -e '/^[[:space:]]*#/d' "$file" > "$existing"
 
-		if command -v "shvr_series_${interpreter}" >/dev/null 2>&1
-		then filter_cmd="shvr_filter_latest_per_series shvr_series_${interpreter}"
-		else filter_cmd="cat"
+		if test -f "$excluded_file"
+		then sed -e '/^[[:space:]]*$/d' -e '/^[[:space:]]*#/d' "$excluded_file" > "$excluded"
+		else : > "$excluded"
 		fi
 
-		# Union existing + discovered, optionally filter to one entry per
-		# series, then sort descending by version.
-		cat "$existing" "$discovered" | $filter_cmd | sort -V -u -r > "$merged"
+		if command -v "shvr_series_${interpreter}" >/dev/null 2>&1
+		then series_filter="shvr_filter_latest_per_series shvr_series_${interpreter}"
+		else series_filter="cat"
+		fi
+
+		# Union existing + discovered, drop versions listed in
+		# versions/<shell>.excluded, dedupe to one entry per series
+		# (shvr_series_<shell>), then sort descending by version.
+		cat "$existing" "$discovered" |
+			shvr_filter_excluded "$excluded" |
+			$series_filter |
+			sort -V -u -r > "$merged"
 
 		if test -s "$existing"
 		then grep -v -F -x -f "$existing" "$merged" > "$new_only" || true
@@ -237,7 +258,7 @@ shvr_merge_versions ()
 		if test -s "$dropped"
 		then
 			n_drop=$(wc -l < "$dropped" | tr -d ' ')
-			echo "${interpreter}: dropped ${n_drop} superseded version(s):" >&2
+			echo "${interpreter}: dropped ${n_drop} version(s):" >&2
 			sed 's/^/  /' "$dropped" >&2
 		fi
 
