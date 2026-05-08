@@ -385,6 +385,11 @@ runs:
     - uses: ./.github/actions/single-download
       with:
         shvr_shell: loksh
+        shvr_version: "7.2"
+        cache_path: "loksh/7.2"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: loksh
         shvr_version: "7.1"
         cache_path: "loksh/7.1"
     - uses: ./.github/actions/single-download

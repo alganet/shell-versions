@@ -471,6 +471,10 @@ jobs:
             shell: loksh
             version: "7.3"
             cache_path: "loksh/7.3"
+          - target: loksh_7.2
+            shell: loksh
+            version: "7.2"
+            cache_path: "loksh/7.2"
           - target: loksh_7.1
             shell: loksh
             version: "7.1"
@@ -955,6 +959,7 @@ jobs:
               loksh_7.5
               loksh_7.4
               loksh_7.3
+              loksh_7.2
               loksh_7.1
               loksh_7.0
               loksh_6.9

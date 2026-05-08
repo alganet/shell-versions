@@ -12,32 +12,42 @@ shvr_static_loksh ()
 
 shvr_current_loksh ()
 {
-	cat <<-@
-		loksh_7.8
-		loksh_7.7
-	@
+	shvr_read_versions loksh current
 }
 
 shvr_targets_loksh ()
 {
-	cat <<-@
-		loksh_7.8
-		loksh_7.7
-		loksh_7.6
-		loksh_7.5
-		loksh_7.4
-		loksh_7.3
-		loksh_7.1
-		loksh_7.0
-		loksh_6.9
-		loksh_6.8.1
-		loksh_6.7.5
-	@
+	shvr_read_versions loksh all
+}
+
+shvr_update_loksh ()
+{
+	. "${SHVR_DIR_SELF}/common/version_sources/github_releases.sh"
+	shvr_versions_from_github_tags dimkr/loksh '([0-9]+\.[0-9]+(\.[0-9]+)?)' |
+		shvr_merge_versions loksh
+}
+
+shvr_series_loksh ()
+{
+	shvr_versioninfo_loksh "$1" || return 1
+	printf '%s.%s\n' "${version_major}" "${version_minor}"
 }
 
 shvr_versioninfo_loksh ()
 {
 	version="$1"
+	version_major="${version%%\.*}"
+
+	if test "$version" = "$version_major"
+	then return 1
+	fi
+	version_minor="${version#$version_major\.}"
+	version_patch="${version_minor#*\.}"
+	if test "$version_patch" = "$version_minor"
+	then version_patch="0"
+	else version_minor="${version_minor%\.*}"
+	fi
+
 	build_srcdir="${SHVR_DIR_SRC}/loksh/${version}"
 }
 
