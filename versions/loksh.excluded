@@ -1,0 +1,18 @@
+# Versions without an upstream release tarball. dimkr/loksh started
+# publishing release assets at 6.7.5; earlier git tags exist but the
+# URL https://github.com/dimkr/loksh/releases/download/$v/loksh-$v.tar.xz
+# returns 404, so shvr_download_loksh can't fetch the source.
+# Older patches inside the 6.7 series (6.7, 6.7.1..6.7.4) also lack
+# tarballs; the series filter picks 6.7.5 automatically so they don't
+# need to be listed here.
+6.6
+6.5
+6.4
+6.3
+6.2
+6.1
+6.0
+5.9
+5.8
+5.7
+5.6
