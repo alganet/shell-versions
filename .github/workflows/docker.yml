@@ -711,6 +711,10 @@ jobs:
             shell: posh
             version: "0.12.6"
             cache_path: "posh/0.12.6"
+          - target: yash_2.61
+            shell: yash
+            version: "2.61"
+            cache_path: "yash/2.61"
           - target: yash_2.60
             shell: yash
             version: "2.60"
@@ -875,8 +879,8 @@ jobs:
               osh_0.36.0
               posh_0.14.3
               posh_0.13.2
+              yash_2.61
               yash_2.60
-              yash_2.59
               yashrs_3.0.5
               yashrs_3.0.4
               yashrs_0.4.5
@@ -1019,6 +1023,7 @@ jobs:
               posh_0.14.3
               posh_0.13.2
               posh_0.12.6
+              yash_2.61
               yash_2.60
               yash_2.59
               yash_2.58.1

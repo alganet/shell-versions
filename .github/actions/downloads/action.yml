@@ -685,6 +685,11 @@ runs:
     - uses: ./.github/actions/single-download
       with:
         shvr_shell: yash
+        shvr_version: "2.61"
+        cache_path: "yash/2.61"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: yash
         shvr_version: "2.60"
         cache_path: "yash/2.60"
     - uses: ./.github/actions/single-download
