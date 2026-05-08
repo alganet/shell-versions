@@ -1,0 +1,36 @@
+# SPDX-FileCopyrightText: 2026 Alexandre Gomes Gaigalas <alganet@gmail.com>
+# SPDX-License-Identifier: ISC
+#
+# yash 2.61's common.h uses
+#   #if defined(__has_builtin) && __has_builtin(__builtin_unreachable)
+# to guard a __builtin_unreachable() call. C preprocessor #if does not
+# short-circuit at the syntactic level, so on compilers where
+# __has_builtin is built-in (not a macro), defined(__has_builtin) is
+# false but the second clause still has to parse — and __has_builtin(x)
+# is rejected as a function-like macro that doesn't exist. Splitting
+# the guard into nested #ifdef/#if avoids the parse of the inner clause
+# when the outer guard fails.
+--- common.h	2026-01-01 00:00:00 +0000
++++ common.h	2026-01-01 00:00:00 +0000
+@@ -54,15 +54,19 @@
+ # define DUMMY_INIT(dummy_initial_value) = (dummy_initial_value)
+ #endif
+
+-#if defined(__has_builtin) && __has_builtin(__builtin_unreachable)
+-# define UNREACHABLE() \
++#ifdef __has_builtin
++# if __has_builtin(__builtin_unreachable)
++#  define UNREACHABLE() \
+     do { \
+         assert(!"unreachable code"); \
+         __builtin_unreachable(); \
+     } while (0)
++# else
++#  define UNREACHABLE() assert(!"unreachable code")
++# endif
+ #else
+ # define UNREACHABLE() assert(!"unreachable code")
+ #endif
+
+ #define ARGV(i) ((wchar_t *) argv[i])
+

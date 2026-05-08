@@ -12,37 +12,42 @@ shvr_static_yash ()
 
 shvr_current_yash ()
 {
-	cat <<-@
-		yash_2.60
-		yash_2.59
-	@
+	shvr_read_versions yash current
 }
 
 shvr_targets_yash ()
 {
-	cat <<-@
-		yash_2.60
-		yash_2.59
-		yash_2.58.1
-		yash_2.57
-		yash_2.56.1
-		yash_2.55
-		yash_2.54
-		yash_2.53
-		yash_2.52
-		yash_2.51
-		yash_2.50
-		yash_2.49
-		yash_2.48
-		yash_2.47
-		yash_2.46
-		yash_2.45
-	@
+	shvr_read_versions yash all
+}
+
+shvr_update_yash ()
+{
+	. "${SHVR_DIR_SELF}/common/version_sources/github_releases.sh"
+	shvr_versions_from_github_tags magicant/yash '([0-9]+\.[0-9]+(\.[0-9]+)?)' |
+		shvr_merge_versions yash
+}
+
+shvr_series_yash ()
+{
+	shvr_versioninfo_yash "$1" || return 1
+	printf '%s.%s\n' "${version_major}" "${version_minor}"
 }
 
 shvr_versioninfo_yash ()
 {
 	version="$1"
+	version_major="${version%%\.*}"
+
+	if test "$version" = "$version_major"
+	then return 1
+	fi
+	version_minor="${version#$version_major\.}"
+	version_patch="${version_minor#*\.}"
+	if test "$version_patch" = "$version_minor"
+	then version_patch="0"
+	else version_minor="${version_minor%\.*}"
+	fi
+
 	build_srcdir="${SHVR_DIR_SRC}/yash/${version}"
 }
 
@@ -67,6 +72,13 @@ shvr_build_yash ()
 	shvr_untar "${build_srcdir}.tar.gz" "${build_srcdir}"
 
 	cd "${build_srcdir}"
+
+	if test -d "${SHVR_DIR_SELF}/patches/yash/$version"
+	then
+		find "${SHVR_DIR_SELF}/patches/yash/$version" -type f -o -type l | sort | while read -r patch_file
+		do patch -p0 < "$patch_file"
+		done
+	fi
 
 	# Static musl build with reproducible flags
 	export SOURCE_DATE_EPOCH=1
@@ -100,5 +112,5 @@ shvr_deps_yash ()
 {
 	shvr_versioninfo_yash "$1"
 	apt-get -y install \
-		curl make xz-utils gettext
+		curl make xz-utils gettext patch
 }
