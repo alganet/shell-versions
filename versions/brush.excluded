@@ -1,0 +1,5 @@
+# 0.1.0: CI's docker build-and-push step fails to produce the per-target
+# image (manifest unknown when the verify step tries to docker create from
+# ghcr). The build itself runs but the artifact never lands on GHCR; root
+# cause unclear, and 0.1.0 is old enough that it isn't worth chasing.
+0.1.0
