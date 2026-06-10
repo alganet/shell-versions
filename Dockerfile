@@ -11,6 +11,24 @@ ARG RUNTIME_BASE=busybox:stable-musl@sha256:3c6ae8008e2c2eedd141725c30b20d9c36b0
 
 FROM ${TOOLCHAIN_BASE} AS toolchain
 
+    # Pin apt sources to a specific snapshot.debian.org timestamp so the
+    # host toolchain (gcc, binutils, etc.) is bit-identical across builds
+    # and hosts. Without this, apt-get pulls live indexes and Debian
+    # security updates make the resulting musl-cross-make and stock cc
+    # drift over time, which propagates into every built binary. The
+    # chosen date matches the snapshot reference that debian:trixie-slim
+    # already records as a comment in its own debian.sources file.
+    ARG DEBIAN_SNAPSHOT=20260421T000000Z
+    # http (not https) because debian:trixie-slim lacks ca-certificates,
+    # and apt-get install can't run before apt-get update succeeds.
+    # snapshot.debian.org signs the InRelease files so integrity is still
+    # verified via the digest-pinned base's keyrings.
+    RUN sed -i \
+            -e "s|http://deb.debian.org/debian-security|http://snapshot.debian.org/archive/debian-security/${DEBIAN_SNAPSHOT}|" \
+            -e "s|http://deb.debian.org/debian|http://snapshot.debian.org/archive/debian/${DEBIAN_SNAPSHOT}|" \
+            /etc/apt/sources.list.d/debian.sources && \
+        echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99no-check-valid-until
+
     # Update distro
     RUN apt-get -y update
 
@@ -29,10 +47,15 @@ FROM ${TOOLCHAIN_BASE} AS toolchain
     # Build musl cross-compiler once (shared by all static variants)
     RUN bash "/shvr/shvr.sh" musl-build
 
-    # Pre-install Rust toolchain (used by brush and yashrs)
+    # Pre-install Rust toolchain (used by brush and yashrs). The toolchain
+    # version is pinned so the resulting binaries are bit-identical across
+    # hosts and runs; otherwise rustup-init downloads "latest stable" at
+    # image-build time, which drifts and breaks cross-host reproducibility.
+    # Bump when refreshing the base and regenerate the affected checksums.
+    ARG RUST_TOOLCHAIN=1.95.0
     COPY "build/rustup-init-*" "/usr/src/shvr/"
     COPY "checksums/sources/rustup-init-*" "/shvr/checksums/sources/"
-    RUN sh "${SHVR_DIR_SRC}/rustup-init-1.28.2.sh" -y && \
+    RUN sh "${SHVR_DIR_SRC}/rustup-init-1.28.2.sh" -y --default-toolchain "${RUST_TOOLCHAIN}" && \
         . "$HOME/.cargo/env" && \
         rustup target add x86_64-unknown-linux-musl
 
@@ -47,6 +70,13 @@ FROM toolchain AS builder
     COPY "variants/" "/shvr/variants"
 
     ARG TARGETS
+
+    # Refresh apt index before variant deps. The toolchain layer is heavily
+    # cached, and its `apt-get update` can point at packages that Debian has
+    # since security-updated and removed from the mirror; without this, the
+    # next `apt-get install` (from a variant's shvr_deps_<shell>) fails with
+    # "404 Not Found" or "Version 'X' not found".
+    RUN apt-get -y update
 
     # Build
     RUN bash "/shvr/shvr.sh" deps $TARGETS

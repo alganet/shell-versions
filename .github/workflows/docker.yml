@@ -104,8 +104,8 @@ jobs:
           build-args: |
             TOOLCHAIN_BASE=${{ needs.mirror.outputs.toolchain_ref }}
             RUNTIME_BASE=${{ needs.mirror.outputs.runtime_ref }}
-          cache-to: type=gha,scope=toolchain,mode=max
-          cache-from: type=gha,scope=toolchain
+          cache-to: type=gha,scope=toolchain-v3,mode=max
+          cache-from: type=gha,scope=toolchain-v3
 
   build:
     needs: [download, toolchain, mirror]
@@ -150,7 +150,7 @@ jobs:
             TOOLCHAIN_BASE=${{ needs.mirror.outputs.toolchain_ref }}
             RUNTIME_BASE=${{ needs.mirror.outputs.runtime_ref }}
           cache-from: |
-            type=gha,scope=toolchain
+            type=gha,scope=toolchain-v3
             type=registry,ref=ghcr.io/${{ github.repository }}:buildcache-${{ matrix.target }}
           cache-to: >-
             ${{ github.event_name == 'push'
