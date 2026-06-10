@@ -1,0 +1,15 @@
+# 3.1.0: the workspace crates (yash-cli, yash-builtin, yash-arith, …) declare
+# rust-version 1.96.0, but the toolchain is pinned to 1.95.0
+# (Dockerfile RUST_TOOLCHAIN), so cargo refuses to build:
+#   error: rustc 1.95.0 is not supported by the following packages:
+#   yash-cli@3.1.0 requires rustc 1.96.0
+# Revisit when the Rust pin moves to >= 1.96.0.
+3.1.0
+
+# 3.0.6: yash-env fails to compile against the pinned toolchain —
+#   error[E0599]: no method named `validate` found for
+#   mutable reference `&mut ScheduledWakerQueue`
+# This is an isolated mid-band break: 3.0.5 and 3.0.7 both build cleanly, so
+# it is not a toolchain-floor issue, just a bad point release. (Probed
+# 2026-06-10.)
+3.0.6
