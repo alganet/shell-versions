@@ -1,0 +1,65 @@
+# SPDX-FileCopyrightText: 2026 Alexandre Gomes Gaigalas <alganet@gmail.com>
+# SPDX-License-Identifier: ISC
+
+name: Build and push with retry
+description: docker/build-push-action with one automatic retry for transient buildx/registry failures
+inputs:
+  context:
+    description: 'Build context'
+    required: false
+    default: '.'
+  file:
+    description: 'Dockerfile path'
+    required: false
+    default: ''
+  target:
+    description: 'Build stage target'
+    required: false
+    default: ''
+  push:
+    description: 'Push the image'
+    required: false
+    default: 'true'
+  tags:
+    description: 'Image tags'
+    required: true
+  build-args:
+    description: 'Build args'
+    required: false
+    default: ''
+  cache-from:
+    description: 'Cache sources'
+    required: false
+    default: ''
+  cache-to:
+    description: 'Cache export'
+    required: false
+    default: ''
+runs:
+  using: composite
+  steps:
+    - name: Build and push (attempt 1)
+      id: attempt1
+      continue-on-error: true
+      uses: docker/build-push-action@v7
+      with:
+        context: ${{ inputs.context }}
+        file: ${{ inputs.file }}
+        target: ${{ inputs.target }}
+        push: ${{ inputs.push }}
+        tags: ${{ inputs.tags }}
+        build-args: ${{ inputs.build-args }}
+        cache-from: ${{ inputs.cache-from }}
+        cache-to: ${{ inputs.cache-to }}
+    - name: Build and push (retry)
+      if: steps.attempt1.outcome == 'failure'
+      uses: docker/build-push-action@v7
+      with:
+        context: ${{ inputs.context }}
+        file: ${{ inputs.file }}
+        target: ${{ inputs.target }}
+        push: ${{ inputs.push }}
+        tags: ${{ inputs.tags }}
+        build-args: ${{ inputs.build-args }}
+        cache-from: ${{ inputs.cache-from }}
+        cache-to: ${{ inputs.cache-to }}

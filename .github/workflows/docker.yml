@@ -28,6 +28,11 @@ env:
   # Keep in sync with Dockerfile ARG defaults.
   MIRROR_TOOLCHAIN_SOURCE: debian:trixie-slim@sha256:cedb1ef40439206b673ee8b33a46a03a0c9fa90bf3732f54704f99cb061d2c5a
   MIRROR_RUNTIME_SOURCE: busybox:stable-musl@sha256:3c6ae8008e2c2eedd141725c30b20d9c36b026eb796688f88205845ef17aa213
+  # BuildKit builder image for the docker-container driver. Mirrored to
+  # GHCR like the bases so booting a builder never pulls from Docker Hub
+  # (the recurring "Booting builder ... context deadline exceeded"). Pin
+  # matches docker/setup-buildx-action@v4's default tag, buildx-stable-1.
+  MIRROR_BUILDKIT_SOURCE: moby/buildkit:buildx-stable-1@sha256:0168606be2315b7c807a03b3d8aa79beefdb31c98740cebdffdfeebf31190c9f
 
 jobs:
   download:
@@ -41,6 +46,7 @@ jobs:
     outputs:
       toolchain_ref: ${{ steps.resolve.outputs.toolchain_ref }}
       runtime_ref: ${{ steps.resolve.outputs.runtime_ref }}
+      buildkit_ref: ${{ steps.resolve.outputs.buildkit_ref }}
     env:
       # Run-scoped GHCR tags. The `run-` prefix matches the existing
       # ephemeral cleanup filter in ghcr-cleanup.yml, so these mirror
@@ -48,6 +54,7 @@ jobs:
       # each other or any long-lived shared tag.
       TOOLCHAIN_TAG: ghcr.io/${{ github.repository }}:run-${{ github.run_id }}-mirror-toolchain
       RUNTIME_TAG: ghcr.io/${{ github.repository }}:run-${{ github.run_id }}-mirror-runtime
+      BUILDKIT_TAG: ghcr.io/${{ github.repository }}:run-${{ github.run_id }}-mirror-buildkit
     steps:
       - name: Log in to GHCR
         uses: docker/login-action@v4
@@ -56,15 +63,27 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
-
+      # No setup-buildx-action here on purpose: `imagetools` is a
+      # registry-side operation that uses the preinstalled default builder,
+      # so it never boots a buildkit container. That breaks the
+      # chicken-and-egg of mirroring the buildkit image itself.
       - name: Mirror base images to run-scoped GHCR tags
         run: |
-          docker buildx imagetools create \
+          set -eu
+          retry() {
+            for attempt in 1 2 3; do
+              if "$@"; then return 0; fi
+              echo "attempt ${attempt} failed: $*" >&2
+              sleep 5
+            done
+            return 1
+          }
+          retry docker buildx imagetools create \
             --tag "${TOOLCHAIN_TAG}" "${MIRROR_TOOLCHAIN_SOURCE}"
-          docker buildx imagetools create \
+          retry docker buildx imagetools create \
             --tag "${RUNTIME_TAG}" "${MIRROR_RUNTIME_SOURCE}"
+          retry docker buildx imagetools create \
+            --tag "${BUILDKIT_TAG}" "${MIRROR_BUILDKIT_SOURCE}"
 
       - name: Resolve digest-pinned refs
         id: resolve
@@ -73,9 +92,12 @@ jobs:
             --format '{{.Manifest.Digest}}' "${TOOLCHAIN_TAG}")
           runtime_digest=$(docker buildx imagetools inspect \
             --format '{{.Manifest.Digest}}' "${RUNTIME_TAG}")
+          buildkit_digest=$(docker buildx imagetools inspect \
+            --format '{{.Manifest.Digest}}' "${BUILDKIT_TAG}")
           {
             echo "toolchain_ref=ghcr.io/${{ github.repository }}@${toolchain_digest}"
             echo "runtime_ref=ghcr.io/${{ github.repository }}@${runtime_digest}"
+            echo "buildkit_ref=ghcr.io/${{ github.repository }}@${buildkit_digest}"
           } >> "$GITHUB_OUTPUT"
 
   toolchain:
@@ -94,6 +116,8 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
+        with:
+          driver-opts: image=${{ needs.mirror.outputs.buildkit_ref }}
 
       - name: Build toolchain image
         uses: docker/build-push-action@v7
@@ -135,9 +159,11 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
+        with:
+          driver-opts: image=${{ needs.mirror.outputs.buildkit_ref }}
 
       - name: Build and push shell image
-        uses: docker/build-push-action@v7
+        uses: ./.github/actions/build-push-retry
         with:
           context: .
           target: artifacts
@@ -1073,15 +1099,36 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
+        with:
+          driver-opts: image=${{ needs.mirror.outputs.buildkit_ref }}
 
       - name: Generate assembly Dockerfile
         run: |
+          # Overlayfs caps mount options at one page (~4KB) and lower
+          # layers at 500; a single stage with one COPY layer per target
+          # (~500 for "all") exceeds both. Chunk targets into shallow
+          # stages, then merge the chunks.
+          set -eu
+          chunk_size=8
+          i=0
+          last_chunk=0
           {
-            echo 'FROM scratch AS collected'
             for target in $ALL_TARGETS; do
-              echo "COPY --from=ghcr.io/${{ github.repository }}:${GHCR_TAG_PREFIX}${target} --chown=0:0 /opt /opt"
-              echo "COPY --from=ghcr.io/${{ github.repository }}:${GHCR_TAG_PREFIX}${target} --chown=0:0 /deps /deps"
-              echo "COPY --from=ghcr.io/${{ github.repository }}:${GHCR_TAG_PREFIX}${target} --chown=0:0 /shvr/checksums/build /shvr/checksums/build"
+              if [ $((i % chunk_size)) -eq 0 ]; then
+                last_chunk=$((i / chunk_size))
+                echo "FROM scratch AS chunk_${last_chunk}"
+              fi
+              src="ghcr.io/${{ github.repository }}:${GHCR_TAG_PREFIX}${target}"
+              echo "COPY --from=${src} --chown=0:0 /opt /opt"
+              echo "COPY --from=${src} --chown=0:0 /deps /deps"
+              echo "COPY --from=${src} --chown=0:0 /shvr/checksums/build /shvr/checksums/build"
+              i=$((i + 1))
+            done
+            echo 'FROM scratch AS collected'
+            c=0
+            while [ "$c" -le "$last_chunk" ]; do
+              echo "COPY --from=chunk_${c} --chown=0:0 / /"
+              c=$((c + 1))
             done
             echo "FROM ${RUNTIME_REF}"
             echo 'COPY "entrypoint.sh" "/opt/shvr/entrypoint.sh"'
@@ -1095,11 +1142,11 @@ jobs:
           } > Dockerfile.assembly
 
       - name: Build and push assembled image
-        uses: docker/build-push-action@v7
+        uses: ./.github/actions/build-push-retry
         with:
           context: .
           file: Dockerfile.assembly
-          push: true
+          push: "true"
           tags: ${{ env.ASSEMBLY_TAG }}
 
       - name: Verify build checksums
