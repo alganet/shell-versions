@@ -140,6 +140,11 @@ runs:
     - uses: ./.github/actions/single-download
       with:
         shvr_shell: brush
+        shvr_version: "0.4.0"
+        cache_path: "brush/0.4.0"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: brush
         shvr_version: "0.3.0"
         cache_path: "brush/0.3.0"
     - uses: ./.github/actions/single-download
