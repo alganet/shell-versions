@@ -775,6 +775,16 @@ runs:
     - uses: ./.github/actions/single-download
       with:
         shvr_shell: yashrs
+        shvr_version: "3.0.8"
+        cache_path: "yashrs/3.0.8"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: yashrs
+        shvr_version: "3.0.7"
+        cache_path: "yashrs/3.0.7"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: yashrs
         shvr_version: "3.0.5"
         cache_path: "yashrs/3.0.5"
     - uses: ./.github/actions/single-download
@@ -785,8 +795,68 @@ runs:
     - uses: ./.github/actions/single-download
       with:
         shvr_shell: yashrs
+        shvr_version: "3.0.3"
+        cache_path: "yashrs/3.0.3"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: yashrs
+        shvr_version: "3.0.2"
+        cache_path: "yashrs/3.0.2"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: yashrs
+        shvr_version: "3.0.1"
+        cache_path: "yashrs/3.0.1"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: yashrs
+        shvr_version: "3.0.0"
+        cache_path: "yashrs/3.0.0"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: yashrs
         shvr_version: "0.4.5"
         cache_path: "yashrs/0.4.5"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: yashrs
+        shvr_version: "0.4.4"
+        cache_path: "yashrs/0.4.4"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: yashrs
+        shvr_version: "0.4.3"
+        cache_path: "yashrs/0.4.3"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: yashrs
+        shvr_version: "0.4.2"
+        cache_path: "yashrs/0.4.2"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: yashrs
+        shvr_version: "0.4.1"
+        cache_path: "yashrs/0.4.1"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: yashrs
+        shvr_version: "0.4.0"
+        cache_path: "yashrs/0.4.0"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: yashrs
+        shvr_version: "0.3.0"
+        cache_path: "yashrs/0.3.0"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: yashrs
+        shvr_version: "0.2.0"
+        cache_path: "yashrs/0.2.0"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: yashrs
+        shvr_version: "0.1.0"
+        cache_path: "yashrs/0.1.0"
     - uses: ./.github/actions/single-download
       with:
         shvr_shell: zsh
