@@ -21,6 +21,11 @@ shvr_targets_ash ()
 	shvr_targets_busybox "$@" | sed -e 's/^busybox_/ash_/'
 }
 
+shvr_update_ash ()
+{
+	shvr_update_busybox
+}
+
 shvr_versioninfo_ash ()
 {
 	shvr_versioninfo_busybox "$@"
@@ -75,8 +80,16 @@ shvr_build_ash ()
 		CONFIG_ASH_OPTIMIZE_FOR_SIZE
 	'
 
+	# Pre-1.18 busybox bakes the build clock into the version banner via
+	# BUILDTIME (Rules.mak runs `date`, scripts/config/confdata.c reads
+	# getenv("BUILDTIME")), which KBUILD_BUILD_TIMESTAMP does not pin. A
+	# make command-line override beats Rules.mak's `:=` and is exported to
+	# the config tool; on modern busybox BUILDTIME is unused, so this is a
+	# no-op there. Keep it on every make call so config and compile agree.
+	BUILDTIME="1970.01.01-00:00+0000"
+
 	# Start with minimal config (all disabled)
-	make allnoconfig
+	make allnoconfig BUILDTIME="$BUILDTIME"
 
 	# Disable specified configs
 	for conf in $unsetConfs
@@ -100,7 +113,7 @@ shvr_build_ash ()
 	done
 
 	# Resolve config dependencies
-	make oldconfig
+	make oldconfig BUILDTIME="$BUILDTIME"
 
 	# Fix .config timestamp for reproducibility
 	# Replace the auto-generated timestamp line with a fixed value
@@ -130,7 +143,8 @@ shvr_build_ash ()
 		CROSS_COMPILE="/usr/local/musl-cross/bin/x86_64-linux-musl-" \
 		KBUILD_BUILD_TIMESTAMP="Thu Jan  1 00:00:01 UTC 1970" \
 		KBUILD_BUILD_USER="builder" \
-		KBUILD_BUILD_HOST="builder"
+		KBUILD_BUILD_HOST="builder" \
+		BUILDTIME="$BUILDTIME"
 
 	unset SOURCE_DATE_EPOCH TZ CFLAGS LDFLAGS
 
