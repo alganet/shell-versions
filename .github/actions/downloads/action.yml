@@ -139,6 +139,11 @@ runs:
         cache_path: "bash/2.05b"
     - uses: ./.github/actions/single-download
       with:
+        shvr_shell: bash
+        shvr_version: "2.05a.0"
+        cache_path: "bash/2.05a"
+    - uses: ./.github/actions/single-download
+      with:
         shvr_shell: brush
         shvr_version: "0.4.0"
         cache_path: "brush/0.4.0"

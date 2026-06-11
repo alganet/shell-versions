@@ -13,29 +13,48 @@ shvr_static_bash ()
 
 shvr_current_bash ()
 {
-	cat <<-@
-		bash_5.3.9
-		bash_5.2.37
-	@
+	shvr_read_versions bash current
 }
 
 shvr_targets_bash ()
 {
-	cat <<-@
-		bash_5.3.9
-		bash_5.2.37
-		bash_5.1.16
-		bash_5.0.18
-		bash_4.4.23
-		bash_4.3.48
-		bash_4.2.53
-		bash_4.1.17
-		bash_4.0.44
-		bash_3.2.57
-		bash_3.1.23
-		bash_3.0.22
-		bash_2.05b.13
-	@
+	shvr_read_versions bash all
+}
+
+shvr_update_bash ()
+{
+	. "${SHVR_DIR_SELF}/common/version_sources/html_listing.sh"
+
+	mirror="https://mirrors.ocf.berkeley.edu/gnu/bash/"
+
+	# Discover baseline tarballs (bash-X.Y[a-z]?.tar.gz). This deliberately
+	# excludes three-component tarballs (bash-3.2.57.tar.gz), release
+	# candidates (bash-4.0-rc1.tar.gz), and historical diffs/sigs — shvr
+	# always builds from a baseline plus numbered patches, never the
+	# pre-patched interim tarballs.
+	shvr_versions_from_html_listing "$mirror" 'bash-([0-9]+\.[0-9]+[a-z]?)\.tar\.gz' |
+		while IFS= read -r baseline
+		do
+			major="${baseline%%.*}"
+			minor="${baseline#*.}"
+
+			# A bash version is "<baseline>.<patch_count>", so scrape the
+			# baseline's -patches/ dir for the highest bash<major><minor>-NNN
+			# file (e.g. bash52-037, bash205b-013). Baselines with no patch
+			# dir 404 (stderr suppressed, expected) and compose to <baseline>.0.
+			patch="$(shvr_versions_from_html_listing \
+				"${mirror}bash-${baseline}-patches/" \
+				"bash${major}${minor}-0*([0-9]+)" 2>/dev/null | head -n1)"
+
+			printf '%s.%s\n' "$baseline" "${patch:-0}"
+		done |
+		shvr_merge_versions bash
+}
+
+shvr_series_bash ()
+{
+	shvr_versioninfo_bash "$1" || return 1
+	printf '%s\n' "${version_baseline}"
 }
 
 shvr_versioninfo_bash ()
