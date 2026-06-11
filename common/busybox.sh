@@ -5,29 +5,27 @@
 
 shvr_current_busybox ()
 {
-	cat <<-@
-		busybox_1.37.0
-		busybox_1.36.1
-	@
+	shvr_read_versions busybox current
 }
 
 shvr_targets_busybox ()
 {
-	cat <<-@
-		busybox_1.37.0
-		busybox_1.36.1
-		busybox_1.35.0
-		busybox_1.34.1
-		busybox_1.33.2
-		busybox_1.32.1
-		busybox_1.31.1
-		busybox_1.30.1
-		busybox_1.29.3
-		busybox_1.28.4
-		busybox_1.27.2
-		busybox_1.26.2
-		busybox_1.25.1
-	@
+	shvr_read_versions busybox all
+}
+
+shvr_update_busybox ()
+{
+	. "${SHVR_DIR_SELF}/common/version_sources/html_listing.sh"
+	shvr_versions_from_html_listing \
+		"https://busybox.net/downloads/" \
+		'busybox-([0-9.]+)\.tar\.bz2' |
+		shvr_merge_versions busybox
+}
+
+shvr_series_busybox ()
+{
+	shvr_versioninfo_busybox "$1" || return 1
+	printf '%s.%s\n' "${version_major}" "${version_minor}"
 }
 
 shvr_versioninfo_busybox ()

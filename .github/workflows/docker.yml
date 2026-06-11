@@ -197,6 +197,10 @@ jobs:
       matrix:
         include:
           # AUTO-GENERATED MATRIX. DO NOT EDIT MANUALLY.
+          - target: ash_1.38.0
+            shell: ash
+            version: "1.38.0"
+            cache_path: "busybox/1.38.0"
           - target: ash_1.37.0
             shell: ash
             version: "1.37.0"
@@ -249,6 +253,38 @@ jobs:
             shell: ash
             version: "1.25.1"
             cache_path: "busybox/1.25.1"
+          - target: ash_1.24.2
+            shell: ash
+            version: "1.24.2"
+            cache_path: "busybox/1.24.2"
+          - target: ash_1.23.2
+            shell: ash
+            version: "1.23.2"
+            cache_path: "busybox/1.23.2"
+          - target: ash_1.22.1
+            shell: ash
+            version: "1.22.1"
+            cache_path: "busybox/1.22.1"
+          - target: ash_1.21.1
+            shell: ash
+            version: "1.21.1"
+            cache_path: "busybox/1.21.1"
+          - target: ash_1.20.2
+            shell: ash
+            version: "1.20.2"
+            cache_path: "busybox/1.20.2"
+          - target: ash_1.19.4
+            shell: ash
+            version: "1.19.4"
+            cache_path: "busybox/1.19.4"
+          - target: ash_1.2.2.1
+            shell: ash
+            version: "1.2.2.1"
+            cache_path: "busybox/1.2.2.1"
+          - target: ash_1.2.2
+            shell: ash
+            version: "1.2.2"
+            cache_path: "busybox/1.2.2"
           - target: bash_5.3.9
             shell: bash
             version: "5.3.9"
@@ -353,6 +389,10 @@ jobs:
             shell: dash
             version: "0.5.5.1"
             cache_path: "dash/0.5.5.1"
+          - target: hush_1.38.0
+            shell: hush
+            version: "1.38.0"
+            cache_path: "busybox/1.38.0"
           - target: hush_1.37.0
             shell: hush
             version: "1.37.0"
@@ -405,6 +445,38 @@ jobs:
             shell: hush
             version: "1.25.1"
             cache_path: "busybox/1.25.1"
+          - target: hush_1.24.2
+            shell: hush
+            version: "1.24.2"
+            cache_path: "busybox/1.24.2"
+          - target: hush_1.23.2
+            shell: hush
+            version: "1.23.2"
+            cache_path: "busybox/1.23.2"
+          - target: hush_1.22.1
+            shell: hush
+            version: "1.22.1"
+            cache_path: "busybox/1.22.1"
+          - target: hush_1.21.1
+            shell: hush
+            version: "1.21.1"
+            cache_path: "busybox/1.21.1"
+          - target: hush_1.20.2
+            shell: hush
+            version: "1.20.2"
+            cache_path: "busybox/1.20.2"
+          - target: hush_1.19.4
+            shell: hush
+            version: "1.19.4"
+            cache_path: "busybox/1.19.4"
+          - target: hush_1.2.2.1
+            shell: hush
+            version: "1.2.2.1"
+            cache_path: "busybox/1.2.2.1"
+          - target: hush_1.2.2
+            shell: hush
+            version: "1.2.2"
+            cache_path: "busybox/1.2.2"
           - target: ksh_shvrChistory-b_2016-01-10
             shell: ksh
             version: "shvrChistory-b_2016-01-10"
@@ -978,6 +1050,7 @@ jobs:
               zsh_5.8.1
           - flavor: all
             targets: >
+              ash_1.38.0
               ash_1.37.0
               ash_1.36.1
               ash_1.35.0
@@ -991,6 +1064,14 @@ jobs:
               ash_1.27.2
               ash_1.26.2
               ash_1.25.1
+              ash_1.24.2
+              ash_1.23.2
+              ash_1.22.1
+              ash_1.21.1
+              ash_1.20.2
+              ash_1.19.4
+              ash_1.2.2.1
+              ash_1.2.2
               bash_5.3.9
               bash_5.2.37
               bash_5.1.16
@@ -1017,6 +1098,7 @@ jobs:
               dash_0.5.7
               dash_0.5.6.1
               dash_0.5.5.1
+              hush_1.38.0
               hush_1.37.0
               hush_1.36.1
               hush_1.35.0
@@ -1030,6 +1112,14 @@ jobs:
               hush_1.27.2
               hush_1.26.2
               hush_1.25.1
+              hush_1.24.2
+              hush_1.23.2
+              hush_1.22.1
+              hush_1.21.1
+              hush_1.20.2
+              hush_1.19.4
+              hush_1.2.2.1
+              hush_1.2.2
               ksh_shvrChistory-b_2016-01-10
               ksh_shvrChistory-b_2012-08-01
               ksh_shvrChistory-b_2011-03-10

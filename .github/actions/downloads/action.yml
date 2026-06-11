@@ -10,6 +10,11 @@ runs:
     - uses: ./.github/actions/single-download
       with:
         shvr_shell: ash
+        shvr_version: "1.38.0"
+        cache_path: "busybox/1.38.0"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: ash
         shvr_version: "1.37.0"
         cache_path: "busybox/1.37.0"
     - uses: ./.github/actions/single-download
@@ -72,6 +77,46 @@ runs:
         shvr_shell: ash
         shvr_version: "1.25.1"
         cache_path: "busybox/1.25.1"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: ash
+        shvr_version: "1.24.2"
+        cache_path: "busybox/1.24.2"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: ash
+        shvr_version: "1.23.2"
+        cache_path: "busybox/1.23.2"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: ash
+        shvr_version: "1.22.1"
+        cache_path: "busybox/1.22.1"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: ash
+        shvr_version: "1.21.1"
+        cache_path: "busybox/1.21.1"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: ash
+        shvr_version: "1.20.2"
+        cache_path: "busybox/1.20.2"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: ash
+        shvr_version: "1.19.4"
+        cache_path: "busybox/1.19.4"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: ash
+        shvr_version: "1.2.2.1"
+        cache_path: "busybox/1.2.2.1"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: ash
+        shvr_version: "1.2.2"
+        cache_path: "busybox/1.2.2"
     - uses: ./.github/actions/single-download
       with:
         shvr_shell: bash
@@ -205,6 +250,11 @@ runs:
     - uses: ./.github/actions/single-download
       with:
         shvr_shell: hush
+        shvr_version: "1.38.0"
+        cache_path: "busybox/1.38.0"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: hush
         shvr_version: "1.37.0"
         cache_path: "busybox/1.37.0"
     - uses: ./.github/actions/single-download
@@ -267,6 +317,46 @@ runs:
         shvr_shell: hush
         shvr_version: "1.25.1"
         cache_path: "busybox/1.25.1"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: hush
+        shvr_version: "1.24.2"
+        cache_path: "busybox/1.24.2"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: hush
+        shvr_version: "1.23.2"
+        cache_path: "busybox/1.23.2"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: hush
+        shvr_version: "1.22.1"
+        cache_path: "busybox/1.22.1"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: hush
+        shvr_version: "1.21.1"
+        cache_path: "busybox/1.21.1"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: hush
+        shvr_version: "1.20.2"
+        cache_path: "busybox/1.20.2"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: hush
+        shvr_version: "1.19.4"
+        cache_path: "busybox/1.19.4"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: hush
+        shvr_version: "1.2.2.1"
+        cache_path: "busybox/1.2.2.1"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: hush
+        shvr_version: "1.2.2"
+        cache_path: "busybox/1.2.2"
     - uses: ./.github/actions/single-download
       with:
         shvr_shell: ksh

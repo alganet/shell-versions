@@ -1,0 +1,103 @@
+# Versions that do not build with the current musl-cross / gcc 9.4 / GNU make
+# toolchain. The list feeds both ash and hush (they share busybox sources via
+# common/busybox.sh), so a version is excluded if it fails for *either* applet.
+#
+# Every patch of every broken series is listed explicitly (not just the
+# series-latest): shvr_series_busybox keeps one patch per <major>.<minor>, so
+# excluding only the latest would make the merge fall back to the next-newest
+# patch of the same broken series. Established by docker-probing every
+# newly-discovered version against shvr-toolchain:probe.
+#
+# Note: the 1.2 series (1.2.2, 1.2.2.1) is a buildable island below this band
+# and is deliberately NOT excluded.
+
+# 1.17.x, 1.18.x: ash calls fdprintf(), a glibc extension musl does not
+# provide (1.17.2-1.17.4, 1.18.1-1.18.5 fail at link/compile). The earliest
+# patches of these series fail even sooner — 1.17.0/1.17.1 at the make
+# mixed-rules error below, 1.18.0 at an include/usage.h parse error. hush
+# builds at some of these, but the shared list must satisfy ash too.
+1.18.5
+1.18.4
+1.18.3
+1.18.2
+1.18.1
+1.18.0
+1.17.4
+1.17.3
+1.17.2
+1.17.1
+1.17.0
+
+# 1.3.x..1.16.x: the pre-kbuild-2.6.36 Makefiles use "mixed implicit and
+# normal rules", which GNU make >= 4.3 rejects as a hard error, so the
+# allnoconfig target is never reached. Affects both ash and hush.
+1.16.2
+1.16.1
+1.16.0
+1.15.3
+1.15.2
+1.15.1
+1.15.0
+1.14.4
+1.14.3
+1.14.2
+1.14.1
+1.14.0
+1.13.4
+1.13.3
+1.13.2
+1.13.1
+1.13.0
+1.12.4
+1.12.3
+1.12.2
+1.12.1
+1.12.0
+1.11.3
+1.11.2
+1.11.1
+1.11.0
+1.10.4
+1.10.3
+1.10.2
+1.10.1
+1.10.0
+1.9.2
+1.9.1
+1.9.0
+1.8.3
+1.8.2
+1.8.1
+1.8.0
+1.7.5
+1.7.4
+1.7.3
+1.7.2
+1.7.1
+1.7.0
+1.6.2
+1.6.1
+1.6.0
+1.5.2
+1.5.1
+1.5.0
+1.4.2
+1.4.1
+1.4.0
+1.3.2
+1.3.1
+1.3.0
+
+# 1.1.x: 1.1.1-1.1.3 fail because libbb/procps.c includes <asm/page.h>, a
+# kernel header no longer shipped by modern musl / linux-headers; 1.1.0 fails
+# earlier at a generated include/bb_config.h parse error.
+1.1.3
+1.1.2
+1.1.1
+1.1.0
+
+# 0.60.x: pre-kbuild build system (busybox.sh-generated Config.h, no
+# allnoconfig target) — incompatible with the current build recipe.
+0.60.5
+0.60.4
+0.60.3
