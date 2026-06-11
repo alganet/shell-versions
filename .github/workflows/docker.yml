@@ -301,6 +301,10 @@ jobs:
             shell: bash
             version: "2.05b.13"
             cache_path: "bash/2.05b"
+          - target: bash_2.05a.0
+            shell: bash
+            version: "2.05a.0"
+            cache_path: "bash/2.05a"
           - target: brush_0.4.0
             shell: brush
             version: "0.4.0"
@@ -1000,6 +1004,7 @@ jobs:
               bash_3.1.23
               bash_3.0.22
               bash_2.05b.13
+              bash_2.05a.0
               brush_0.4.0
               brush_0.3.0
               brush_0.2.23
