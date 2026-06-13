@@ -12,29 +12,21 @@ shvr_static_osh ()
 
 shvr_current_osh ()
 {
-	cat <<-@
-		osh_0.37.0
-		osh_0.36.0
-	@
+	shvr_read_versions osh current
 }
 
 shvr_targets_osh ()
 {
-	cat <<-@
-		osh_0.37.0
-		osh_0.36.0
-		osh_0.35.0
-		osh_0.34.0
-		osh_0.33.0
-		osh_0.32.0
-		osh_0.31.0
-		osh_0.30.0
-		osh_0.29.0
-		osh_0.28.0
-		osh_0.27.0
-		osh_0.26.0
-		osh_0.25.0
-	@
+	shvr_read_versions osh all
+}
+
+shvr_update_osh ()
+{
+	. "${SHVR_DIR_SELF}/common/version_sources/html_listing.sh"
+	shvr_versions_from_html_listing \
+		"https://www.oils.pub/release/" \
+		'([0-9]+\.[0-9]+\.[0-9]+)/' |
+		shvr_merge_versions osh
 }
 
 shvr_versioninfo_osh ()

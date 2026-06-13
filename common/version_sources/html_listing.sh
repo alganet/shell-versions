@@ -12,6 +12,9 @@
 # mirrors how shvr_versions_from_github_tags matches one tag per line, and gives
 # true capture-group support that a bare `grep -Eo` (whole-match only) cannot.
 #
+# The matching sed uses `#` as its s/// delimiter, so the regex may contain `/`
+# (e.g. a trailing slash to match Apache directory entries like `0.37.0/`).
+#
 # Output: one version per line, sorted descending by version (newest first).
 # Returns 1 (and warns to stderr) on network failure or when zero tokens match,
 # so callers can detect that the discovery silently produced nothing.
@@ -34,7 +37,7 @@ shvr_versions_from_html_listing ()
 	fi
 
 	tr '"<>= ' '\n\n\n\n\n' < "$raw" |
-		sed -nE "s/^${regex}\$/\\1/p" |
+		sed -nE "s#^${regex}\$#\\1#p" |
 		sort -V -u -r > "$out"
 
 	if ! test -s "$out"
