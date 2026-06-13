@@ -953,10 +953,10 @@ jobs:
             shell: yashrs
             version: "0.1.0"
             cache_path: "yashrs/0.1.0"
-          - target: zsh_5.9
+          - target: zsh_5.9.1
             shell: zsh
-            version: "5.9"
-            cache_path: "zsh/5.9"
+            version: "5.9.1"
+            cache_path: "zsh/5.9.1"
           - target: zsh_5.8.1
             shell: zsh
             version: "5.8.1"
@@ -1046,7 +1046,7 @@ jobs:
               yashrs_3.0.5
               yashrs_3.0.4
               yashrs_0.4.5
-              zsh_5.9
+              zsh_5.9.1
               zsh_5.8.1
           - flavor: all
             targets: >
@@ -1239,7 +1239,7 @@ jobs:
               yashrs_0.3.0
               yashrs_0.2.0
               yashrs_0.1.0
-              zsh_5.9
+              zsh_5.9.1
               zsh_5.8.1
               zsh_5.7.1
               zsh_5.6.2

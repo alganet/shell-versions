@@ -13,27 +13,25 @@ shvr_static_zsh ()
 
 shvr_current_zsh ()
 {
-	cat <<-@
-		zsh_5.9
-		zsh_5.8.1
-	@
+	shvr_read_versions zsh current
 }
 
 shvr_targets_zsh ()
 {
-	cat <<-@
-		zsh_5.9
-		zsh_5.8.1
-		zsh_5.7.1
-		zsh_5.6.2
-		zsh_5.5.1
-		zsh_5.4.2
-		zsh_5.3.1
-		zsh_5.2
-		zsh_5.1.1
-		zsh_5.0.8
-		zsh_4.2.7
-	@
+	shvr_read_versions zsh all
+}
+
+shvr_update_zsh ()
+{
+	. "${SHVR_DIR_SELF}/common/version_sources/sourceforge.sh"
+	shvr_versions_from_sourceforge zsh /zsh |
+		shvr_merge_versions zsh
+}
+
+shvr_series_zsh ()
+{
+	shvr_versioninfo_zsh "$1" || return 1
+	printf '%s.%s\n' "${version_major}" "${version_minor}"
 }
 
 shvr_versioninfo_zsh ()
