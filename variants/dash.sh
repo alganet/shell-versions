@@ -12,25 +12,30 @@ shvr_static_dash ()
 
 shvr_current_dash ()
 {
-	cat <<-@
-		dash_0.5.13
-		dash_0.5.12
-	@
+	shvr_read_versions dash current
 }
 
 shvr_targets_dash ()
 {
-	cat <<-@
-		dash_0.5.13
-		dash_0.5.12
-		dash_0.5.11.5
-		dash_0.5.10.2
-		dash_0.5.9.1
-		dash_0.5.8
-		dash_0.5.7
-		dash_0.5.6.1
-		dash_0.5.5.1
-	@
+	shvr_read_versions dash all
+}
+
+shvr_update_dash ()
+{
+	. "${SHVR_DIR_SELF}/common/version_sources/git_tags.sh"
+	shvr_versions_from_git_tags \
+		"https://git.kernel.org/pub/scm/utils/dash/dash.git" \
+		'v([0-9.]+)' |
+		shvr_merge_versions dash
+}
+
+shvr_series_dash ()
+{
+	shvr_versioninfo_dash "$1" || return 1
+	case "$version" in
+		*.*.*.*) printf '%s\n' "${version%.*}" ;;
+		*)       printf '%s\n' "$version" ;;
+	esac
 }
 
 shvr_versioninfo_dash ()
