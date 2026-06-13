@@ -1,0 +1,10 @@
+# 0.5.3..0.5.4: generate src/arith.c from arith.y with yacc at build time, but
+# the toolchain image ships no yacc/bison (shvr_deps_dash installs only
+# curl/autoconf/automake) -> "yacc: command not found", arith.c make Error 127.
+# Newer dash (>=0.5.5.1) ships a pre-generated arith.c, so this band is the floor.
+0.5.4
+0.5.3
+
+# 0.5.2: autoreconf fails under strict modern automake -- the tree omits the
+# ./AUTHORS, ./NEWS, ./README files that GNU-mode automake requires.
+0.5.2
