@@ -87,3 +87,15 @@ This is particularly useful if you want to test a version that we don't bundle
 by default, such as an old patch. Our scripts are able to build most
 intermediate versions without modifications, but we can't include them all in
 any of the default images.
+
+## Updating the Version Lists
+
+The supported versions live in `versions/<shell>.{all,current}` (plus an optional
+`versions/<shell>.excluded` denylist). To pull in new upstream releases, run
+`sh shvr.sh update [<shell>]` (with no argument it updates every shell), which
+refreshes `versions/<shell>.all` from each shell's upstream source. Probe any
+newly-discovered versions before shipping them; if one fails to build with the
+current toolchain, add it to `versions/<shell>.excluded` (with a comment recording
+the failure) and re-run the update to drop it. Finally, run
+`sh shvr.sh github_regen_all` to regenerate the `.github/` build matrix from the
+data files, and commit `versions/` and `.github/` together.

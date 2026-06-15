@@ -85,7 +85,6 @@ shvr_update ()
 	while test $# -gt 0
 	do
 		interpreter="$1"
-		shvr_clear_versioninfo
 		. "${SHVR_DIR_SELF}/variants/${interpreter}.sh"
 		if command -v "shvr_update_${interpreter}" >/dev/null 2>&1
 		then "shvr_update_${interpreter}"
