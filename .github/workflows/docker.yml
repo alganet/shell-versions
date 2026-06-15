@@ -553,6 +553,10 @@ jobs:
             shell: ksh
             version: "shvrA93uplusm-v1.0.1"
             cache_path: "ksh/shvrA93uplusm-v1.0.1"
+          - target: loksh_7.9
+            shell: loksh
+            version: "7.9"
+            cache_path: "loksh/7.9"
           - target: loksh_7.8
             shell: loksh
             version: "7.8"
@@ -1031,8 +1035,8 @@ jobs:
               hush_1.36.1
               ksh_shvrA93uplusm-v1.0.10
               ksh_shvrA93uplusm-v1.0.9
+              loksh_7.9
               loksh_7.8
-              loksh_7.7
               mksh_R59c
               mksh_R58
               oksh_7.8
@@ -1139,6 +1143,7 @@ jobs:
               ksh_shvrA93uplusm-v1.0.3
               ksh_shvrA93uplusm-v1.0.2
               ksh_shvrA93uplusm-v1.0.1
+              loksh_7.9
               loksh_7.8
               loksh_7.7
               loksh_7.6

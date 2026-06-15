@@ -455,6 +455,11 @@ runs:
     - uses: ./.github/actions/single-download
       with:
         shvr_shell: loksh
+        shvr_version: "7.9"
+        cache_path: "loksh/7.9"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: loksh
         shvr_version: "7.8"
         cache_path: "loksh/7.8"
     - uses: ./.github/actions/single-download
