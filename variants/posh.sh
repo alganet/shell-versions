@@ -12,19 +12,28 @@ shvr_static_posh ()
 
 shvr_current_posh ()
 {
-	cat <<-@
-		posh_0.14.3
-		posh_0.13.2
-	@
+	shvr_read_versions posh current
 }
 
 shvr_targets_posh ()
 {
-	cat <<-@
-		posh_0.14.3
-		posh_0.13.2
-		posh_0.12.6
-	@
+	shvr_read_versions posh all
+}
+
+shvr_update_posh ()
+{
+	. "${SHVR_DIR_SELF}/common/version_sources/git_tags.sh"
+	shvr_versions_from_git_tags \
+		"https://salsa.debian.org/clint/posh.git" \
+		'debian/([0-9.]+)' |
+		shvr_merge_versions posh
+}
+
+shvr_series_posh ()
+{
+	shvr_versioninfo_posh "$1" || return 1
+	series_rest="${version#*.}"
+	printf '%s.%s\n' "${version%%.*}" "${series_rest%%.*}"
 }
 
 shvr_versioninfo_posh ()

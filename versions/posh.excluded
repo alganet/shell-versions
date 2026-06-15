@@ -1,0 +1,44 @@
+# Pre-0.12 band: every posh release the salsa repo tags below the original
+# heredoc floor (0.12.6) fails to build with the modern musl toolchain at the
+# same point -- the Makefile `siglist.out` rule runs ./siglist.sh to extract the
+# signal-name list against musl's headers and exits non-zero (Makefile:1121,
+# "Error 1"), the same class of break as mksh's gensigs.sh. Verified on
+# linux/amd64 (shvr-toolchain:probe-amd64) for the series tops (0.11.1, 0.10.2,
+# 0.9.2, 0.8.6, 0.7.2, 0.6.18). Excluded as whole series so the series filter
+# cannot keep surfacing the next-oldest patch; this restores the 0.12.6 floor.
+0.11.1
+0.11
+0.10.2
+0.10.1
+0.10
+0.9.2
+0.9.1
+0.9
+0.8.6
+0.8.5
+0.8.4
+0.8.3
+0.8.2
+0.8.1
+0.8
+0.7.2
+0.7.1
+0.7
+0.6.18
+0.6.17
+0.6.16
+0.6.15
+0.6.14
+0.6.13
+0.6.12
+0.6.11
+0.6.10
+0.6.9
+0.6.8
+0.6.7
+0.6.6
+0.6.5
+0.6.4
+0.6.3
+0.6.2
+0.6.1

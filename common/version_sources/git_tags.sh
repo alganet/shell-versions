@@ -10,7 +10,8 @@
 # a full clone URL, so it works for any host (kernel.org cgit, salsa.debian.org,
 # etc.). Tags are filtered by an optional ERE regex with one capture group; the
 # captured substring is what gets emitted. Without a regex, the bare tag name is
-# emitted.
+# emitted. The matching sed uses `#` as its s/// delimiter, so the regex may
+# contain `/` (e.g. salsa's `debian/0.14.5` tag prefix).
 #
 # Output: one version per line, sorted descending by version (newest first).
 # Returns 1 (and warns to stderr) on network failure or when zero tags match,
@@ -34,7 +35,7 @@ shvr_versions_from_git_tags ()
 	fi
 
 	if test -n "$regex"
-	then awk '{sub(/^refs\/tags\//, "", $2); print $2}' "$raw" | sed -nE "s/^${regex}\$/\\1/p" | sort -V -u -r > "$out"
+	then awk '{sub(/^refs\/tags\//, "", $2); print $2}' "$raw" | sed -nE "s#^${regex}\$#\\1#p" | sort -V -u -r > "$out"
 	else awk '{sub(/^refs\/tags\//, "", $2); print $2}' "$raw" | sort -V -u -r > "$out"
 	fi
 
