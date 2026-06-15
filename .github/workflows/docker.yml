@@ -805,10 +805,10 @@ jobs:
             shell: osh
             version: "0.25.0"
             cache_path: "osh/0.25.0"
-          - target: posh_0.14.3
+          - target: posh_0.14.5
             shell: posh
-            version: "0.14.3"
-            cache_path: "posh/0.14.3"
+            version: "0.14.5"
+            cache_path: "posh/0.14.5"
           - target: posh_0.13.2
             shell: posh
             version: "0.13.2"
@@ -1039,7 +1039,7 @@ jobs:
               oksh_7.7
               osh_0.37.0
               osh_0.36.0
-              posh_0.14.3
+              posh_0.14.5
               posh_0.13.2
               yash_2.61
               yash_2.60
@@ -1202,7 +1202,7 @@ jobs:
               osh_0.27.0
               osh_0.26.0
               osh_0.25.0
-              posh_0.14.3
+              posh_0.14.5
               posh_0.13.2
               posh_0.12.6
               yash_2.61
