@@ -1,0 +1,10 @@
+# shvrA93uplusm-v1.0.0: the initial ksh93 1.0 release, below the supported
+# 1.0.1 floor. It compiles, but is kept out of the build matrix for two reasons:
+#   1. It predates the curated floor -- the project has always started at 1.0.1
+#      (1.0.1 followed quickly with the build fixes captured in patches/ksh/).
+#   2. ksh build checksums cannot be reproduced outside CI's real x86_64 runner:
+#      bin/package probes the host (sysconf/getconf/uname) and bakes results into
+#      the binary, so a local amd64-under-emulation build does NOT match the
+#      committed checksum (the v1.0.10 control build confirms this), unlike the
+#      configure+make shells. Adding 1.0.0 would need a CI-generated checksum.
+shvrA93uplusm-v1.0.0

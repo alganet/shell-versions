@@ -16,35 +16,26 @@ shvr_static_ksh ()
 
 shvr_current_ksh ()
 {
-	cat <<-@
-		ksh_shvrA93uplusm-v1.0.10
-		ksh_shvrA93uplusm-v1.0.9
-	@
+	shvr_read_versions ksh current
 }
 
 shvr_targets_ksh ()
 {
-	cat <<-@
-		ksh_shvrA93uplusm-v1.0.10
-		ksh_shvrA93uplusm-v1.0.9
-		ksh_shvrA93uplusm-v1.0.8
-		ksh_shvrA93uplusm-v1.0.7
-		ksh_shvrA93uplusm-v1.0.6
-		ksh_shvrA93uplusm-v1.0.4
-		ksh_shvrA93uplusm-v1.0.3
-		ksh_shvrA93uplusm-v1.0.2
-		ksh_shvrA93uplusm-v1.0.1
-		ksh_shvrB2020-2020.0.0
-		ksh_shvrChistory-b_2016-01-10
-		ksh_shvrChistory-b_2012-08-01
-		ksh_shvrChistory-b_2011-03-10
-		ksh_shvrChistory-b_2010-10-26
-		ksh_shvrChistory-b_2010-06-21
-		ksh_shvrChistory-b_2008-11-04
-		ksh_shvrChistory-b_2008-06-08
-		ksh_shvrChistory-b_2008-02-02
-		ksh_shvrChistory-b_2007-01-11
-	@
+	shvr_read_versions ksh all
+}
+
+# Discovers only the two live GitHub-release forks (93uplusm, 2020). The
+# ksh93-history fork is a frozen archive of ~200 dated snapshots from which only
+# a hand-picked set of milestones is supported; those entries live in
+# versions/ksh.all and are preserved across updates by shvr_merge_versions'
+# existing-union-discovered merge (they are never re-discovered here).
+shvr_update_ksh ()
+{
+	. "${SHVR_DIR_SELF}/common/version_sources/github_releases.sh"
+	{
+		shvr_versions_from_github_tags ksh93/ksh   '^v([0-9.]+)$' | sed 's/^/shvrA93uplusm-v/'
+		shvr_versions_from_github_tags ksh2020/ksh '^([0-9.]+)$'  | sed 's/^/shvrB2020-/'
+	} | shvr_merge_versions ksh
 }
 
 shvr_versioninfo_ksh ()
