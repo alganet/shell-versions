@@ -701,6 +701,10 @@ jobs:
             shell: mksh
             version: "R30"
             cache_path: "mksh/R30"
+          - target: oksh_7.9
+            shell: oksh
+            version: "7.9"
+            cache_path: "oksh/7.9"
           - target: oksh_7.8
             shell: oksh
             version: "7.8"
@@ -1039,8 +1043,8 @@ jobs:
               loksh_7.8
               mksh_R59c
               mksh_R58
+              oksh_7.9
               oksh_7.8
-              oksh_7.7
               osh_0.37.0
               osh_0.36.0
               posh_0.14.5
@@ -1180,6 +1184,7 @@ jobs:
               mksh_R32
               mksh_R31d
               mksh_R30
+              oksh_7.9
               oksh_7.8
               oksh_7.7
               oksh_7.6

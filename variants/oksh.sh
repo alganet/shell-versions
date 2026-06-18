@@ -4,6 +4,16 @@
 # SPDX-License-Identifier: ISC
 
 . "${SHVR_DIR_SELF}/common/musl-cross-make.sh"
+. "${SHVR_DIR_SELF}/common/ncurses.sh"
+
+# oksh >= 7.9 dropped the NO_CURSES build guard and unconditionally needs a
+# curses library, so those versions link our static musl ncurses instead of
+# building with --disable-curses. Requires shvr_versioninfo_oksh to have run.
+shvr_oksh_needs_curses ()
+{
+	test "$version_major" -gt 7 ||
+	{ test "$version_major" -eq 7 && test "$version_minor" -ge 9; }
+}
 
 shvr_static_oksh ()
 {
@@ -61,6 +71,11 @@ shvr_download_oksh ()
 	then
 		shvr_fetch "https://github.com/ibara/oksh/releases/download/oksh-$version/oksh-$version.tar.gz" "${build_srcdir}.tar.gz"
 	fi
+
+	if shvr_oksh_needs_curses
+	then
+		shvr_download_ncurses
+	fi
 }
 
 shvr_build_oksh ()
@@ -92,9 +107,20 @@ shvr_build_oksh ()
 		export CFLAGS="-fcommon -frandom-seed=1"
 	fi
 
-	./configure \
-		--disable-curses \
-		--prefix="${SHVR_DIR_OUT}/oksh_$version"
+	if shvr_oksh_needs_curses
+	then
+		shvr_build_ncurses
+		cd "${build_srcdir}"
+		export CFLAGS="${CFLAGS} $(shvr_ncurses_cflags)"
+		export LDFLAGS="${LDFLAGS} $(shvr_ncurses_ldflags)"
+
+		./configure \
+			--prefix="${SHVR_DIR_OUT}/oksh_$version"
+	else
+		./configure \
+			--disable-curses \
+			--prefix="${SHVR_DIR_OUT}/oksh_$version"
+	fi
 
 	make
 
