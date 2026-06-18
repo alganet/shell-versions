@@ -640,6 +640,11 @@ runs:
     - uses: ./.github/actions/single-download
       with:
         shvr_shell: oksh
+        shvr_version: "7.9"
+        cache_path: "oksh/7.9"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: oksh
         shvr_version: "7.8"
         cache_path: "oksh/7.8"
     - uses: ./.github/actions/single-download
