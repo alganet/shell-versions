@@ -605,6 +605,31 @@ runs:
     - uses: ./.github/actions/single-download
       with:
         shvr_shell: mksh
+        shvr_version: "R44"
+        cache_path: "mksh/R44"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: mksh
+        shvr_version: "R43"
+        cache_path: "mksh/R43"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: mksh
+        shvr_version: "R42b"
+        cache_path: "mksh/R42b"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: mksh
+        shvr_version: "R41c"
+        cache_path: "mksh/R41c"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: mksh
+        shvr_version: "R40f"
+        cache_path: "mksh/R40f"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: mksh
         shvr_version: "R39c"
         cache_path: "mksh/R39c"
     - uses: ./.github/actions/single-download
