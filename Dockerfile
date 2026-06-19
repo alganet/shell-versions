@@ -52,7 +52,7 @@ FROM ${TOOLCHAIN_BASE} AS toolchain
     # hosts and runs; otherwise rustup-init downloads "latest stable" at
     # image-build time, which drifts and breaks cross-host reproducibility.
     # Bump when refreshing the base and regenerate the affected checksums.
-    ARG RUST_TOOLCHAIN=1.95.0
+    ARG RUST_TOOLCHAIN=1.96.0
     COPY "build/rustup-init-*" "/usr/src/shvr/"
     COPY "checksums/sources/rustup-init-*" "/shvr/checksums/sources/"
     RUN sh "${SHVR_DIR_SRC}/rustup-init-1.28.2.sh" -y --default-toolchain "${RUST_TOOLCHAIN}" && \

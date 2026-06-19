@@ -893,6 +893,14 @@ jobs:
             shell: yash
             version: "2.45"
             cache_path: "yash/2.45"
+          - target: yashrs_3.2.0
+            shell: yashrs
+            version: "3.2.0"
+            cache_path: "yashrs/3.2.0"
+          - target: yashrs_3.1.0
+            shell: yashrs
+            version: "3.1.0"
+            cache_path: "yashrs/3.1.0"
           - target: yashrs_3.0.8
             shell: yashrs
             version: "3.0.8"
@@ -953,14 +961,6 @@ jobs:
             shell: yashrs
             version: "0.3.0"
             cache_path: "yashrs/0.3.0"
-          - target: yashrs_0.2.0
-            shell: yashrs
-            version: "0.2.0"
-            cache_path: "yashrs/0.2.0"
-          - target: yashrs_0.1.0
-            shell: yashrs
-            version: "0.1.0"
-            cache_path: "yashrs/0.1.0"
           - target: zsh_5.9.1
             shell: zsh
             version: "5.9.1"
@@ -1051,9 +1051,8 @@ jobs:
               posh_0.13.2
               yash_2.61
               yash_2.60
-              yashrs_3.0.5
-              yashrs_3.0.4
-              yashrs_0.4.5
+              yashrs_3.2.0
+              yashrs_3.1.0
               zsh_5.9.1
               zsh_5.8.1
           - flavor: all
@@ -1232,6 +1231,8 @@ jobs:
               yash_2.47
               yash_2.46
               yash_2.45
+              yashrs_3.2.0
+              yashrs_3.1.0
               yashrs_3.0.8
               yashrs_3.0.7
               yashrs_3.0.5
@@ -1247,8 +1248,6 @@ jobs:
               yashrs_0.4.1
               yashrs_0.4.0
               yashrs_0.3.0
-              yashrs_0.2.0
-              yashrs_0.1.0
               zsh_5.9.1
               zsh_5.8.1
               zsh_5.7.1
