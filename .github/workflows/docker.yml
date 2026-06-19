@@ -1193,6 +1193,10 @@ jobs:
             shell: zsh
             version: "4.2.7"
             cache_path: "zsh/4.2.7"
+          - target: zsh_4.0.9
+            shell: zsh
+            version: "4.0.9"
+            cache_path: "zsh/4.0.9"
 
   assemble:
     needs: [build, mirror]
@@ -1494,6 +1498,7 @@ jobs:
               zsh_5.1.1
               zsh_5.0.8
               zsh_4.2.7
+              zsh_4.0.9
     steps:
       - uses: actions/checkout@v7
 

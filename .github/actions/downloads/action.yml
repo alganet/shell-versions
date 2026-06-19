@@ -1252,3 +1252,8 @@ runs:
         shvr_shell: zsh
         shvr_version: "4.2.7"
         cache_path: "zsh/4.2.7"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: zsh
+        shvr_version: "4.0.9"
+        cache_path: "zsh/4.0.9"
