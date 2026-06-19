@@ -33,8 +33,21 @@ shvr_update_ksh ()
 {
 	. "${SHVR_DIR_SELF}/common/version_sources/github_releases.sh"
 	{
+		# The two live forks: the helper emits "<version> <date>"; the sed
+		# prefix anchors at ^, touching only the version column.
 		shvr_versions_from_github_tags ksh93/ksh   '^v([0-9.]+)$' | sed 's/^/shvrA93uplusm-v/'
 		shvr_versions_from_github_tags ksh2020/ksh '^([0-9.]+)$'  | sed 's/^/shvrB2020-/'
+
+		# The ksh93-history fork is frozen and never re-discovered upstream, but
+		# its release date is embedded in the version name
+		# (shvrChistory-b_<YYYY-MM-DD>). Re-emit the committed entries with that
+		# date as the date column so they end up dated like everything else.
+		shvr_read_versions ksh all |
+			sed 's/^ksh_//' |
+			grep '^shvrChistory-b_' |
+			while IFS= read -r history_version
+			do printf '%s %s\n' "$history_version" "${history_version#*b_}"
+			done
 	} | shvr_merge_versions ksh
 }
 

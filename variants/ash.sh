@@ -26,6 +26,12 @@ shvr_update_ash ()
 	shvr_update_busybox
 }
 
+# ash carries no versions/ash.all; its versions (and their dates) are busybox's.
+shvr_versionsource_ash ()
+{
+	echo busybox
+}
+
 shvr_versioninfo_ash ()
 {
 	shvr_versioninfo_busybox "$@"

@@ -155,8 +155,11 @@ shvr_read_versions ()
 	interpreter="$1"
 	which="$2"
 	file="${SHVR_DIR_SELF}/versions/${interpreter}.${which}"
+	# versions/<shell>.all carries a "<version> <date>" second column; strip it
+	# so build/target ids stay <shell>_<version>. Harmless on the version-only
+	# .current / .excluded files (no whitespace to strip).
 	if test -f "$file"
-	then sed -e '/^[[:space:]]*$/d' -e '/^[[:space:]]*#/d' -e "s/^/${interpreter}_/" "$file"
+	then sed -e '/^[[:space:]]*$/d' -e '/^[[:space:]]*#/d' -e 's/[[:space:]].*$//' -e "s/^/${interpreter}_/" "$file"
 	fi
 }
 
@@ -201,11 +204,14 @@ shvr_merge_versions ()
 		discovered="${tmp}.discovered"
 		existing="${tmp}.existing"
 		excluded="${tmp}.excluded"
+		versions="${tmp}.versions"
+		datemap="${tmp}.datemap"
 		merged="${tmp}.merged"
+		existing_v="${tmp}.existing_v"
 		new_only="${tmp}.new"
 		dropped="${tmp}.dropped"
 
-		trap 'rm -f "$discovered" "$existing" "$excluded" "$merged" "$new_only" "$dropped"' EXIT INT TERM
+		trap 'rm -f "$discovered" "$existing" "$excluded" "$versions" "$datemap" "$merged" "$existing_v" "$new_only" "$dropped"' EXIT INT TERM
 
 		cat > "$discovered"
 
@@ -227,21 +233,38 @@ shvr_merge_versions ()
 		else series_filter="cat"
 		fi
 
-		# Union existing + discovered, drop versions listed in
-		# versions/<shell>.excluded, dedupe to one entry per series
-		# (shvr_series_<shell>), then sort descending by version.
+		# Lines (existing and discovered) are "<version>" or "<version> <date>".
+		# Work the set math on the bare version column so the exclude/series
+		# filters stay date-agnostic, then re-attach dates from a version->date
+		# map that prefers the committed (existing) date over the discovered one.
+
+		# Union existing + discovered versions, drop excluded, dedupe to one
+		# entry per series, sort descending by version.
 		cat "$existing" "$discovered" |
+			awk '{print $1}' |
 			shvr_filter_excluded "$excluded" |
 			$series_filter |
-			sort -V -u -r > "$merged"
+			sort -V -u -r > "$versions"
 
-		if test -s "$existing"
-		then grep -v -F -x -f "$existing" "$merged" > "$new_only" || true
-		else cp "$merged" "$new_only"
+		# version->date map: existing dates win, discovered fills the gaps.
+		cat "$existing" "$discovered" |
+			awk 'NF >= 2 && !($1 in d) { d[$1] = $2; print $1, $2 }' > "$datemap"
+
+		# Re-attach dates, preserving the version sort order.
+		awk 'NR == FNR { d[$1] = $2; next }
+			{ if ($1 in d) print $1, d[$1]; else print $1 }' \
+			"$datemap" "$versions" > "$merged"
+
+		# $versions is already the bare, sorted version column of $merged.
+		awk '{print $1}' "$existing" > "$existing_v"
+
+		if test -s "$existing_v"
+		then grep -v -F -x -f "$existing_v" "$versions" > "$new_only" || true
+		else cp "$versions" "$new_only"
 		fi
 
-		if test -s "$existing"
-		then grep -v -F -x -f "$merged" "$existing" > "$dropped" || true
+		if test -s "$existing_v"
+		then grep -v -F -x -f "$versions" "$existing_v" > "$dropped" || true
 		else : > "$dropped"
 		fi
 
@@ -265,6 +288,106 @@ shvr_merge_versions ()
 		then echo "${interpreter}: no changes" >&2
 		fi
 	)
+}
+
+# Map an English month name to a zero-padded number, case-insensitively (the
+# date sources emit title-case names like Sep/May).
+shvr_month_num ()
+{
+	case "$1" in
+	Jan|jan|JAN) printf '01' ;;
+	Feb|feb|FEB) printf '02' ;;
+	Mar|mar|MAR) printf '03' ;;
+	Apr|apr|APR) printf '04' ;;
+	May|may|MAY) printf '05' ;;
+	Jun|jun|JUN) printf '06' ;;
+	Jul|jul|JUL) printf '07' ;;
+	Aug|aug|AUG) printf '08' ;;
+	Sep|sep|SEP) printf '09' ;;
+	Oct|oct|OCT) printf '10' ;;
+	Nov|nov|NOV) printf '11' ;;
+	Dec|dec|DEC) printf '12' ;;
+	*) return 1 ;;
+	esac
+}
+
+# Normalize a directory-listing date token to ISO YYYY-MM-DD. Accepts the ISO
+# form (2022-09-26, passed through) and the GNU autoindex month-name form
+# (2022-Sep-26). Returns 1 on anything else so callers can drop the date.
+shvr_iso_date ()
+{
+	case "$1" in
+	[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9])
+		printf '%s' "$1"
+		;;
+	[0-9][0-9][0-9][0-9]-[A-Za-z][A-Za-z][A-Za-z]-[0-9][0-9])
+		_y="${1%%-*}"
+		_rest="${1#*-}"
+		_mon="${_rest%%-*}"
+		_day="${_rest##*-}"
+		_m="$(shvr_month_num "$_mon")" || return 1
+		printf '%s-%s-%s' "$_y" "$_m" "$_day"
+		;;
+	*) return 1 ;;
+	esac
+}
+
+# Convert an RFC-822 date (RSS <pubDate>, e.g. "Sun, 31 May 2026 20:55:59 UT")
+# to ISO YYYY-MM-DD. Subshell so `set --` does not clobber caller positionals.
+shvr_iso_rfc822 ()
+(
+	# shellcheck disable=SC2086
+	set -- $1
+	# $1=weekday, $2=day, $3=month, $4=year
+	_day="${2#0}"
+	_m="$(shvr_month_num "$3")" || return 1
+	printf '%s-%s-%02d' "$4" "$_m" "$_day"
+)
+
+# Print the recorded ISO date for <interpreter> <version>, or nothing if the
+# version is absent or undated in versions/<interpreter>.all. Interpreters with
+# no .all of their own (ash, hush reuse busybox) may declare a backing shell via
+# a shvr_versionsource_<interpreter> hook in their variant; the variant is
+# loaded on demand so this works even outside the per-shell dispatch.
+shvr_version_date ()
+{
+	interpreter="$1"
+	version="$2"
+	if ! test -f "${SHVR_DIR_SELF}/versions/${interpreter}.all"
+	then
+		vf="${SHVR_DIR_SELF}/variants/${interpreter}.sh"
+		if ! command -v "shvr_versionsource_${interpreter}" >/dev/null 2>&1 && test -f "$vf"
+		then . "$vf"
+		fi
+		if command -v "shvr_versionsource_${interpreter}" >/dev/null 2>&1
+		then interpreter="$("shvr_versionsource_${interpreter}")"
+		fi
+	fi
+	file="${SHVR_DIR_SELF}/versions/${interpreter}.all"
+	if test -f "$file"
+	then awk -v v="$version" '$1 == v && NF >= 2 { print $2; exit }' "$file"
+	fi
+}
+
+# Filter <shell>_<version> target ids on stdin to those released on or after
+# SHVR_SINCE (ISO YYYY-MM-DD). With SHVR_SINCE unset, passes everything through.
+# Undated targets are dropped with a warning rather than crashing.
+shvr_filter_since ()
+{
+	since="${SHVR_SINCE:-}"
+	if test -z "$since"
+	then cat; return 0
+	fi
+	while IFS= read -r target
+	do
+		test -n "$target" || continue
+		interpreter="${target%%_*}"
+		version="${target#*_}"
+		printf '%s\t%s\n' "$target" "$(shvr_version_date "$interpreter" "$version")"
+	done |
+		awk -F '\t' -v s="$since" '
+			$2 == "" { print "shvr_filter_since: " $1 " has no date; dropping" > "/dev/stderr"; next }
+			$2 >= s { print $1 }'
 }
 
 shvr_fetch()

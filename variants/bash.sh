@@ -27,26 +27,37 @@ shvr_update_bash ()
 
 	mirror="https://mirrors.ocf.berkeley.edu/gnu/bash/"
 
-	# Discover baseline tarballs (bash-X.Y[a-z]?.tar.gz). This deliberately
-	# excludes three-component tarballs (bash-3.2.57.tar.gz), release
-	# candidates (bash-4.0-rc1.tar.gz), and historical diffs/sigs — shvr
+	# Discover baseline tarballs (bash-X.Y[a-z]?.tar.gz) with their dates. This
+	# deliberately excludes three-component tarballs (bash-3.2.57.tar.gz),
+	# release candidates (bash-4.0-rc1.tar.gz), and historical diffs/sigs — shvr
 	# always builds from a baseline plus numbered patches, never the
 	# pre-patched interim tarballs.
 	shvr_versions_from_html_listing "$mirror" 'bash-([0-9]+\.[0-9]+[a-z]?)\.tar\.gz' |
-		while IFS= read -r baseline
+		while IFS=' ' read -r baseline baseline_date
 		do
 			major="${baseline%%.*}"
 			minor="${baseline#*.}"
 
 			# A bash version is "<baseline>.<patch_count>", so scrape the
 			# baseline's -patches/ dir for the highest bash<major><minor>-NNN
-			# file (e.g. bash52-037, bash205b-013). Baselines with no patch
-			# dir 404 (stderr suppressed, expected) and compose to <baseline>.0.
-			patch="$(shvr_versions_from_html_listing \
+			# file (e.g. bash52-037, bash205b-013). The composed version's date
+			# is the highest patch file's date; baselines with no patch dir 404
+			# (stderr suppressed, expected) and compose to <baseline>.0 dated by
+			# the baseline tarball.
+			patch_line="$(shvr_versions_from_html_listing \
 				"${mirror}bash-${baseline}-patches/" \
 				"bash${major}${minor}-0*([0-9]+)" 2>/dev/null | head -n1)"
 
-			printf '%s.%s\n' "$baseline" "${patch:-0}"
+			# patch_line is "<patch> <date>" (or just "<patch>", leaving the
+			# date empty).
+			read -r patch patch_date <<EOF
+${patch_line}
+EOF
+
+			if test -n "$patch"
+			then printf '%s.%s %s\n' "$baseline" "$patch" "$patch_date"
+			else printf '%s.0 %s\n' "$baseline" "$baseline_date"
+			fi
 		done |
 		shvr_merge_versions bash
 }
