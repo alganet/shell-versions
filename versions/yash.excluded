@@ -1,51 +1,19 @@
-# 2.41..2.44: arith.c declares `extern int iswdigit(wint_t)` with a return
-# type that conflicts with modern wctype.h's `int iswdigit(wint_t)`
-# prototype against the musl headers.
-2.44
-2.43
-2.42
-2.41
+# 2.10..2.44: RECOVERED (see VERSIONS.md, iteration 1). These shared one break:
+# arith.c declared `extern int iswdigit(wint_t)` (plus iswalpha/iswalnum/
+# iswspace) as a workaround for not including <wctype.h>; against musl's
+# <wctype.h> that declaration conflicts. Upstream's own 2.45 fix — include
+# <wctype.h> and drop the externs — is applied via
+# patches/yash/<v>/001-arith-c-include-wctype.diff. Versions <=2.40 also lost
+# their upstream release tarball (releases/download 404s), so they fetch the
+# git-archive tag tarball, which ships the in-tree hand-written ./configure;
+# 2.41..2.44 keep the release tarball so their committed source checksums stay
+# valid. No longer excluded.
 
-# <=2.40: upstream did not publish release tarballs for these versions
-# (the URL https://github.com/magicant/yash/releases/download/$v/yash-$v.tar.xz
-# returns 404). Tags exist but the asset doesn't, so download saves the
-# 404 HTML page and the build fails at the tar step. Every patch within
-# each affected series is enumerated so the series filter can't promote
-# an even-older fallback into .all.
-2.40
-2.39
-2.38
-2.37
-2.36
-2.35
-2.34
-2.33.1
-2.33
-2.32.1
-2.32
-2.31
-2.30
-2.29
-2.28
-2.27
-2.26.1
-2.26
-2.25
-2.24
-2.23
-2.22
-2.21
-2.20
-2.19
-2.18
-2.17
-2.16
-2.15
-2.14
-2.13
-2.12
-2.11
-2.10
+# <=2.9: still excluded. 2.5..2.9 build via ./configure and carry no iswdigit
+# extern, so they are a plausible follow-up recovery; 2.0..2.4 and the 1.x /
+# 0.11 line predate the ./configure build (plain Makefile) and need a separate
+# build path. Every patch within each affected series is enumerated so the
+# series filter cannot promote an even-older fallback into .all.
 2.9
 2.8
 2.7

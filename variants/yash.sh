@@ -59,7 +59,17 @@ shvr_download_yash ()
 
 	if ! test -f "${build_srcdir}.tar.gz"
 	then
-		shvr_fetch "https://github.com/magicant/yash/releases/download/${version}/yash-${version}.tar.xz" "${build_srcdir}.tar.gz"
+		# Upstream stopped publishing release tarballs at or below 2.40 (the
+		# releases/download asset 404s), but the git tag still resolves and
+		# its auto-generated archive tarball ships the in-tree ./configure.
+		# 2.41+ keep the release tarball so their committed source checksums
+		# stay valid. Both URLs are saved as .tar.gz (tar autodetects xz/gz).
+		if test "$version_major" -eq 2 && test "$version_minor" -le 40
+		then
+			shvr_fetch "https://github.com/magicant/yash/archive/refs/tags/${version}.tar.gz" "${build_srcdir}.tar.gz"
+		else
+			shvr_fetch "https://github.com/magicant/yash/releases/download/${version}/yash-${version}.tar.xz" "${build_srcdir}.tar.gz"
+		fi
 	fi
 }
 
@@ -89,8 +99,16 @@ shvr_build_yash ()
 	export CFLAGS="-frandom-seed=1"
 	export LDFLAGS="-Wl,--build-id=none"
 
+	# Older yash (<2.26) has no NLS feature, so its hand-written configure
+	# rejects --disable-nls as an unknown feature ("invalid option"). Pass it
+	# only when this configure actually knows the option.
+	nls_flag=
+	if grep -qE '^[[:space:]]*nls\)' configure
+	then nls_flag=--disable-nls
+	fi
+
 	./configure \
-		--disable-nls \
+		$nls_flag \
 		--disable-lineedit \
 		--prefix="${SHVR_DIR_OUT}/yash_$version"
 
