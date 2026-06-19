@@ -1,14 +1,11 @@
-# 2.01..2.05: the build regenerates configure with autoconf2.69 (these
-# pre-autoconf-2.50 trees ship no usable configure), which leaves the version
-# substitution variables empty. support/mkversion.sh is then invoked with no
-# -d version / -p patchlevel and bails ("mkversion.sh: usage: ..."), so
-# version.h is never generated and the build dies at version.c. 2.05a ships a
-# mkversion.sh compatible with the empty invocation and builds, so it stays.
-2.05.0
-2.04.0
-2.03.0
-2.02.0
-2.01.0
+# 2.01..2.05: RECOVERED (see VERSIONS.md, iteration 4). These pre-autoconf-2.50
+# trees ship no usable configure, so the build regenerates it with autoconf2.69;
+# but they embed the version into the maintainer-generated configure via
+# esyscmd(cat _distribution)/esyscmd(cat _patchlevel) and those files are not
+# shipped, so the regenerated configure left BASHVERS/BASHPATCH empty,
+# support/mkversion.sh bailed ("usage: ..."), and version.h was never made.
+# shvr_build_bash now recreates _distribution/_patchlevel (gated to 2.01..2.05)
+# before autoconf, so the substitution is populated. No longer excluded.
 
 # 2.0: modern gcc rejects the K&R-style prototype macro (stdc.h's __P) used in
 # extern declarations such as print_rlimtype in eval.c.

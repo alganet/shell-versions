@@ -144,6 +144,26 @@ shvr_build_bash ()
 	if test "$version_major" -lt 5 || { test "$version_major" -eq 5 && test "${version_minor}" -lt 3; }
 	then
 		rm configure
+		# bash <=2.05 embeds its version into the maintainer-generated
+		# configure via esyscmd(cat _distribution)/esyscmd(cat _patchlevel),
+		# but those files are not shipped. Because we regenerate configure,
+		# BASHVERS/BASHPATCH would be empty and support/mkversion.sh would bail
+		# ("usage: ..."), so version.h is never made. Recreate the files. Gated
+		# to 2.01..2.05: 2.05a+ dropped this mechanism and must stay byte-stable.
+		case "$version_baseline" in
+		2.0[1-5])
+			printf '%s\n' "$version_baseline" > _distribution
+			printf '%s\n' "$version_patch" > _patchlevel
+			;;
+		esac
+		# bash renamed --with-bash-malloc in 2.04; 2.01..2.03 only know the old
+		# --with-gnu-malloc name, so --without-bash-malloc is silently ignored
+		# and bash's internal malloc (broken on modern musl: "xmalloc: cannot
+		# allocate ...") gets linked. Disable it under the name each tree knows.
+		malloc_flag=--without-bash-malloc
+		case "$version_baseline" in
+		2.0[1-3]) malloc_flag=--without-gnu-malloc ;;
+		esac
 		export CFLAGS="-std=gnu90 -frandom-seed=1 $(shvr_ncurses_cflags)"
 		export CFLAGS_FOR_BUILD='-std=gnu90'
 		export AUTOCONF='autoconf2.69'
@@ -151,7 +171,7 @@ shvr_build_bash ()
 		./configure \
 			--host=x86_64-linux-musl \
 			--prefix="${SHVR_DIR_OUT}/bash_${version}" \
-			--without-bash-malloc
+			"$malloc_flag"
 	else
 		export CFLAGS="-frandom-seed=1 $(shvr_ncurses_cflags)"
 		./configure \
