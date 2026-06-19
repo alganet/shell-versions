@@ -180,6 +180,11 @@ runs:
     - uses: ./.github/actions/single-download
       with:
         shvr_shell: bash
+        shvr_version: "2.05.0"
+        cache_path: "bash/2.05"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: bash
         shvr_version: "2.05b.13"
         cache_path: "bash/2.05b"
     - uses: ./.github/actions/single-download
@@ -187,6 +192,26 @@ runs:
         shvr_shell: bash
         shvr_version: "2.05a.0"
         cache_path: "bash/2.05a"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: bash
+        shvr_version: "2.04.0"
+        cache_path: "bash/2.04"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: bash
+        shvr_version: "2.03.0"
+        cache_path: "bash/2.03"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: bash
+        shvr_version: "2.02.0"
+        cache_path: "bash/2.02"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: bash
+        shvr_version: "2.01.0"
+        cache_path: "bash/2.01"
     - uses: ./.github/actions/single-download
       with:
         shvr_shell: brush

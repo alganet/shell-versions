@@ -333,6 +333,10 @@ jobs:
             shell: bash
             version: "3.0.22"
             cache_path: "bash/3.0"
+          - target: bash_2.05.0
+            shell: bash
+            version: "2.05.0"
+            cache_path: "bash/2.05"
           - target: bash_2.05b.13
             shell: bash
             version: "2.05b.13"
@@ -341,6 +345,22 @@ jobs:
             shell: bash
             version: "2.05a.0"
             cache_path: "bash/2.05a"
+          - target: bash_2.04.0
+            shell: bash
+            version: "2.04.0"
+            cache_path: "bash/2.04"
+          - target: bash_2.03.0
+            shell: bash
+            version: "2.03.0"
+            cache_path: "bash/2.03"
+          - target: bash_2.02.0
+            shell: bash
+            version: "2.02.0"
+            cache_path: "bash/2.02"
+          - target: bash_2.01.0
+            shell: bash
+            version: "2.01.0"
+            cache_path: "bash/2.01"
           - target: brush_0.4.0
             shell: brush
             version: "0.4.0"
@@ -1259,8 +1279,13 @@ jobs:
               bash_3.2.57
               bash_3.1.23
               bash_3.0.22
+              bash_2.05.0
               bash_2.05b.13
               bash_2.05a.0
+              bash_2.04.0
+              bash_2.03.0
+              bash_2.02.0
+              bash_2.01.0
               brush_0.4.0
               brush_0.3.0
               brush_0.2.23
