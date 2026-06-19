@@ -1,9 +1,8 @@
-# 0.5.3..0.5.4: generate src/arith.c from arith.y with yacc at build time, but
-# the toolchain image ships no yacc/bison (shvr_deps_dash installs only
-# curl/autoconf/automake) -> "yacc: command not found", arith.c make Error 127.
-# Newer dash (>=0.5.5.1) ships a pre-generated arith.c, so this band is the floor.
-0.5.4
-0.5.3
+# 0.5.3..0.5.4: RECOVERED (see VERSIONS.md, iteration 2). These generate
+# src/arith.c from arith.y with yacc at build time; the toolchain shipped no
+# yacc/bison, so the build died with "yacc: command not found". shvr_deps_dash
+# now installs bison (AC_PROG_YACC picks "bison -y"). Newer dash (>=0.5.5.1)
+# ships a pre-generated arith.c and never needed it.
 
 # 0.5.2: autoreconf fails under strict modern automake -- the tree omits the
 # ./AUTHORS, ./NEWS, ./README files that GNU-mode automake requires.
