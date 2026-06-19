@@ -893,6 +893,146 @@ jobs:
             shell: yash
             version: "2.45"
             cache_path: "yash/2.45"
+          - target: yash_2.44
+            shell: yash
+            version: "2.44"
+            cache_path: "yash/2.44"
+          - target: yash_2.43
+            shell: yash
+            version: "2.43"
+            cache_path: "yash/2.43"
+          - target: yash_2.42
+            shell: yash
+            version: "2.42"
+            cache_path: "yash/2.42"
+          - target: yash_2.41
+            shell: yash
+            version: "2.41"
+            cache_path: "yash/2.41"
+          - target: yash_2.40
+            shell: yash
+            version: "2.40"
+            cache_path: "yash/2.40"
+          - target: yash_2.39
+            shell: yash
+            version: "2.39"
+            cache_path: "yash/2.39"
+          - target: yash_2.38
+            shell: yash
+            version: "2.38"
+            cache_path: "yash/2.38"
+          - target: yash_2.37
+            shell: yash
+            version: "2.37"
+            cache_path: "yash/2.37"
+          - target: yash_2.36
+            shell: yash
+            version: "2.36"
+            cache_path: "yash/2.36"
+          - target: yash_2.35
+            shell: yash
+            version: "2.35"
+            cache_path: "yash/2.35"
+          - target: yash_2.34
+            shell: yash
+            version: "2.34"
+            cache_path: "yash/2.34"
+          - target: yash_2.33.1
+            shell: yash
+            version: "2.33.1"
+            cache_path: "yash/2.33.1"
+          - target: yash_2.32.1
+            shell: yash
+            version: "2.32.1"
+            cache_path: "yash/2.32.1"
+          - target: yash_2.31
+            shell: yash
+            version: "2.31"
+            cache_path: "yash/2.31"
+          - target: yash_2.30
+            shell: yash
+            version: "2.30"
+            cache_path: "yash/2.30"
+          - target: yash_2.29
+            shell: yash
+            version: "2.29"
+            cache_path: "yash/2.29"
+          - target: yash_2.28
+            shell: yash
+            version: "2.28"
+            cache_path: "yash/2.28"
+          - target: yash_2.27
+            shell: yash
+            version: "2.27"
+            cache_path: "yash/2.27"
+          - target: yash_2.26.1
+            shell: yash
+            version: "2.26.1"
+            cache_path: "yash/2.26.1"
+          - target: yash_2.25
+            shell: yash
+            version: "2.25"
+            cache_path: "yash/2.25"
+          - target: yash_2.24
+            shell: yash
+            version: "2.24"
+            cache_path: "yash/2.24"
+          - target: yash_2.23
+            shell: yash
+            version: "2.23"
+            cache_path: "yash/2.23"
+          - target: yash_2.22
+            shell: yash
+            version: "2.22"
+            cache_path: "yash/2.22"
+          - target: yash_2.21
+            shell: yash
+            version: "2.21"
+            cache_path: "yash/2.21"
+          - target: yash_2.20
+            shell: yash
+            version: "2.20"
+            cache_path: "yash/2.20"
+          - target: yash_2.19
+            shell: yash
+            version: "2.19"
+            cache_path: "yash/2.19"
+          - target: yash_2.18
+            shell: yash
+            version: "2.18"
+            cache_path: "yash/2.18"
+          - target: yash_2.17
+            shell: yash
+            version: "2.17"
+            cache_path: "yash/2.17"
+          - target: yash_2.16
+            shell: yash
+            version: "2.16"
+            cache_path: "yash/2.16"
+          - target: yash_2.15
+            shell: yash
+            version: "2.15"
+            cache_path: "yash/2.15"
+          - target: yash_2.14
+            shell: yash
+            version: "2.14"
+            cache_path: "yash/2.14"
+          - target: yash_2.13
+            shell: yash
+            version: "2.13"
+            cache_path: "yash/2.13"
+          - target: yash_2.12
+            shell: yash
+            version: "2.12"
+            cache_path: "yash/2.12"
+          - target: yash_2.11
+            shell: yash
+            version: "2.11"
+            cache_path: "yash/2.11"
+          - target: yash_2.10
+            shell: yash
+            version: "2.10"
+            cache_path: "yash/2.10"
           - target: yashrs_3.2.0
             shell: yashrs
             version: "3.2.0"
@@ -1231,6 +1371,41 @@ jobs:
               yash_2.47
               yash_2.46
               yash_2.45
+              yash_2.44
+              yash_2.43
+              yash_2.42
+              yash_2.41
+              yash_2.40
+              yash_2.39
+              yash_2.38
+              yash_2.37
+              yash_2.36
+              yash_2.35
+              yash_2.34
+              yash_2.33.1
+              yash_2.32.1
+              yash_2.31
+              yash_2.30
+              yash_2.29
+              yash_2.28
+              yash_2.27
+              yash_2.26.1
+              yash_2.25
+              yash_2.24
+              yash_2.23
+              yash_2.22
+              yash_2.21
+              yash_2.20
+              yash_2.19
+              yash_2.18
+              yash_2.17
+              yash_2.16
+              yash_2.15
+              yash_2.14
+              yash_2.13
+              yash_2.12
+              yash_2.11
+              yash_2.10
               yashrs_3.2.0
               yashrs_3.1.0
               yashrs_3.0.8
