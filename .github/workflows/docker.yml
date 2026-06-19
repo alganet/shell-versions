@@ -389,6 +389,14 @@ jobs:
             shell: dash
             version: "0.5.5.1"
             cache_path: "dash/0.5.5.1"
+          - target: dash_0.5.4
+            shell: dash
+            version: "0.5.4"
+            cache_path: "dash/0.5.4"
+          - target: dash_0.5.3
+            shell: dash
+            version: "0.5.3"
+            cache_path: "dash/0.5.3"
           - target: hush_1.38.0
             shell: hush
             version: "1.38.0"
@@ -1245,6 +1253,8 @@ jobs:
               dash_0.5.7
               dash_0.5.6.1
               dash_0.5.5.1
+              dash_0.5.4
+              dash_0.5.3
               hush_1.38.0
               hush_1.37.0
               hush_1.36.1

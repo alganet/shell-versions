@@ -106,6 +106,8 @@ shvr_build_dash ()
 shvr_deps_dash ()
 {
 	shvr_versioninfo_dash "$1"
+	# bison provides the yacc that dash <=0.5.5 needs to generate src/arith.c
+	# from arith.y (AC_PROG_YACC picks "bison -y"); pre-generated in newer dash.
 	apt-get -y install \
-		curl automake autoconf
+		curl automake autoconf bison
 }

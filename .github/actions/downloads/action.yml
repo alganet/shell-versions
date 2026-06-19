@@ -249,6 +249,16 @@ runs:
         cache_path: "dash/0.5.5.1"
     - uses: ./.github/actions/single-download
       with:
+        shvr_shell: dash
+        shvr_version: "0.5.4"
+        cache_path: "dash/0.5.4"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: dash
+        shvr_version: "0.5.3"
+        cache_path: "dash/0.5.3"
+    - uses: ./.github/actions/single-download
+      with:
         shvr_shell: hush
         shvr_version: "1.38.0"
         cache_path: "busybox/1.38.0"
