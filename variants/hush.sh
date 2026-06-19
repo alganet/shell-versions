@@ -26,6 +26,12 @@ shvr_update_hush ()
 	shvr_update_busybox
 }
 
+# hush carries no versions/hush.all; its versions (and their dates) are busybox's.
+shvr_versionsource_hush ()
+{
+	echo busybox
+}
+
 shvr_versioninfo_hush ()
 {
 	shvr_versioninfo_busybox "$@"
