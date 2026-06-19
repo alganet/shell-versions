@@ -1,22 +1,17 @@
-# Pre-4.2.7 band: every zsh release the SourceForge feed exposes below the
-# original heredoc floor (4.2.7) fails to build with the modern musl/gcc
-# toolchain. Verified failing on linux/amd64 (shvr-toolchain:probe-amd64);
-# excluded as whole series because each shares a structural break and the
-# series filter would otherwise keep surfacing the next-oldest patch.
-#
-# 4.0.x - Src/Modules/zutil.c declares its own getline(), conflicting with musl
-#         stdio.h's getline() ("conflicting types for 'getline'"); older trees
-#         also break earlier in the ./.preconfig build setup.
+# 4.0.x: RECOVERED (see VERSIONS.md, iteration 5). zsh's ZLE "get-line" widget
+# is a C function literally named getline(), whose generated prototype conflicts
+# with musl stdio.h's POSIX getline() ("conflicting types for 'getline'"). A
+# -Dgetline=... macro can't fix it (it would rename musl's declaration too), so
+# patches/zsh/<v>/001-rename-getline.diff renames the widget function to
+# zlegetline (definition + Src/Zle/iwidgets.list; the .epro prototype is
+# regenerated from the .c). The series filter keeps 4.0.9 as the 4.0
+# representative. No longer excluded.
+
+# Still excluded below the 4.0 series:
 # 3.1.x - configure.in references an undefined m4 macro (zsh-debug) that aborts
 #         autom4te, plus the same preconfig/getline-era breakage.
 # 3.0.8 - older source layout with no ./Util/preconfig, which shvr_build_zsh
 #         requires; the build recipe cannot drive this tree.
-4.0.9
-4.0.7
-4.0.6
-4.0.4
-4.0.2
-4.0.1
 3.1.9
 3.1.8
 3.1.7
