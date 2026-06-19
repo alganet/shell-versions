@@ -2,21 +2,14 @@
 # docker-probing the toolchain stage with the existing variant. Re-probe
 # and revise when the toolchain pin (common/musl-cross-make.sh) changes.
 
-# R40..R44: a conftest.c "compile-time assertion" check (cta macro) is
-# rejected by modern gcc.
-R44
-R43
-R42b
-R42
-R41c
-R41b
-R41
-R40f
-R40e
-R40d
-R40c
-R40b
-R40
+# R40..R44: RECOVERED (see VERSIONS.md, iteration 3). Build.sh's compile-time-
+# assertion conftest declared `char name[(assertion) ? 1 : -1]`, and gcc bug
+# 55009 makes the signed-wraparound assertions non-constant -> a file-scope VLA
+# ("variably modified at file scope"), so the conftest failed and the build
+# aborted. Upstream guards these with #ifndef MKSH_GCC55009 from R41c on, but
+# R40f leaves them unguarded; patches/mksh/<v>/001-buildsh-cta-neutralise.diff
+# neutralises the conftest cta macro uniformly (it never affects the real
+# binary, which keeps its own asserts in sh.h). No longer excluded.
 
 # <R30: gensigs.sh signal-list extraction yields NSIG=0 against modern
 # musl headers, leaving an empty signames.inc.

@@ -673,6 +673,26 @@ jobs:
             shell: mksh
             version: "R45"
             cache_path: "mksh/R45"
+          - target: mksh_R44
+            shell: mksh
+            version: "R44"
+            cache_path: "mksh/R44"
+          - target: mksh_R43
+            shell: mksh
+            version: "R43"
+            cache_path: "mksh/R43"
+          - target: mksh_R42b
+            shell: mksh
+            version: "R42b"
+            cache_path: "mksh/R42b"
+          - target: mksh_R41c
+            shell: mksh
+            version: "R41c"
+            cache_path: "mksh/R41c"
+          - target: mksh_R40f
+            shell: mksh
+            version: "R40f"
+            cache_path: "mksh/R40f"
           - target: mksh_R39c
             shell: mksh
             version: "R39c"
@@ -1324,6 +1344,11 @@ jobs:
               mksh_R47
               mksh_R46
               mksh_R45
+              mksh_R44
+              mksh_R43
+              mksh_R42b
+              mksh_R41c
+              mksh_R40f
               mksh_R39c
               mksh_R38c
               mksh_R37c

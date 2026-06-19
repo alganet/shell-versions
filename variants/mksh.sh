@@ -70,6 +70,13 @@ shvr_build_mksh ()
 
 	cd "${build_srcdir}"
 
+	if test -d "${SHVR_DIR_SELF}/patches/mksh/$version"
+	then
+		find "${SHVR_DIR_SELF}/patches/mksh/$version" -type f -o -type l | sort | while read -r patch_file
+		do patch -p0 < "$patch_file"
+		done
+	fi
+
 	# Static musl build with reproducible flags
 	export SOURCE_DATE_EPOCH=1
 	export TZ=UTC
