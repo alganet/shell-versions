@@ -585,7 +585,7 @@ shvr_github_regen_downloads ()
 	{
 		while read -r yml_line
 		do
-			echo "${yml_line}"
+			printf '%s\n' "${yml_line}"
 			case ${yml_line} in
 				*'# AUTO-GENERATED LIST. DO NOT EDIT MANUALLY.'*)
 					break
@@ -624,46 +624,13 @@ shvr_github_regen_docker_workflow ()
 	cp -f "$yml_file" "${yml_file}.bak"
 	cat "$yml_file.bak" |
 	{
-		# Read until matrix marker (inclusive)
+		# The per-target build matrix is no longer generated here: it is
+		# dynamic (the plan job emits it via shvr_plan_matrix from each image's
+		# OID annotation). This function only maintains the static assembly
+		# flavor lists, so echo straight through to the assemblies marker.
 		while IFS= read -r yml_line
 		do
-			echo "${yml_line}"
-			case ${yml_line} in
-				*'# AUTO-GENERATED MATRIX. DO NOT EDIT MANUALLY.'*)
-					break
-					;;
-			esac
-		done
-		# Emit all targets as matrix entries
-		for target in $all_targets
-		do
-			shvr_clear_versioninfo
-			interpreter="${target%%_*}"
-			version="${target#*_}"
-			. "${SHVR_DIR_SELF}/variants/${interpreter}.sh"
-			shvr_versioninfo_"${interpreter}" "$version"
-			cat <<-@ | sed 's/.//'
-			|          - target: $target
-			|            shell: $interpreter
-			|            version: "$version"
-			|            cache_path: "${build_srcdir#${SHVR_DIR_SRC}/}"
-			@
-		done
-		# Skip old build matrix entries until assemble job boundary
-		while IFS= read -r yml_line
-		do
-			case ${yml_line} in
-				'  assemble:'*)
-					break
-					;;
-			esac
-		done
-		# Echo static assemble job header until assemblies marker
-		echo ""
-		echo "${yml_line}"
-		while IFS= read -r yml_line
-		do
-			echo "${yml_line}"
+			printf '%s\n' "${yml_line}"
 			case ${yml_line} in
 				*'# AUTO-GENERATED ASSEMBLIES. DO NOT EDIT MANUALLY.'*)
 					break
@@ -693,10 +660,10 @@ shvr_github_regen_docker_workflow ()
 			esac
 		done
 		# Echo steps and remaining content
-		echo "${yml_line}"
+		printf '%s\n' "${yml_line}"
 		while IFS= read -r yml_line
 		do
-			echo "${yml_line}"
+			printf '%s\n' "${yml_line}"
 		done
 	} > "$yml_file"
 	rm "$yml_file.bak"
@@ -724,16 +691,17 @@ shvr_github_regen_all ()
 	(shvr_github_regen_docker_workflow)
 }
 
-# Toolchain fingerprint: a hash of every globally-pinned reproducibility input
-# (musl-cross-make commit, Rust toolchain, Debian snapshot, base image digest,
-# ncurses, rustup-init). It is folded into every target's build identity, so
-# bumping any pin changes all identities and forces a full rebuild. Bump the
-# OIDV scheme tag to force a rebuild without touching a pin.
+# Toolchain fingerprint: a hash of the globally-pinned reproducibility inputs
+# that are not expressed in any variant recipe file — the Debian base image
+# digest, the apt snapshot, the Rust toolchain, and the rustup-init version (all
+# from the Dockerfile). The musl and ncurses pins live inside
+# common/musl-cross-make.sh / common/ncurses.sh, which are folded into per-target
+# recipes instead (see shvr_recipe_files), so they need not be repeated here.
+# RUNTIME_BASE is deliberately excluded: it does not affect the per-target
+# `artifacts` stage. Folded into every build identity, so a pin bump forces a
+# full rebuild; bump the OIDV scheme tag to force a rebuild without a pin change.
 shvr_toolchain_fingerprint ()
 {
-	. "${SHVR_DIR_SELF}/common/musl-cross-make.sh"
-	. "${SHVR_DIR_SELF}/common/ncurses.sh"
-
 	dockerfile="${SHVR_DIR_SELF}/Dockerfile"
 	fp_rust="$(grep -m1 'ARG RUST_TOOLCHAIN=' "$dockerfile" | sed 's/.*=//')"
 	fp_snap="$(grep -m1 'ARG DEBIAN_SNAPSHOT=' "$dockerfile" | sed 's/.*=//')"
@@ -741,23 +709,54 @@ shvr_toolchain_fingerprint ()
 	fp_rustup="$(grep -oE 'rustup-init-[0-9][0-9.]*\.sh' "$dockerfile" | head -n1)"
 
 	{
-		printf 'OIDV=1\n'
-		printf 'MCM=%s\n' "$SHVR_MCM_COMMIT"
+		printf 'OIDV=2\n'
 		printf 'RUST=%s\n' "$fp_rust"
 		printf 'SNAP=%s\n' "$fp_snap"
 		printf 'TBASE=%s\n' "$fp_tbase"
-		printf 'NCURSES=%s\n' "$SHVR_NCURSES_VERSION"
 		printf 'RUSTUP=%s\n' "$fp_rustup"
 	} | sha256sum | cut -d' ' -f1
 }
 
-# Build identity (OID) for one target: a hash of the toolchain fingerprint plus
-# the target's committed build checksums. Because builds are byte-reproducible
-# and the build-checksum verify gate keeps committed checksums in sync with the
-# intended binary, the OID changes if and only if the binary should change.
-# Prints MISSING (and warns) when no committed checksums exist, so such a target
-# is always (re)built and never wrongly skipped. Pass a precomputed fingerprint
-# as $2 to avoid recomputing it per target.
+# List the files that define how <shell>_<version> is built: its variant, every
+# ${SHVR_DIR_SELF}/... file the variant references (sourced common/*.sh helpers
+# and directly-used files like ksh's getconf-wrapper), excluding the update-only
+# common/version_sources/, and the version's patch directory with symlinks
+# resolved (so shared _common patch bodies are captured). Folded into the build
+# identity so a recipe edit changes the OID and forces a rebuild — turning a
+# forgotten checksum regeneration into a loud verify failure instead of a silent
+# skip. Paths are emitted absolute; callers hash content under relative names.
+shvr_recipe_files ()
+{
+	shell="$1"
+	version="$2"
+	variant="${SHVR_DIR_SELF}/variants/${shell}.sh"
+
+	if test -f "$variant"
+	then
+		printf '%s\n' "$variant"
+		grep -oE '\$\{SHVR_DIR_SELF\}/[A-Za-z0-9_./-]+' "$variant" |
+			sed "s#\\\${SHVR_DIR_SELF}#${SHVR_DIR_SELF}#" |
+			grep -v '/common/version_sources/' |
+			while IFS= read -r ref
+			do test -f "$ref" && printf '%s\n' "$ref"
+			done
+	fi
+
+	pdir="${SHVR_DIR_SELF}/patches/${shell}/${version}"
+	if test -d "$pdir"
+	then find -L "$pdir" -type f
+	fi
+}
+
+# Build identity (OID) for one target: a hash of the toolchain fingerprint, the
+# target's recipe files (variant + sourced helpers + patches), and its committed
+# build checksums. The recipe makes a recipe edit change the OID even if the
+# committed checksum was not regenerated (so the target rebuilds and the verify
+# fails loudly instead of being silently skipped); the committed checksums are
+# the authoritative intended output. Recipe file contents are hashed under their
+# SHVR_DIR_SELF-relative names so the OID is machine-independent. Prints MISSING
+# (and warns) when no committed checksums exist, so such a target is always
+# (re)built. Pass a precomputed fingerprint as $2 to avoid recomputing it.
 shvr_build_identity ()
 {
 	target="$1"
@@ -771,8 +770,16 @@ shvr_build_identity ()
 		return 0
 	fi
 
+	bi_shell="${target%%_*}"
+	bi_version="${target#*_}"
+
 	{
 		printf '%s\n' "$fingerprint"
+		shvr_recipe_files "$bi_shell" "$bi_version" | LC_ALL=C sort | while IFS= read -r f
+		do
+			printf 'F %s\n' "${f#${SHVR_DIR_SELF}/}"
+			cat "$f"
+		done
 		find "$dir" -name '*.sha256sums' | LC_ALL=C sort | while IFS= read -r f
 		do cat "$f"
 		done

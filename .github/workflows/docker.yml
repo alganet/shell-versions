@@ -14,6 +14,12 @@ on:
   pull_request:
     branches:
       - "main"
+  workflow_dispatch:
+    inputs:
+      force_all:
+        description: "Rebuild every target, ignoring the content-addressed skip"
+        type: boolean
+        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
@@ -35,12 +41,10 @@ env:
   MIRROR_BUILDKIT_SOURCE: moby/buildkit:buildx-stable-1@sha256:0168606be2315b7c807a03b3d8aa79beefdb31c98740cebdffdfeebf31190c9f
 
 jobs:
-  download:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/downloads
-
+  # Note: there is no bulk `download` job. Each build job fetches its own
+  # target's source (single-download), and a separate scheduled workflow
+  # (warm-sources.yml) keeps every source cache warm so skipped targets stay
+  # rebuildable even if upstream later removes a tarball.
   mirror:
     runs-on: ubuntu-24.04
     outputs:
@@ -131,8 +135,68 @@ jobs:
           cache-to: type=gha,scope=toolchain-v3,mode=max
           cache-from: type=gha,scope=toolchain-v3
 
+  # Decide which targets actually need building. Each pushed per-target image
+  # carries an org.shvr.oid annotation (its content-addressed build identity);
+  # a target whose published OID still matches the freshly computed one cannot
+  # have changed and is skipped. Emits a dynamic build matrix consumed below.
+  plan:
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      count: ${{ steps.plan.outputs.count }}
+      built: ${{ steps.plan.outputs.built }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Plan targets to build
+        id: plan
+        env:
+          REPO: ${{ github.repository }}
+          FORCE_ALL: ${{ github.event.inputs.force_all }}
+        run: |
+          set -eu
+          # Kill-switch: rebuild everything on manual force_all or a
+          # [rebuild-all] commit-message flag.
+          force=0
+          if [ "${FORCE_ALL:-}" = "true" ]; then force=1; fi
+          if git log -1 --pretty=%B | grep -qiF '[rebuild-all]'; then force=1; fi
+
+          # Read each target's published OID from the stable :<target> tag's
+          # manifest annotation, without pulling layers. Any read failure or a
+          # missing image yields MISSING -> the target is (re)built. This makes
+          # the skip safe-by-default: it can over-build but never wrongly skip.
+          : > registry_oids.txt
+          for t in $(sh shvr.sh targets); do
+            if [ "$force" = 1 ]; then
+              printf '%s FORCE\n' "$t" >> registry_oids.txt
+              continue
+            fi
+            oid=$(docker buildx imagetools inspect --raw "ghcr.io/${REPO}:${t}" 2>/dev/null \
+                  | jq -r '.annotations["org.shvr.oid"] // empty' 2>/dev/null || true)
+            printf '%s %s\n' "$t" "${oid:-MISSING}" >> registry_oids.txt
+          done
+
+          matrix=$(sh shvr.sh plan_matrix registry_oids.txt)
+          count=$(printf '%s' "$matrix" | jq '.include | length')
+          # Space-separated list of targets built this run, for the assemble job
+          # to tell apart freshly-built (run-scoped) from reused (stable) images.
+          built=$(printf '%s' "$matrix" | jq -r '[.include[].target] | join(" ")')
+          printf 'matrix=%s\n' "$matrix" >> "$GITHUB_OUTPUT"
+          printf 'count=%s\n'  "$count"  >> "$GITHUB_OUTPUT"
+          printf 'built=%s\n'  "$built"  >> "$GITHUB_OUTPUT"
+          printf '%s of %s target(s) need building\n' \
+            "$count" "$(sh shvr.sh targets | wc -l)" >> "$GITHUB_STEP_SUMMARY"
+
   build:
-    needs: [download, toolchain, mirror]
+    needs: [plan, toolchain, mirror]
+    # Skip the whole job (rather than error on an empty matrix) when nothing
+    # changed; assemble still runs (see its if:) to keep flavors fresh.
+    if: needs.plan.outputs.count != '0'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
@@ -162,15 +226,6 @@ jobs:
         with:
           driver-opts: image=${{ needs.mirror.outputs.buildkit_ref }}
 
-      # Content-addressed build identity for this target. Recorded on the image
-      # as an OCI annotation (+ config label) so a future `plan` job can skip
-      # rebuilding targets whose OID is unchanged. See shvr_build_identity.
-      - name: Compute build identity (OID)
-        id: oid
-        env:
-          TARGET: ${{ matrix.target }}
-        run: echo "oid=$(sh shvr.sh build_identity "$TARGET")" >> "$GITHUB_OUTPUT"
-
       - name: Build and push shell image
         uses: ./.github/actions/build-push-retry
         with:
@@ -193,11 +248,12 @@ jobs:
               || '' }}
           # Single-manifest image so the OID annotation sits at the manifest top
           # level, readable via `imagetools inspect --raw` without pulling layers.
+          # The OID comes from the plan matrix entry (shvr_plan_matrix).
           provenance: false
           annotations: |
-            manifest:org.shvr.oid=${{ steps.oid.outputs.oid }}
+            manifest:org.shvr.oid=${{ matrix.oid }}
           labels: |
-            org.shvr.oid=${{ steps.oid.outputs.oid }}
+            org.shvr.oid=${{ matrix.oid }}
 
       - name: Verify build checksums
         uses: ./.github/actions/verify-build-checksums
@@ -210,1020 +266,27 @@ jobs:
 
     strategy:
       fail-fast: ${{ github.event_name == 'push' }}
-      matrix:
-        include:
-          # AUTO-GENERATED MATRIX. DO NOT EDIT MANUALLY.
-          - target: ash_1.38.0
-            shell: ash
-            version: "1.38.0"
-            cache_path: "busybox/1.38.0"
-          - target: ash_1.37.0
-            shell: ash
-            version: "1.37.0"
-            cache_path: "busybox/1.37.0"
-          - target: ash_1.36.1
-            shell: ash
-            version: "1.36.1"
-            cache_path: "busybox/1.36.1"
-          - target: ash_1.35.0
-            shell: ash
-            version: "1.35.0"
-            cache_path: "busybox/1.35.0"
-          - target: ash_1.34.1
-            shell: ash
-            version: "1.34.1"
-            cache_path: "busybox/1.34.1"
-          - target: ash_1.33.2
-            shell: ash
-            version: "1.33.2"
-            cache_path: "busybox/1.33.2"
-          - target: ash_1.32.1
-            shell: ash
-            version: "1.32.1"
-            cache_path: "busybox/1.32.1"
-          - target: ash_1.31.1
-            shell: ash
-            version: "1.31.1"
-            cache_path: "busybox/1.31.1"
-          - target: ash_1.30.1
-            shell: ash
-            version: "1.30.1"
-            cache_path: "busybox/1.30.1"
-          - target: ash_1.29.3
-            shell: ash
-            version: "1.29.3"
-            cache_path: "busybox/1.29.3"
-          - target: ash_1.28.4
-            shell: ash
-            version: "1.28.4"
-            cache_path: "busybox/1.28.4"
-          - target: ash_1.27.2
-            shell: ash
-            version: "1.27.2"
-            cache_path: "busybox/1.27.2"
-          - target: ash_1.26.2
-            shell: ash
-            version: "1.26.2"
-            cache_path: "busybox/1.26.2"
-          - target: ash_1.25.1
-            shell: ash
-            version: "1.25.1"
-            cache_path: "busybox/1.25.1"
-          - target: ash_1.24.2
-            shell: ash
-            version: "1.24.2"
-            cache_path: "busybox/1.24.2"
-          - target: ash_1.23.2
-            shell: ash
-            version: "1.23.2"
-            cache_path: "busybox/1.23.2"
-          - target: ash_1.22.1
-            shell: ash
-            version: "1.22.1"
-            cache_path: "busybox/1.22.1"
-          - target: ash_1.21.1
-            shell: ash
-            version: "1.21.1"
-            cache_path: "busybox/1.21.1"
-          - target: ash_1.20.2
-            shell: ash
-            version: "1.20.2"
-            cache_path: "busybox/1.20.2"
-          - target: ash_1.19.4
-            shell: ash
-            version: "1.19.4"
-            cache_path: "busybox/1.19.4"
-          - target: ash_1.2.2.1
-            shell: ash
-            version: "1.2.2.1"
-            cache_path: "busybox/1.2.2.1"
-          - target: ash_1.2.2
-            shell: ash
-            version: "1.2.2"
-            cache_path: "busybox/1.2.2"
-          - target: bash_5.3.9
-            shell: bash
-            version: "5.3.9"
-            cache_path: "bash/5.3"
-          - target: bash_5.2.37
-            shell: bash
-            version: "5.2.37"
-            cache_path: "bash/5.2"
-          - target: bash_5.1.16
-            shell: bash
-            version: "5.1.16"
-            cache_path: "bash/5.1"
-          - target: bash_5.0.18
-            shell: bash
-            version: "5.0.18"
-            cache_path: "bash/5.0"
-          - target: bash_4.4.23
-            shell: bash
-            version: "4.4.23"
-            cache_path: "bash/4.4"
-          - target: bash_4.3.48
-            shell: bash
-            version: "4.3.48"
-            cache_path: "bash/4.3"
-          - target: bash_4.2.53
-            shell: bash
-            version: "4.2.53"
-            cache_path: "bash/4.2"
-          - target: bash_4.1.17
-            shell: bash
-            version: "4.1.17"
-            cache_path: "bash/4.1"
-          - target: bash_4.0.44
-            shell: bash
-            version: "4.0.44"
-            cache_path: "bash/4.0"
-          - target: bash_3.2.57
-            shell: bash
-            version: "3.2.57"
-            cache_path: "bash/3.2"
-          - target: bash_3.1.23
-            shell: bash
-            version: "3.1.23"
-            cache_path: "bash/3.1"
-          - target: bash_3.0.22
-            shell: bash
-            version: "3.0.22"
-            cache_path: "bash/3.0"
-          - target: bash_2.05.0
-            shell: bash
-            version: "2.05.0"
-            cache_path: "bash/2.05"
-          - target: bash_2.05b.13
-            shell: bash
-            version: "2.05b.13"
-            cache_path: "bash/2.05b"
-          - target: bash_2.05a.0
-            shell: bash
-            version: "2.05a.0"
-            cache_path: "bash/2.05a"
-          - target: bash_2.04.0
-            shell: bash
-            version: "2.04.0"
-            cache_path: "bash/2.04"
-          - target: bash_2.03.0
-            shell: bash
-            version: "2.03.0"
-            cache_path: "bash/2.03"
-          - target: bash_2.02.0
-            shell: bash
-            version: "2.02.0"
-            cache_path: "bash/2.02"
-          - target: bash_2.01.0
-            shell: bash
-            version: "2.01.0"
-            cache_path: "bash/2.01"
-          - target: brush_0.4.0
-            shell: brush
-            version: "0.4.0"
-            cache_path: "brush/0.4.0"
-          - target: brush_0.3.0
-            shell: brush
-            version: "0.3.0"
-            cache_path: "brush/0.3.0"
-          - target: brush_0.2.23
-            shell: brush
-            version: "0.2.23"
-            cache_path: "brush/0.2.23"
-          - target: dash_0.5.13.4
-            shell: dash
-            version: "0.5.13.4"
-            cache_path: "dash/0.5.13.4"
-          - target: dash_0.5.12
-            shell: dash
-            version: "0.5.12"
-            cache_path: "dash/0.5.12"
-          - target: dash_0.5.11.5
-            shell: dash
-            version: "0.5.11.5"
-            cache_path: "dash/0.5.11.5"
-          - target: dash_0.5.10.2
-            shell: dash
-            version: "0.5.10.2"
-            cache_path: "dash/0.5.10.2"
-          - target: dash_0.5.9.1
-            shell: dash
-            version: "0.5.9.1"
-            cache_path: "dash/0.5.9.1"
-          - target: dash_0.5.8
-            shell: dash
-            version: "0.5.8"
-            cache_path: "dash/0.5.8"
-          - target: dash_0.5.7
-            shell: dash
-            version: "0.5.7"
-            cache_path: "dash/0.5.7"
-          - target: dash_0.5.6.1
-            shell: dash
-            version: "0.5.6.1"
-            cache_path: "dash/0.5.6.1"
-          - target: dash_0.5.5.1
-            shell: dash
-            version: "0.5.5.1"
-            cache_path: "dash/0.5.5.1"
-          - target: dash_0.5.4
-            shell: dash
-            version: "0.5.4"
-            cache_path: "dash/0.5.4"
-          - target: dash_0.5.3
-            shell: dash
-            version: "0.5.3"
-            cache_path: "dash/0.5.3"
-          - target: hush_1.38.0
-            shell: hush
-            version: "1.38.0"
-            cache_path: "busybox/1.38.0"
-          - target: hush_1.37.0
-            shell: hush
-            version: "1.37.0"
-            cache_path: "busybox/1.37.0"
-          - target: hush_1.36.1
-            shell: hush
-            version: "1.36.1"
-            cache_path: "busybox/1.36.1"
-          - target: hush_1.35.0
-            shell: hush
-            version: "1.35.0"
-            cache_path: "busybox/1.35.0"
-          - target: hush_1.34.1
-            shell: hush
-            version: "1.34.1"
-            cache_path: "busybox/1.34.1"
-          - target: hush_1.33.2
-            shell: hush
-            version: "1.33.2"
-            cache_path: "busybox/1.33.2"
-          - target: hush_1.32.1
-            shell: hush
-            version: "1.32.1"
-            cache_path: "busybox/1.32.1"
-          - target: hush_1.31.1
-            shell: hush
-            version: "1.31.1"
-            cache_path: "busybox/1.31.1"
-          - target: hush_1.30.1
-            shell: hush
-            version: "1.30.1"
-            cache_path: "busybox/1.30.1"
-          - target: hush_1.29.3
-            shell: hush
-            version: "1.29.3"
-            cache_path: "busybox/1.29.3"
-          - target: hush_1.28.4
-            shell: hush
-            version: "1.28.4"
-            cache_path: "busybox/1.28.4"
-          - target: hush_1.27.2
-            shell: hush
-            version: "1.27.2"
-            cache_path: "busybox/1.27.2"
-          - target: hush_1.26.2
-            shell: hush
-            version: "1.26.2"
-            cache_path: "busybox/1.26.2"
-          - target: hush_1.25.1
-            shell: hush
-            version: "1.25.1"
-            cache_path: "busybox/1.25.1"
-          - target: hush_1.24.2
-            shell: hush
-            version: "1.24.2"
-            cache_path: "busybox/1.24.2"
-          - target: hush_1.23.2
-            shell: hush
-            version: "1.23.2"
-            cache_path: "busybox/1.23.2"
-          - target: hush_1.22.1
-            shell: hush
-            version: "1.22.1"
-            cache_path: "busybox/1.22.1"
-          - target: hush_1.21.1
-            shell: hush
-            version: "1.21.1"
-            cache_path: "busybox/1.21.1"
-          - target: hush_1.20.2
-            shell: hush
-            version: "1.20.2"
-            cache_path: "busybox/1.20.2"
-          - target: hush_1.19.4
-            shell: hush
-            version: "1.19.4"
-            cache_path: "busybox/1.19.4"
-          - target: hush_1.2.2.1
-            shell: hush
-            version: "1.2.2.1"
-            cache_path: "busybox/1.2.2.1"
-          - target: hush_1.2.2
-            shell: hush
-            version: "1.2.2"
-            cache_path: "busybox/1.2.2"
-          - target: ksh_shvrChistory-b_2016-01-10
-            shell: ksh
-            version: "shvrChistory-b_2016-01-10"
-            cache_path: "ksh/shvrChistory-b_2016-01-10"
-          - target: ksh_shvrChistory-b_2012-08-01
-            shell: ksh
-            version: "shvrChistory-b_2012-08-01"
-            cache_path: "ksh/shvrChistory-b_2012-08-01"
-          - target: ksh_shvrChistory-b_2011-03-10
-            shell: ksh
-            version: "shvrChistory-b_2011-03-10"
-            cache_path: "ksh/shvrChistory-b_2011-03-10"
-          - target: ksh_shvrChistory-b_2010-10-26
-            shell: ksh
-            version: "shvrChistory-b_2010-10-26"
-            cache_path: "ksh/shvrChistory-b_2010-10-26"
-          - target: ksh_shvrChistory-b_2010-06-21
-            shell: ksh
-            version: "shvrChistory-b_2010-06-21"
-            cache_path: "ksh/shvrChistory-b_2010-06-21"
-          - target: ksh_shvrChistory-b_2008-11-04
-            shell: ksh
-            version: "shvrChistory-b_2008-11-04"
-            cache_path: "ksh/shvrChistory-b_2008-11-04"
-          - target: ksh_shvrChistory-b_2008-06-08
-            shell: ksh
-            version: "shvrChistory-b_2008-06-08"
-            cache_path: "ksh/shvrChistory-b_2008-06-08"
-          - target: ksh_shvrChistory-b_2008-02-02
-            shell: ksh
-            version: "shvrChistory-b_2008-02-02"
-            cache_path: "ksh/shvrChistory-b_2008-02-02"
-          - target: ksh_shvrChistory-b_2007-01-11
-            shell: ksh
-            version: "shvrChistory-b_2007-01-11"
-            cache_path: "ksh/shvrChistory-b_2007-01-11"
-          - target: ksh_shvrB2020-2020.0.0
-            shell: ksh
-            version: "shvrB2020-2020.0.0"
-            cache_path: "ksh/shvrB2020-2020.0.0"
-          - target: ksh_shvrA93uplusm-v1.0.10
-            shell: ksh
-            version: "shvrA93uplusm-v1.0.10"
-            cache_path: "ksh/shvrA93uplusm-v1.0.10"
-          - target: ksh_shvrA93uplusm-v1.0.9
-            shell: ksh
-            version: "shvrA93uplusm-v1.0.9"
-            cache_path: "ksh/shvrA93uplusm-v1.0.9"
-          - target: ksh_shvrA93uplusm-v1.0.8
-            shell: ksh
-            version: "shvrA93uplusm-v1.0.8"
-            cache_path: "ksh/shvrA93uplusm-v1.0.8"
-          - target: ksh_shvrA93uplusm-v1.0.7
-            shell: ksh
-            version: "shvrA93uplusm-v1.0.7"
-            cache_path: "ksh/shvrA93uplusm-v1.0.7"
-          - target: ksh_shvrA93uplusm-v1.0.6
-            shell: ksh
-            version: "shvrA93uplusm-v1.0.6"
-            cache_path: "ksh/shvrA93uplusm-v1.0.6"
-          - target: ksh_shvrA93uplusm-v1.0.4
-            shell: ksh
-            version: "shvrA93uplusm-v1.0.4"
-            cache_path: "ksh/shvrA93uplusm-v1.0.4"
-          - target: ksh_shvrA93uplusm-v1.0.3
-            shell: ksh
-            version: "shvrA93uplusm-v1.0.3"
-            cache_path: "ksh/shvrA93uplusm-v1.0.3"
-          - target: ksh_shvrA93uplusm-v1.0.2
-            shell: ksh
-            version: "shvrA93uplusm-v1.0.2"
-            cache_path: "ksh/shvrA93uplusm-v1.0.2"
-          - target: ksh_shvrA93uplusm-v1.0.1
-            shell: ksh
-            version: "shvrA93uplusm-v1.0.1"
-            cache_path: "ksh/shvrA93uplusm-v1.0.1"
-          - target: loksh_7.9
-            shell: loksh
-            version: "7.9"
-            cache_path: "loksh/7.9"
-          - target: loksh_7.8
-            shell: loksh
-            version: "7.8"
-            cache_path: "loksh/7.8"
-          - target: loksh_7.7
-            shell: loksh
-            version: "7.7"
-            cache_path: "loksh/7.7"
-          - target: loksh_7.6
-            shell: loksh
-            version: "7.6"
-            cache_path: "loksh/7.6"
-          - target: loksh_7.5
-            shell: loksh
-            version: "7.5"
-            cache_path: "loksh/7.5"
-          - target: loksh_7.4
-            shell: loksh
-            version: "7.4"
-            cache_path: "loksh/7.4"
-          - target: loksh_7.3
-            shell: loksh
-            version: "7.3"
-            cache_path: "loksh/7.3"
-          - target: loksh_7.2
-            shell: loksh
-            version: "7.2"
-            cache_path: "loksh/7.2"
-          - target: loksh_7.1
-            shell: loksh
-            version: "7.1"
-            cache_path: "loksh/7.1"
-          - target: loksh_7.0
-            shell: loksh
-            version: "7.0"
-            cache_path: "loksh/7.0"
-          - target: loksh_6.9
-            shell: loksh
-            version: "6.9"
-            cache_path: "loksh/6.9"
-          - target: loksh_6.8.1
-            shell: loksh
-            version: "6.8.1"
-            cache_path: "loksh/6.8.1"
-          - target: loksh_6.7.5
-            shell: loksh
-            version: "6.7.5"
-            cache_path: "loksh/6.7.5"
-          - target: mksh_R59c
-            shell: mksh
-            version: "R59c"
-            cache_path: "mksh/R59c"
-          - target: mksh_R58
-            shell: mksh
-            version: "R58"
-            cache_path: "mksh/R58"
-          - target: mksh_R57
-            shell: mksh
-            version: "R57"
-            cache_path: "mksh/R57"
-          - target: mksh_R56c
-            shell: mksh
-            version: "R56c"
-            cache_path: "mksh/R56c"
-          - target: mksh_R55
-            shell: mksh
-            version: "R55"
-            cache_path: "mksh/R55"
-          - target: mksh_R54
-            shell: mksh
-            version: "R54"
-            cache_path: "mksh/R54"
-          - target: mksh_R53a
-            shell: mksh
-            version: "R53a"
-            cache_path: "mksh/R53a"
-          - target: mksh_R52c
-            shell: mksh
-            version: "R52c"
-            cache_path: "mksh/R52c"
-          - target: mksh_R51
-            shell: mksh
-            version: "R51"
-            cache_path: "mksh/R51"
-          - target: mksh_R50f
-            shell: mksh
-            version: "R50f"
-            cache_path: "mksh/R50f"
-          - target: mksh_R49
-            shell: mksh
-            version: "R49"
-            cache_path: "mksh/R49"
-          - target: mksh_R48b
-            shell: mksh
-            version: "R48b"
-            cache_path: "mksh/R48b"
-          - target: mksh_R47
-            shell: mksh
-            version: "R47"
-            cache_path: "mksh/R47"
-          - target: mksh_R46
-            shell: mksh
-            version: "R46"
-            cache_path: "mksh/R46"
-          - target: mksh_R45
-            shell: mksh
-            version: "R45"
-            cache_path: "mksh/R45"
-          - target: mksh_R44
-            shell: mksh
-            version: "R44"
-            cache_path: "mksh/R44"
-          - target: mksh_R43
-            shell: mksh
-            version: "R43"
-            cache_path: "mksh/R43"
-          - target: mksh_R42b
-            shell: mksh
-            version: "R42b"
-            cache_path: "mksh/R42b"
-          - target: mksh_R41c
-            shell: mksh
-            version: "R41c"
-            cache_path: "mksh/R41c"
-          - target: mksh_R40f
-            shell: mksh
-            version: "R40f"
-            cache_path: "mksh/R40f"
-          - target: mksh_R39c
-            shell: mksh
-            version: "R39c"
-            cache_path: "mksh/R39c"
-          - target: mksh_R38c
-            shell: mksh
-            version: "R38c"
-            cache_path: "mksh/R38c"
-          - target: mksh_R37c
-            shell: mksh
-            version: "R37c"
-            cache_path: "mksh/R37c"
-          - target: mksh_R36b
-            shell: mksh
-            version: "R36b"
-            cache_path: "mksh/R36b"
-          - target: mksh_R35b
-            shell: mksh
-            version: "R35b"
-            cache_path: "mksh/R35b"
-          - target: mksh_R33d
-            shell: mksh
-            version: "R33d"
-            cache_path: "mksh/R33d"
-          - target: mksh_R32
-            shell: mksh
-            version: "R32"
-            cache_path: "mksh/R32"
-          - target: mksh_R31d
-            shell: mksh
-            version: "R31d"
-            cache_path: "mksh/R31d"
-          - target: mksh_R30
-            shell: mksh
-            version: "R30"
-            cache_path: "mksh/R30"
-          - target: oksh_7.9
-            shell: oksh
-            version: "7.9"
-            cache_path: "oksh/7.9"
-          - target: oksh_7.8
-            shell: oksh
-            version: "7.8"
-            cache_path: "oksh/7.8"
-          - target: oksh_7.7
-            shell: oksh
-            version: "7.7"
-            cache_path: "oksh/7.7"
-          - target: oksh_7.6
-            shell: oksh
-            version: "7.6"
-            cache_path: "oksh/7.6"
-          - target: oksh_7.5
-            shell: oksh
-            version: "7.5"
-            cache_path: "oksh/7.5"
-          - target: oksh_7.4
-            shell: oksh
-            version: "7.4"
-            cache_path: "oksh/7.4"
-          - target: oksh_7.3
-            shell: oksh
-            version: "7.3"
-            cache_path: "oksh/7.3"
-          - target: oksh_7.2
-            shell: oksh
-            version: "7.2"
-            cache_path: "oksh/7.2"
-          - target: oksh_7.1
-            shell: oksh
-            version: "7.1"
-            cache_path: "oksh/7.1"
-          - target: oksh_7.0
-            shell: oksh
-            version: "7.0"
-            cache_path: "oksh/7.0"
-          - target: oksh_6.9
-            shell: oksh
-            version: "6.9"
-            cache_path: "oksh/6.9"
-          - target: oksh_6.8.1
-            shell: oksh
-            version: "6.8.1"
-            cache_path: "oksh/6.8.1"
-          - target: oksh_6.7.1
-            shell: oksh
-            version: "6.7.1"
-            cache_path: "oksh/6.7.1"
-          - target: oksh_6.6
-            shell: oksh
-            version: "6.6"
-            cache_path: "oksh/6.6"
-          - target: oksh_6.5
-            shell: oksh
-            version: "6.5"
-            cache_path: "oksh/6.5"
-          - target: osh_0.37.0
-            shell: osh
-            version: "0.37.0"
-            cache_path: "osh/0.37.0"
-          - target: osh_0.36.0
-            shell: osh
-            version: "0.36.0"
-            cache_path: "osh/0.36.0"
-          - target: osh_0.35.0
-            shell: osh
-            version: "0.35.0"
-            cache_path: "osh/0.35.0"
-          - target: osh_0.34.0
-            shell: osh
-            version: "0.34.0"
-            cache_path: "osh/0.34.0"
-          - target: osh_0.33.0
-            shell: osh
-            version: "0.33.0"
-            cache_path: "osh/0.33.0"
-          - target: osh_0.32.0
-            shell: osh
-            version: "0.32.0"
-            cache_path: "osh/0.32.0"
-          - target: osh_0.31.0
-            shell: osh
-            version: "0.31.0"
-            cache_path: "osh/0.31.0"
-          - target: osh_0.30.0
-            shell: osh
-            version: "0.30.0"
-            cache_path: "osh/0.30.0"
-          - target: osh_0.29.0
-            shell: osh
-            version: "0.29.0"
-            cache_path: "osh/0.29.0"
-          - target: osh_0.28.0
-            shell: osh
-            version: "0.28.0"
-            cache_path: "osh/0.28.0"
-          - target: osh_0.27.0
-            shell: osh
-            version: "0.27.0"
-            cache_path: "osh/0.27.0"
-          - target: osh_0.26.0
-            shell: osh
-            version: "0.26.0"
-            cache_path: "osh/0.26.0"
-          - target: osh_0.25.0
-            shell: osh
-            version: "0.25.0"
-            cache_path: "osh/0.25.0"
-          - target: posh_0.14.5
-            shell: posh
-            version: "0.14.5"
-            cache_path: "posh/0.14.5"
-          - target: posh_0.13.2
-            shell: posh
-            version: "0.13.2"
-            cache_path: "posh/0.13.2"
-          - target: posh_0.12.6
-            shell: posh
-            version: "0.12.6"
-            cache_path: "posh/0.12.6"
-          - target: yash_2.61
-            shell: yash
-            version: "2.61"
-            cache_path: "yash/2.61"
-          - target: yash_2.60
-            shell: yash
-            version: "2.60"
-            cache_path: "yash/2.60"
-          - target: yash_2.59
-            shell: yash
-            version: "2.59"
-            cache_path: "yash/2.59"
-          - target: yash_2.58.1
-            shell: yash
-            version: "2.58.1"
-            cache_path: "yash/2.58.1"
-          - target: yash_2.57
-            shell: yash
-            version: "2.57"
-            cache_path: "yash/2.57"
-          - target: yash_2.56.1
-            shell: yash
-            version: "2.56.1"
-            cache_path: "yash/2.56.1"
-          - target: yash_2.55
-            shell: yash
-            version: "2.55"
-            cache_path: "yash/2.55"
-          - target: yash_2.54
-            shell: yash
-            version: "2.54"
-            cache_path: "yash/2.54"
-          - target: yash_2.53
-            shell: yash
-            version: "2.53"
-            cache_path: "yash/2.53"
-          - target: yash_2.52
-            shell: yash
-            version: "2.52"
-            cache_path: "yash/2.52"
-          - target: yash_2.51
-            shell: yash
-            version: "2.51"
-            cache_path: "yash/2.51"
-          - target: yash_2.50
-            shell: yash
-            version: "2.50"
-            cache_path: "yash/2.50"
-          - target: yash_2.49
-            shell: yash
-            version: "2.49"
-            cache_path: "yash/2.49"
-          - target: yash_2.48
-            shell: yash
-            version: "2.48"
-            cache_path: "yash/2.48"
-          - target: yash_2.47
-            shell: yash
-            version: "2.47"
-            cache_path: "yash/2.47"
-          - target: yash_2.46
-            shell: yash
-            version: "2.46"
-            cache_path: "yash/2.46"
-          - target: yash_2.45
-            shell: yash
-            version: "2.45"
-            cache_path: "yash/2.45"
-          - target: yash_2.44
-            shell: yash
-            version: "2.44"
-            cache_path: "yash/2.44"
-          - target: yash_2.43
-            shell: yash
-            version: "2.43"
-            cache_path: "yash/2.43"
-          - target: yash_2.42
-            shell: yash
-            version: "2.42"
-            cache_path: "yash/2.42"
-          - target: yash_2.41
-            shell: yash
-            version: "2.41"
-            cache_path: "yash/2.41"
-          - target: yash_2.40
-            shell: yash
-            version: "2.40"
-            cache_path: "yash/2.40"
-          - target: yash_2.39
-            shell: yash
-            version: "2.39"
-            cache_path: "yash/2.39"
-          - target: yash_2.38
-            shell: yash
-            version: "2.38"
-            cache_path: "yash/2.38"
-          - target: yash_2.37
-            shell: yash
-            version: "2.37"
-            cache_path: "yash/2.37"
-          - target: yash_2.36
-            shell: yash
-            version: "2.36"
-            cache_path: "yash/2.36"
-          - target: yash_2.35
-            shell: yash
-            version: "2.35"
-            cache_path: "yash/2.35"
-          - target: yash_2.34
-            shell: yash
-            version: "2.34"
-            cache_path: "yash/2.34"
-          - target: yash_2.33.1
-            shell: yash
-            version: "2.33.1"
-            cache_path: "yash/2.33.1"
-          - target: yash_2.32.1
-            shell: yash
-            version: "2.32.1"
-            cache_path: "yash/2.32.1"
-          - target: yash_2.31
-            shell: yash
-            version: "2.31"
-            cache_path: "yash/2.31"
-          - target: yash_2.30
-            shell: yash
-            version: "2.30"
-            cache_path: "yash/2.30"
-          - target: yash_2.29
-            shell: yash
-            version: "2.29"
-            cache_path: "yash/2.29"
-          - target: yash_2.28
-            shell: yash
-            version: "2.28"
-            cache_path: "yash/2.28"
-          - target: yash_2.27
-            shell: yash
-            version: "2.27"
-            cache_path: "yash/2.27"
-          - target: yash_2.26.1
-            shell: yash
-            version: "2.26.1"
-            cache_path: "yash/2.26.1"
-          - target: yash_2.25
-            shell: yash
-            version: "2.25"
-            cache_path: "yash/2.25"
-          - target: yash_2.24
-            shell: yash
-            version: "2.24"
-            cache_path: "yash/2.24"
-          - target: yash_2.23
-            shell: yash
-            version: "2.23"
-            cache_path: "yash/2.23"
-          - target: yash_2.22
-            shell: yash
-            version: "2.22"
-            cache_path: "yash/2.22"
-          - target: yash_2.21
-            shell: yash
-            version: "2.21"
-            cache_path: "yash/2.21"
-          - target: yash_2.20
-            shell: yash
-            version: "2.20"
-            cache_path: "yash/2.20"
-          - target: yash_2.19
-            shell: yash
-            version: "2.19"
-            cache_path: "yash/2.19"
-          - target: yash_2.18
-            shell: yash
-            version: "2.18"
-            cache_path: "yash/2.18"
-          - target: yash_2.17
-            shell: yash
-            version: "2.17"
-            cache_path: "yash/2.17"
-          - target: yash_2.16
-            shell: yash
-            version: "2.16"
-            cache_path: "yash/2.16"
-          - target: yash_2.15
-            shell: yash
-            version: "2.15"
-            cache_path: "yash/2.15"
-          - target: yash_2.14
-            shell: yash
-            version: "2.14"
-            cache_path: "yash/2.14"
-          - target: yash_2.13
-            shell: yash
-            version: "2.13"
-            cache_path: "yash/2.13"
-          - target: yash_2.12
-            shell: yash
-            version: "2.12"
-            cache_path: "yash/2.12"
-          - target: yash_2.11
-            shell: yash
-            version: "2.11"
-            cache_path: "yash/2.11"
-          - target: yash_2.10
-            shell: yash
-            version: "2.10"
-            cache_path: "yash/2.10"
-          - target: yashrs_3.2.0
-            shell: yashrs
-            version: "3.2.0"
-            cache_path: "yashrs/3.2.0"
-          - target: yashrs_3.1.0
-            shell: yashrs
-            version: "3.1.0"
-            cache_path: "yashrs/3.1.0"
-          - target: yashrs_3.0.8
-            shell: yashrs
-            version: "3.0.8"
-            cache_path: "yashrs/3.0.8"
-          - target: yashrs_3.0.7
-            shell: yashrs
-            version: "3.0.7"
-            cache_path: "yashrs/3.0.7"
-          - target: yashrs_3.0.5
-            shell: yashrs
-            version: "3.0.5"
-            cache_path: "yashrs/3.0.5"
-          - target: yashrs_3.0.4
-            shell: yashrs
-            version: "3.0.4"
-            cache_path: "yashrs/3.0.4"
-          - target: yashrs_3.0.3
-            shell: yashrs
-            version: "3.0.3"
-            cache_path: "yashrs/3.0.3"
-          - target: yashrs_3.0.2
-            shell: yashrs
-            version: "3.0.2"
-            cache_path: "yashrs/3.0.2"
-          - target: yashrs_3.0.1
-            shell: yashrs
-            version: "3.0.1"
-            cache_path: "yashrs/3.0.1"
-          - target: yashrs_3.0.0
-            shell: yashrs
-            version: "3.0.0"
-            cache_path: "yashrs/3.0.0"
-          - target: yashrs_0.4.5
-            shell: yashrs
-            version: "0.4.5"
-            cache_path: "yashrs/0.4.5"
-          - target: yashrs_0.4.4
-            shell: yashrs
-            version: "0.4.4"
-            cache_path: "yashrs/0.4.4"
-          - target: yashrs_0.4.3
-            shell: yashrs
-            version: "0.4.3"
-            cache_path: "yashrs/0.4.3"
-          - target: yashrs_0.4.2
-            shell: yashrs
-            version: "0.4.2"
-            cache_path: "yashrs/0.4.2"
-          - target: yashrs_0.4.1
-            shell: yashrs
-            version: "0.4.1"
-            cache_path: "yashrs/0.4.1"
-          - target: yashrs_0.4.0
-            shell: yashrs
-            version: "0.4.0"
-            cache_path: "yashrs/0.4.0"
-          - target: yashrs_0.3.0
-            shell: yashrs
-            version: "0.3.0"
-            cache_path: "yashrs/0.3.0"
-          - target: zsh_5.9.1
-            shell: zsh
-            version: "5.9.1"
-            cache_path: "zsh/5.9.1"
-          - target: zsh_5.8.1
-            shell: zsh
-            version: "5.8.1"
-            cache_path: "zsh/5.8.1"
-          - target: zsh_5.7.1
-            shell: zsh
-            version: "5.7.1"
-            cache_path: "zsh/5.7.1"
-          - target: zsh_5.6.2
-            shell: zsh
-            version: "5.6.2"
-            cache_path: "zsh/5.6.2"
-          - target: zsh_5.5.1
-            shell: zsh
-            version: "5.5.1"
-            cache_path: "zsh/5.5.1"
-          - target: zsh_5.4.2
-            shell: zsh
-            version: "5.4.2"
-            cache_path: "zsh/5.4.2"
-          - target: zsh_5.3.1
-            shell: zsh
-            version: "5.3.1"
-            cache_path: "zsh/5.3.1"
-          - target: zsh_5.2
-            shell: zsh
-            version: "5.2"
-            cache_path: "zsh/5.2"
-          - target: zsh_5.1.1
-            shell: zsh
-            version: "5.1.1"
-            cache_path: "zsh/5.1.1"
-          - target: zsh_5.0.8
-            shell: zsh
-            version: "5.0.8"
-            cache_path: "zsh/5.0.8"
-          - target: zsh_4.2.7
-            shell: zsh
-            version: "4.2.7"
-            cache_path: "zsh/4.2.7"
-          - target: zsh_4.0.9
-            shell: zsh
-            version: "4.0.9"
-            cache_path: "zsh/4.0.9"
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
 
   assemble:
-    needs: [build, mirror]
+    needs: [plan, build, mirror]
+    # Run even when build was skipped (0 changed targets): flavors are
+    # reassembled from the per-target images (rebuilt this run or reused from a
+    # prior push) and the full-set checksum verify still guards every binary.
+    # Only bail if a build actually failed or was cancelled.
+    if: >-
+      always()
+      && needs.mirror.result == 'success'
+      && needs.plan.result == 'success'
+      && needs.build.result != 'failure'
+      && needs.build.result != 'cancelled'
     runs-on: ubuntu-24.04
     env:
       ALL_TARGETS: ${{ matrix.targets }}
       RUNTIME_REF: ${{ needs.mirror.outputs.runtime_ref }}
-      GHCR_TAG_PREFIX: >-
-        ${{ github.event_name == 'pull_request'
-          && format('run-{0}-', github.run_id)
-          || '' }}
+      # Targets actually built this run (from the plan job). On a PR, these
+      # carry run-scoped tags; every other target is reused from its stable tag.
+      BUILT_TARGETS: ${{ needs.plan.outputs.built }}
       ASSEMBLY_TAG: >-
         ${{ github.event_name == 'push'
           && format('alganet/shell-versions:{0}', matrix.flavor)
@@ -1544,6 +607,11 @@ jobs:
           # (~500 for "all") exceeds both. Chunk targets into shallow
           # stages, then merge the chunks.
           set -eu
+          # On a PR, a target built this run is at run-<id>-<target>; a target
+          # skipped this run is reused from its stable :<target> image (a prior
+          # push to main). On push, every target is at its stable :<target> tag
+          # (just rebuilt or reused), so all resolve to stable there.
+          is_built () { case " ${BUILT_TARGETS} " in *" $1 "*) return 0 ;; *) return 1 ;; esac ; }
           chunk_size=8
           i=0
           last_chunk=0
@@ -1553,7 +621,11 @@ jobs:
                 last_chunk=$((i / chunk_size))
                 echo "FROM scratch AS chunk_${last_chunk}"
               fi
-              src="ghcr.io/${{ github.repository }}:${GHCR_TAG_PREFIX}${target}"
+              if [ "${{ github.event_name }}" = "pull_request" ] && is_built "$target"; then
+                src="ghcr.io/${{ github.repository }}:run-${{ github.run_id }}-${target}"
+              else
+                src="ghcr.io/${{ github.repository }}:${target}"
+              fi
               echo "COPY --from=${src} --chown=0:0 /opt /opt"
               echo "COPY --from=${src} --chown=0:0 /deps /deps"
               echo "COPY --from=${src} --chown=0:0 /shvr/checksums/build /shvr/checksums/build"
