@@ -132,8 +132,18 @@ jobs:
           build-args: |
             TOOLCHAIN_BASE=${{ needs.mirror.outputs.toolchain_ref }}
             RUNTIME_BASE=${{ needs.mirror.outputs.runtime_ref }}
-          cache-to: type=gha,scope=toolchain-v3,mode=max
-          cache-from: type=gha,scope=toolchain-v3
+          # Publish the toolchain build cache to the registry as well as GHA. A
+          # registry cache is content-addressed and reliably shared across the
+          # whole build matrix; the GHA cache is not dependable for a multi-GB
+          # toolchain read concurrently by every build job. Without this, when the
+          # toolchain layer changes (e.g. a shvr.sh edit) the per-target
+          # buildcaches go stale and every build job recompiles musl-cross-make.
+          cache-to: |
+            type=gha,scope=toolchain-v3,mode=max
+            ${{ github.event_name == 'push' && format('type=registry,ref=ghcr.io/{0}:cache-toolchain,mode=max', github.repository) || '' }}
+          cache-from: |
+            type=registry,ref=ghcr.io/${{ github.repository }}:cache-toolchain
+            type=gha,scope=toolchain-v3
 
   # Decide which targets actually need building. Each pushed per-target image
   # carries an org.shvr.oid annotation (its content-addressed build identity);
@@ -240,6 +250,7 @@ jobs:
             TOOLCHAIN_BASE=${{ needs.mirror.outputs.toolchain_ref }}
             RUNTIME_BASE=${{ needs.mirror.outputs.runtime_ref }}
           cache-from: |
+            type=registry,ref=ghcr.io/${{ github.repository }}:cache-toolchain
             type=gha,scope=toolchain-v3
             type=registry,ref=ghcr.io/${{ github.repository }}:buildcache-${{ matrix.target }}
           cache-to: >-
