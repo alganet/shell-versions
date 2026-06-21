@@ -162,6 +162,15 @@ jobs:
         with:
           driver-opts: image=${{ needs.mirror.outputs.buildkit_ref }}
 
+      # Content-addressed build identity for this target. Recorded on the image
+      # as an OCI annotation (+ config label) so a future `plan` job can skip
+      # rebuilding targets whose OID is unchanged. See shvr_build_identity.
+      - name: Compute build identity (OID)
+        id: oid
+        env:
+          TARGET: ${{ matrix.target }}
+        run: echo "oid=$(sh shvr.sh build_identity "$TARGET")" >> "$GITHUB_OUTPUT"
+
       - name: Build and push shell image
         uses: ./.github/actions/build-push-retry
         with:
@@ -182,6 +191,13 @@ jobs:
             ${{ github.event_name == 'push'
               && format('type=registry,ref=ghcr.io/{0}:buildcache-{1},mode=max', github.repository, matrix.target)
               || '' }}
+          # Single-manifest image so the OID annotation sits at the manifest top
+          # level, readable via `imagetools inspect --raw` without pulling layers.
+          provenance: false
+          annotations: |
+            manifest:org.shvr.oid=${{ steps.oid.outputs.oid }}
+          labels: |
+            org.shvr.oid=${{ steps.oid.outputs.oid }}
 
       - name: Verify build checksums
         uses: ./.github/actions/verify-build-checksums

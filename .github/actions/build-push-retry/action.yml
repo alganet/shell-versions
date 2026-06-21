@@ -35,6 +35,18 @@ inputs:
     description: 'Cache export'
     required: false
     default: ''
+  labels:
+    description: 'Image labels (config-level); empty adds none'
+    required: false
+    default: ''
+  annotations:
+    description: 'OCI annotations (manifest-level); empty adds none'
+    required: false
+    default: ''
+  provenance:
+    description: 'Provenance attestation (true|false|mode=...); empty uses the action default'
+    required: false
+    default: ''
 runs:
   using: composite
   steps:
@@ -51,6 +63,9 @@ runs:
         build-args: ${{ inputs.build-args }}
         cache-from: ${{ inputs.cache-from }}
         cache-to: ${{ inputs.cache-to }}
+        labels: ${{ inputs.labels }}
+        annotations: ${{ inputs.annotations }}
+        provenance: ${{ inputs.provenance }}
     - name: Build and push (retry)
       if: steps.attempt1.outcome == 'failure'
       uses: docker/build-push-action@v7
@@ -63,3 +78,6 @@ runs:
         build-args: ${{ inputs.build-args }}
         cache-from: ${{ inputs.cache-from }}
         cache-to: ${{ inputs.cache-to }}
+        labels: ${{ inputs.labels }}
+        annotations: ${{ inputs.annotations }}
+        provenance: ${{ inputs.provenance }}
