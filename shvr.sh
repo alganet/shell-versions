@@ -724,4 +724,117 @@ shvr_github_regen_all ()
 	(shvr_github_regen_docker_workflow)
 }
 
+# Toolchain fingerprint: a hash of every globally-pinned reproducibility input
+# (musl-cross-make commit, Rust toolchain, Debian snapshot, base image digest,
+# ncurses, rustup-init). It is folded into every target's build identity, so
+# bumping any pin changes all identities and forces a full rebuild. Bump the
+# OIDV scheme tag to force a rebuild without touching a pin.
+shvr_toolchain_fingerprint ()
+{
+	. "${SHVR_DIR_SELF}/common/musl-cross-make.sh"
+	. "${SHVR_DIR_SELF}/common/ncurses.sh"
+
+	dockerfile="${SHVR_DIR_SELF}/Dockerfile"
+	fp_rust="$(grep -m1 'ARG RUST_TOOLCHAIN=' "$dockerfile" | sed 's/.*=//')"
+	fp_snap="$(grep -m1 'ARG DEBIAN_SNAPSHOT=' "$dockerfile" | sed 's/.*=//')"
+	fp_tbase="$(grep -m1 'ARG TOOLCHAIN_BASE=' "$dockerfile" | sed 's/.*=//')"
+	fp_rustup="$(grep -oE 'rustup-init-[0-9][0-9.]*\.sh' "$dockerfile" | head -n1)"
+
+	{
+		printf 'OIDV=1\n'
+		printf 'MCM=%s\n' "$SHVR_MCM_COMMIT"
+		printf 'RUST=%s\n' "$fp_rust"
+		printf 'SNAP=%s\n' "$fp_snap"
+		printf 'TBASE=%s\n' "$fp_tbase"
+		printf 'NCURSES=%s\n' "$SHVR_NCURSES_VERSION"
+		printf 'RUSTUP=%s\n' "$fp_rustup"
+	} | sha256sum | cut -d' ' -f1
+}
+
+# Build identity (OID) for one target: a hash of the toolchain fingerprint plus
+# the target's committed build checksums. Because builds are byte-reproducible
+# and the build-checksum verify gate keeps committed checksums in sync with the
+# intended binary, the OID changes if and only if the binary should change.
+# Prints MISSING (and warns) when no committed checksums exist, so such a target
+# is always (re)built and never wrongly skipped. Pass a precomputed fingerprint
+# as $2 to avoid recomputing it per target.
+shvr_build_identity ()
+{
+	target="$1"
+	fingerprint="${2:-$(shvr_toolchain_fingerprint)}"
+	dir="${SHVR_CHECKSUMS_DIR}/build/${target}"
+
+	if ! test -d "$dir"
+	then
+		echo "shvr_build_identity: no build checksums for ${target} at ${dir}" >&2
+		echo MISSING
+		return 0
+	fi
+
+	{
+		printf '%s\n' "$fingerprint"
+		find "$dir" -name '*.sha256sums' | LC_ALL=C sort | while IFS= read -r f
+		do cat "$f"
+		done
+	} | sha256sum | cut -d' ' -f1
+}
+
+# Emit "<target> <oid>" for every target (or the targets passed as arguments).
+shvr_build_identities ()
+{
+	if test -z "$*"
+	then set -- $(printf '%s ' $(shvr_targets))
+	fi
+	fingerprint="$(shvr_toolchain_fingerprint)"
+	for bi_target in "$@"
+	do
+		printf '%s %s\n' "$bi_target" "$(shvr_build_identity "$bi_target" "$fingerprint")"
+	done
+}
+
+# Print the dynamic GitHub Actions build matrix (JSON) of targets that must be
+# (re)built. Reads "<target> <current-oid>" lines from <registry_oid_file> (the
+# OID currently published for each target, or MISSING/FORCE), compares against
+# the freshly computed desired OID, and includes any target that is missing,
+# forced, or mismatched. Does no network I/O: the registry read happens in the
+# workflow and is passed in as a file.
+shvr_plan_matrix ()
+(
+	registry_file="$1"
+	fingerprint="$(shvr_toolchain_fingerprint)"
+
+	# Slurp to a real file so it is re-readable per target (handles /dev/stdin).
+	reg="${TMPDIR:-/tmp}/shvr_plan.$$"
+	trap 'rm -f "$reg"' EXIT INT TERM
+	cat "$registry_file" > "$reg"
+
+	printf '{"include":['
+	first=1
+	for target in $(shvr_targets)
+	do
+		desired="$(shvr_build_identity "$target" "$fingerprint")"
+		current="$(awk -v t="$target" '$1 == t {print $2; exit}' "$reg")"
+
+		# Skip only when the published OID matches and is a real identity.
+		if test "$desired" != MISSING && test "x$current" = "x$desired"
+		then continue
+		fi
+
+		shvr_clear_versioninfo
+		interpreter="${target%%_*}"
+		version="${target#*_}"
+		. "${SHVR_DIR_SELF}/variants/${interpreter}.sh"
+		"shvr_versioninfo_${interpreter}" "$version"
+		cache_path="${build_srcdir#${SHVR_DIR_SRC}/}"
+
+		if test "$first" = 1
+		then first=0
+		else printf ','
+		fi
+		printf '{"target":"%s","shell":"%s","version":"%s","cache_path":"%s","oid":"%s"}' \
+			"$target" "$interpreter" "$version" "$cache_path" "$desired"
+	done
+	printf ']}\n'
+)
+
 shvr "${@:-}"
