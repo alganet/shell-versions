@@ -1,0 +1,32 @@
+# SPDX-FileCopyrightText: 2026 Alexandre Gomes Gaigalas <alganet@gmail.com>
+# SPDX-License-Identifier: ISC
+
+name: Warm source caches
+
+# Per-target source tarballs live only in the GitHub Actions cache — the
+# committed checksums under checksums/sources/ are hashes, not bytes — and that
+# cache evicts entries after 7 days without access. The build workflow now skips
+# unchanged targets and no longer runs a bulk download job, so a rarely-rebuilt
+# target's source cache could otherwise expire; if upstream had since removed
+# the tarball, a later rebuild would fail. This job restores (and re-fetches on a
+# miss) every source on a cadence well under the 7-day TTL, keeping the bytes
+# available. It runs on the default branch so the caches land in main's scope,
+# where both main builds and PRs can restore them.
+
+on:
+  schedule:
+    # Mon & Thu — max gap 4 days, comfortably under the 7-day cache TTL.
+    - cron: "0 4 * * 1,4"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  warm:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      # Restores every per-target source cache (refreshing its TTL) and
+      # re-fetches+saves any that have been evicted.
+      - uses: ./.github/actions/downloads
