@@ -176,11 +176,26 @@ shvr_filter_latest_per_series ()
 		awk -F '\t' '!seen[$1]++ { print $2 }'
 }
 
+# Drop excluded versions from a stream of bare versions. Each non-comment line
+# of <excluded_file> is "<version> [arch]": the version is always dropped; the
+# optional second field records which arch the version fails on (metadata only,
+# e.g. "arm64" or "amd64"). Exclusions are pooled across arches on purpose — the
+# published all/latest lists are identical on every arch (a version unbuildable
+# on any arch is dropped from all of them; the arch tag documents why, so a later
+# fix can re-enable it). Matching is on the first field so an arch tag does not
+# defeat the exclusion.
 shvr_filter_excluded ()
 {
 	excluded_file="$1"
 	if test -s "$excluded_file"
-	then grep -v -F -x -f "$excluded_file"
+	then
+		pat="${TMPDIR:-/tmp}/shvr_excl.$$"
+		awk '!/^[[:space:]]*#/ && NF { print $1 }' "$excluded_file" > "$pat"
+		if test -s "$pat"
+		then grep -v -F -x -f "$pat"
+		else cat
+		fi
+		rm -f "$pat"
 	else cat
 	fi
 }
@@ -465,20 +480,32 @@ shvr_generate_checksums()
 }
 
 
-# Generate checksums for build outputs under ${SHVR_DIR_OUT} and write them
-# to ${SHVR_CHECKSUMS_DIR}/build/<rel>.sha256sums mirroring the out layout.
+# Build checksums are arch-specific (compiled binaries differ per arch) and so
+# live under checksums/build/<arch>/, selected by SHVR_ARCH (default amd64, the
+# arch the legacy unscoped tree was migrated to). Source checksums stay shared
+# (tarballs are arch-independent). One arch is ever materialized in a given build
+# container, so SHVR_DIR_OUT/SHVR_DIR_SRC carry no arch segment — only the
+# committed checksum tree does.
+shvr_build_checksums_dir ()
+{
+	echo "${SHVR_CHECKSUMS_DIR}/build/${SHVR_ARCH:-amd64}"
+}
+
+# Generate checksums for build outputs under ${SHVR_DIR_OUT} and write them to
+# $(shvr_build_checksums_dir)/<rel>.sha256sums mirroring the out layout.
 # Usage: shvr_generate_build_checksums [<shell>_<version> ...]
 shvr_generate_build_checksums()
 {
+	bcd="$(shvr_build_checksums_dir)"
 	if test -z "$*"
 	then
 		start_dir="${SHVR_DIR_OUT}"
 		find "$start_dir" -type f -not -path '*/shvr/*' | while read -r f
 		do
 			rel="${f#${SHVR_DIR_OUT}/}"
-			dest_dir="$(dirname "${SHVR_CHECKSUMS_DIR}/build/${rel}.sha256sums")"
+			dest_dir="$(dirname "${bcd}/${rel}.sha256sums")"
 			mkdir -p "$dest_dir"
-			sha256sum "$f" | sed "s/  .*/  $(basename "$f")/" > "${SHVR_CHECKSUMS_DIR}/build/${rel}.sha256sums"
+			sha256sum "$f" | sed "s/  .*/  $(basename "$f")/" > "${bcd}/${rel}.sha256sums"
 		done
 	else
 		# Only generate checksums for specific targets (e.g., bash_5.3.9)
@@ -490,9 +517,9 @@ shvr_generate_build_checksums()
 				find "$dir" -type f | while read -r f
 				do
 					rel="${f#${SHVR_DIR_OUT}/}"
-					dest_dir="$(dirname "${SHVR_CHECKSUMS_DIR}/build/${rel}.sha256sums")"
+					dest_dir="$(dirname "${bcd}/${rel}.sha256sums")"
 					mkdir -p "$dest_dir"
-					sha256sum "$f" | sed "s/  .*/  $(basename "$f")/" > "${SHVR_CHECKSUMS_DIR}/build/${rel}.sha256sums"
+					sha256sum "$f" | sed "s/  .*/  $(basename "$f")/" > "${bcd}/${rel}.sha256sums"
 				done
 			fi
 		done
@@ -509,7 +536,7 @@ shvr_verify_build_checksums()
 		return 0
 	fi
 
-	checksums_dir="${SHVR_CHECKSUMS_DIR}/build"
+	checksums_dir="$(shvr_build_checksums_dir)"
 
 	if ! test -d "$checksums_dir"
 	then
@@ -637,18 +664,26 @@ shvr_github_regen_docker_workflow ()
 					;;
 			esac
 		done
-		# Emit assembly matrix entries
-		echo "          - flavor: latest"
-		echo "            targets: >"
-		for target in $current_targets
+		# Emit assembly matrix entries, fully specified (flavor + arch +
+		# targets) per arch so the matrix needs no axis/include cross-product
+		# (which GitHub Actions resolves ambiguously). One (flavor, arch) per
+		# row; the assemble-manifest job fuses the two arches afterwards.
+		for arch in amd64 arm64
 		do
-			echo "              $target"
-		done
-		echo "          - flavor: all"
-		echo "            targets: >"
-		for target in $all_targets
-		do
-			echo "              $target"
+			echo "          - flavor: latest"
+			echo "            arch: ${arch}"
+			echo "            targets: >"
+			for target in $current_targets
+			do
+				echo "              $target"
+			done
+			echo "          - flavor: all"
+			echo "            arch: ${arch}"
+			echo "            targets: >"
+			for target in $all_targets
+			do
+				echo "              $target"
+			done
 		done
 		# Skip old assembly entries until steps:
 		while IFS= read -r yml_line
@@ -700,6 +735,10 @@ shvr_github_regen_all ()
 # RUNTIME_BASE is deliberately excluded: it does not affect the per-target
 # `artifacts` stage. Folded into every build identity, so a pin bump forces a
 # full rebuild; bump the OIDV scheme tag to force a rebuild without a pin change.
+# SHVR_ARCH is folded in so the two arches occupy disjoint OID namespaces even
+# though their recipe files are byte-identical (the arch is selected by env var,
+# not by editing a recipe) — without this the content-addressed skip would treat
+# an amd64 and an arm64 build of the same target as interchangeable.
 shvr_toolchain_fingerprint ()
 {
 	dockerfile="${SHVR_DIR_SELF}/Dockerfile"
@@ -709,7 +748,8 @@ shvr_toolchain_fingerprint ()
 	fp_rustup="$(grep -oE 'rustup-init-[0-9][0-9.]*\.sh' "$dockerfile" | head -n1)"
 
 	{
-		printf 'OIDV=2\n'
+		printf 'OIDV=3\n'
+		printf 'ARCH=%s\n' "${SHVR_ARCH:-amd64}"
 		printf 'RUST=%s\n' "$fp_rust"
 		printf 'SNAP=%s\n' "$fp_snap"
 		printf 'TBASE=%s\n' "$fp_tbase"
@@ -761,7 +801,7 @@ shvr_build_identity ()
 {
 	target="$1"
 	fingerprint="${2:-$(shvr_toolchain_fingerprint)}"
-	dir="${SHVR_CHECKSUMS_DIR}/build/${target}"
+	dir="$(shvr_build_checksums_dir)/${target}"
 
 	if ! test -d "$dir"
 	then
@@ -800,14 +840,19 @@ shvr_build_identities ()
 }
 
 # Print the dynamic GitHub Actions build matrix (JSON) of targets that must be
-# (re)built. Reads "<target> <current-oid>" lines from <registry_oid_file> (the
-# OID currently published for each target, or MISSING/FORCE), compares against
-# the freshly computed desired OID, and includes any target that is missing,
-# forced, or mismatched. Does no network I/O: the registry read happens in the
-# workflow and is passed in as a file.
+# (re)built for the current SHVR_ARCH (default amd64). Reads
+# "<target> <arch> <current-oid>" lines from <registry_oid_file> (the OID
+# currently published for each target+arch, or MISSING/FORCE), compares against
+# the freshly computed desired OID for this arch, and includes any target that is
+# missing, forced, or mismatched. Each emitted row carries "arch" so the workflow
+# can route it to the matching native runner. Run once per arch (set SHVR_ARCH);
+# the fingerprint and checksum dir are arch-specific, so the desired OID and the
+# skip decision are independent per arch. Does no network I/O: the registry read
+# happens in the workflow and is passed in as a file.
 shvr_plan_matrix ()
 (
 	registry_file="$1"
+	arch="${SHVR_ARCH:-amd64}"
 	fingerprint="$(shvr_toolchain_fingerprint)"
 
 	# Slurp to a real file so it is re-readable per target (handles /dev/stdin).
@@ -820,7 +865,7 @@ shvr_plan_matrix ()
 	for target in $(shvr_targets)
 	do
 		desired="$(shvr_build_identity "$target" "$fingerprint")"
-		current="$(awk -v t="$target" '$1 == t {print $2; exit}' "$reg")"
+		current="$(awk -v t="$target" -v a="$arch" '$1 == t && $2 == a {print $3; exit}' "$reg")"
 
 		# Skip only when the published OID matches and is a real identity.
 		if test "$desired" != MISSING && test "x$current" = "x$desired"
@@ -838,8 +883,8 @@ shvr_plan_matrix ()
 		then first=0
 		else printf ','
 		fi
-		printf '{"target":"%s","shell":"%s","version":"%s","cache_path":"%s","oid":"%s"}' \
-			"$target" "$interpreter" "$version" "$cache_path" "$desired"
+		printf '{"target":"%s","arch":"%s","shell":"%s","version":"%s","cache_path":"%s","oid":"%s"}' \
+			"$target" "$arch" "$interpreter" "$version" "$cache_path" "$desired"
 	done
 	printf ']}\n'
 )
