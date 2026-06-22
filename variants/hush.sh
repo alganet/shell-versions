@@ -46,6 +46,12 @@ shvr_build_hush ()
 {
 	shvr_versioninfo_hush "$1"
 
+	# ash and hush share build_srcdir (busybox/<version>). Remove any prior
+	# extraction/build tree so a fresh source is unpacked every time; otherwise
+	# building both shells of one version in a single container (e.g.
+	# `shvr.sh build ash_X hush_X`, as the Dockerfile does) leaves stale objects
+	# that contaminate the second build and break reproducibility on old busybox.
+	rm -rf "${build_srcdir}"
 	mkdir -p "${build_srcdir}"
 
 	mkdir -p /usr/src/busybox
@@ -55,38 +61,81 @@ shvr_build_hush ()
 
 	# Configurations to enable for hush-focused builds.
 	# Includes hush features, static linking, and individual applet support.
+	#
+	# Renamed-symbol handling: arithmetic is gated by SH_MATH_SUPPORT (<=1.26.2)
+	# vs FEATURE_SH_MATH (>=1.27.2), and the sh==hush choice by
+	# FEATURE_SH_IS_HUSH (<=1.21.1) vs SH_IS_HUSH. allnoconfig + sed + oldconfig
+	# silently drops symbols absent from a given version, so we list BOTH names;
+	# whichever exists is applied. Per-builtin HUSH_* symbols first appear in
+	# 1.27.2; on older hush echo/printf/test are unconditional, so no aliasing is
+	# needed for those. Without the math aliases, hush has no $(( )) at all.
+	# Note: the "which shell is aliased to sh" choice (SH_IS_ASH/HUSH/NONE) is
+	# left at allnoconfig's default and never set here. Forcing a choice member
+	# via sed leaves two members =y, which makes oldconfig re-prompt the choice
+	# and abort on the build's closed stdin. The alias is irrelevant anyway: the
+	# binary is copied to bin/hush and invoked directly (applet = argv[0]).
 	setConfs='
 		CONFIG_STATIC=y
-		CONFIG_FEATURE_SH_IS_HUSH=y
 		CONFIG_LAST_SUPPORTED_WCHAR=0
-		CONFIG_ECHO=y
+		CONFIG_HUSH=y
 		CONFIG_HUSH_CASE=y
 		CONFIG_HUSH_COMMAND=y
 		CONFIG_HUSH_ECHO=y
-		CONFIG_HUSH_EXPORT_N=y
+		CONFIG_HUSH_PRINTF=y
+		CONFIG_HUSH_TEST=y
 		CONFIG_HUSH_EXPORT=y
+		CONFIG_HUSH_EXPORT_N=y
+		CONFIG_HUSH_READONLY=y
 		CONFIG_HUSH_FUNCTIONS=y
+		CONFIG_HUSH_FUNCTION_KEYWORD=y
+		CONFIG_HUSH_LOCAL=y
+		CONFIG_HUSH_ALIAS=y
 		CONFIG_HUSH_IF=y
 		CONFIG_HUSH_INTERACTIVE=y
+		CONFIG_HUSH_SAVEHISTORY=y
 		CONFIG_HUSH_JOB=y
 		CONFIG_HUSH_KILL=y
-		CONFIG_HUSH_LOCAL=y
 		CONFIG_HUSH_LOOPS=y
 		CONFIG_HUSH_MODE_X=y
-		CONFIG_HUSH_PRINTF=y
 		CONFIG_HUSH_RANDOM_SUPPORT=y
 		CONFIG_HUSH_READ=y
 		CONFIG_HUSH_SET=y
-		CONFIG_HUSH_TEST=y
 		CONFIG_HUSH_TICK=y
 		CONFIG_HUSH_TRAP=y
 		CONFIG_HUSH_TYPE=y
+		CONFIG_HUSH_TIMES=y
+		CONFIG_HUSH_HELP=y
+		CONFIG_HUSH_GETOPTS=y
 		CONFIG_HUSH_ULIMIT=y
 		CONFIG_HUSH_UMASK=y
 		CONFIG_HUSH_UNSET=y
 		CONFIG_HUSH_WAIT=y
-		CONFIG_HUSH=y
+		CONFIG_HUSH_BASH_COMPAT=y
+		CONFIG_HUSH_BRACE_EXPANSION=y
+		CONFIG_HUSH_LINENO_VAR=y
+		CONFIG_ECHO=y
 		CONFIG_TEST=y
+		CONFIG_FEATURE_SH_MATH=y
+		CONFIG_SH_MATH_SUPPORT=y
+		CONFIG_FEATURE_SH_MATH_64=y
+		CONFIG_SH_MATH_SUPPORT_64=y
+		CONFIG_FEATURE_SH_MATH_BASE=y
+		CONFIG_FEATURE_SH_READ_FRAC=y
+		CONFIG_FEATURE_SH_HISTFILESIZE=y
+		CONFIG_FEATURE_EDITING=y
+		CONFIG_FEATURE_EDITING_MAX_LEN=1024
+		CONFIG_FEATURE_EDITING_HISTORY=1024
+		CONFIG_FEATURE_EDITING_VI=y
+		CONFIG_FEATURE_EDITING_SAVEHISTORY=y
+		CONFIG_FEATURE_REVERSE_SEARCH=y
+		CONFIG_FEATURE_TAB_COMPLETION=y
+		CONFIG_FEATURE_EDITING_FANCY_PROMPT=y
+		CONFIG_FEATURE_EDITING_WINCH=y
+		CONFIG_UNICODE_SUPPORT=y
+		CONFIG_FEATURE_CHECK_UNICODE_IN_ENV=y
+		CONFIG_UNICODE_COMBINING_WCHARS=y
+		CONFIG_UNICODE_WIDE_WCHARS=y
+		CONFIG_SUBST_WCHAR=63
 	'
 
 	# Pre-1.18 busybox bakes the build clock into the version banner via
@@ -95,6 +144,11 @@ shvr_build_hush ()
 	# make command-line override beats Rules.mak's `:=` and is exported to
 	# the config tool; on modern busybox BUILDTIME is unused, so this is a
 	# no-op there. Keep it on every make call so config and compile agree.
+	#
+	# FEATURE_USERNAME_COMPLETION is deliberately NOT enabled: old busybox
+	# (e.g. 1.21.1) implements complete_username() with getpwent_r(), a glibc
+	# extension musl lacks, so the static musl link fails. Plain
+	# FEATURE_TAB_COMPLETION (files/commands) needs no such symbol.
 	BUILDTIME="1970.01.01-00:00+0000"
 
 	# Start with minimal config (all disabled)
