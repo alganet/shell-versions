@@ -11,6 +11,16 @@ ARG RUNTIME_BASE=busybox:stable-musl@sha256:3c6ae8008e2c2eedd141725c30b20d9c36b0
 
 FROM ${TOOLCHAIN_BASE} AS toolchain
 
+    # Build architecture, taken from BuildKit's automatic TARGETARCH (amd64|arm64),
+    # so it is ALWAYS the platform being built (`buildx build --platform linux/<arch>`)
+    # and can never diverge from it — there is no separate arch build-arg to keep in
+    # sync. Drives the musl-cross-make target triple and the Rust target via
+    # common/musl-cross-make.sh. SHVR_ARCH is exported (inherited by the builder
+    # stage) for shvr.sh; the values match (TARGETARCH and SHVR_ARCH are both
+    # amd64|arm64).
+    ARG TARGETARCH
+    ENV SHVR_ARCH=${TARGETARCH}
+
     # Pin apt sources to a specific snapshot.debian.org timestamp so the
     # host toolchain (gcc, binutils, etc.) is bit-identical across builds
     # and hosts. Without this, apt-get pulls live indexes and Debian
@@ -57,7 +67,8 @@ FROM ${TOOLCHAIN_BASE} AS toolchain
     COPY "checksums/sources/rustup-init-*" "/shvr/checksums/sources/"
     RUN sh "${SHVR_DIR_SRC}/rustup-init-1.28.2.sh" -y --default-toolchain "${RUST_TOOLCHAIN}" && \
         . "$HOME/.cargo/env" && \
-        rustup target add x86_64-unknown-linux-musl
+        . "/shvr/common/musl-cross-make.sh" && \
+        rustup target add "$(shvr_rust_target)"
 
 
 FROM toolchain AS builder
@@ -91,13 +102,21 @@ FROM toolchain AS builder
 
 # Minimal stage for per-version CI images (scratch + build artifacts only)
 FROM scratch AS artifacts
+    # Carry only the built arch's checksums (the builder also copied the
+    # committed checksums/build/amd64 from the repo; an arm64 image must not
+    # ship them). TARGETARCH is BuildKit's automatic platform arch.
+    ARG TARGETARCH
     COPY --from=builder /opt /opt
     COPY --from=builder /deps /deps
-    COPY --from=builder /shvr/checksums/build /shvr/checksums/build
+    COPY --from=builder /shvr/checksums/build/${TARGETARCH} /shvr/checksums/build/${TARGETARCH}
     CMD ["/nonexistent"]
 
 
 FROM ${RUNTIME_BASE}
+
+    # Built arch (BuildKit's automatic platform arch), used to scope the bundled
+    # checksums to this image's arch.
+    ARG TARGETARCH
 
     # Copy helper script
     COPY "entrypoint.sh" "/opt/shvr/entrypoint.sh"
@@ -108,7 +127,7 @@ FROM ${RUNTIME_BASE}
     # Copy built artifacts with preserved metadata for reproducibility
     WORKDIR /
     COPY --from=builder --chown=0:0 "$SHVR_DIR_OUT" "$SHVR_DIR_OUT"
-    COPY --from=builder --chown=0:0 /shvr/checksums/build /opt/shvr/checksums/build
+    COPY --from=builder --chown=0:0 /shvr/checksums/build/${TARGETARCH} /opt/shvr/checksums/build/${TARGETARCH}
     COPY --from=builder --chown=0:0 /deps /
 
     # Generate manifest of all built shells

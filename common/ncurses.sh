@@ -40,7 +40,7 @@ shvr_build_ncurses ()
 	RANLIB="$(shvr_musl_ranlib)" \
 	CFLAGS="-static -frandom-seed=1" \
 	./configure \
-		--host=x86_64-linux-musl \
+		--host="$(shvr_musl_target)" \
 		--prefix="${SHVR_NCURSES_PREFIX}" \
 		--without-shared \
 		--without-debug \

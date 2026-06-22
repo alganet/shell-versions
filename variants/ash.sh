@@ -146,7 +146,7 @@ shvr_build_ash ()
 	export LDFLAGS="-Wl,--build-id=none"
 
 	make \
-		CROSS_COMPILE="/usr/local/musl-cross/bin/x86_64-linux-musl-" \
+		CROSS_COMPILE="${SHVR_MCM_OUTPUT}/bin/$(shvr_musl_target)-" \
 		KBUILD_BUILD_TIMESTAMP="Thu Jan  1 00:00:01 UTC 1970" \
 		KBUILD_BUILD_USER="builder" \
 		KBUILD_BUILD_HOST="builder" \

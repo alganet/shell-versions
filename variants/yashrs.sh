@@ -63,18 +63,23 @@ shvr_build_yashrs ()
 	# musl-cross-make's cross-gcc so the resulting bytes are independent of
 	# the build host's stock cc (which on a non-x86_64 host can't produce
 	# x86_64 binaries at all, and on x86_64 differs across distros).
+	rust_target="$(shvr_rust_target)"
+	cargo_env="$(echo "$rust_target" | tr 'a-z-' 'A-Z_')"
+	cc_env="$(echo "$rust_target" | tr '-' '_')"
+
 	export SOURCE_DATE_EPOCH=1
 	export TZ=UTC
-	export CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER="$(shvr_musl_cc)"
-	export CC_x86_64_unknown_linux_musl="$(shvr_musl_cc)"
+	eval "export CARGO_TARGET_${cargo_env}_LINKER=\"\$(shvr_musl_cc)\""
+	eval "export CC_${cc_env}=\"\$(shvr_musl_cc)\""
 	export RUSTFLAGS="-C target-feature=+crt-static -C link-arg=-Wl,--build-id=none"
 
-	cargo build --release --target x86_64-unknown-linux-musl
+	cargo build --release --target "$rust_target"
 
-	unset SOURCE_DATE_EPOCH TZ RUSTFLAGS CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER CC_x86_64_unknown_linux_musl
+	eval "unset CARGO_TARGET_${cargo_env}_LINKER CC_${cc_env}"
+	unset SOURCE_DATE_EPOCH TZ RUSTFLAGS
 
 	mkdir -p "${SHVR_DIR_OUT}/yashrs_${version}/bin"
-	cp "./target/x86_64-unknown-linux-musl/release/yash3" "${SHVR_DIR_OUT}/yashrs_$version/bin"
+	cp "./target/${rust_target}/release/yash3" "${SHVR_DIR_OUT}/yashrs_$version/bin"
 
 	# Strip binary to ensure reproducible output, using the cross-toolchain's
 	# strip so the symbol-table layout is independent of the build host.
@@ -86,9 +91,9 @@ shvr_build_yashrs ()
 
 	# Skip the smoke test on non-x86_64 build hosts; the cross-built binary
 	# can only execute under an x86_64 host or a registered binfmt handler.
-	if test "$(uname -m)" = "x86_64"
+	if test "$(uname -m)" = "$(shvr_kernel_arch)"
 	then "${SHVR_DIR_OUT}/yashrs_${version}/bin/yash3" -c "echo yashrs version $version"
-	else echo "skipping run-check on $(uname -m): cross-built x86_64-linux-musl binary"
+	else echo "skipping run-check on $(uname -m): cross-built $(shvr_musl_target) binary"
 	fi
 }
 
@@ -105,5 +110,5 @@ shvr_deps_yashrs ()
 	fi
 
 	. "$HOME/.cargo/env"
-	rustup target add x86_64-unknown-linux-musl
+	rustup target add "$(shvr_rust_target)"
 }
