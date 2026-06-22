@@ -5,8 +5,54 @@
 
 # musl-cross-make toolchain - pinned versions for reproducible builds
 SHVR_MCM_COMMIT="e5147dde912478dd32ad42a25003e82d4f5733aa"
-SHVR_MCM_TARGET="x86_64-linux-musl"
 SHVR_MCM_OUTPUT="/usr/local/musl-cross"
+
+# Selected build architecture in OCI vocabulary (amd64|arm64). Defaults to amd64
+# so the native x86_64 path is byte-for-byte unchanged. Every triple/cpu string
+# below is derived from this, so SHVR_ARCH is the single knob.
+SHVR_ARCH="${SHVR_ARCH:-amd64}"
+
+shvr_arch ()
+{
+	case "${SHVR_ARCH}" in
+		amd64|arm64) echo "${SHVR_ARCH}" ;;
+		*) echo "shvr: unsupported SHVR_ARCH=${SHVR_ARCH}" >&2; return 1 ;;
+	esac
+}
+
+shvr_musl_target ()
+{
+	case "$(shvr_arch)" in
+		amd64) echo "x86_64-linux-musl" ;;
+		arm64) echo "aarch64-linux-musl" ;;
+	esac
+}
+
+shvr_rust_target ()
+{
+	case "$(shvr_arch)" in
+		amd64) echo "x86_64-unknown-linux-musl" ;;
+		arm64) echo "aarch64-unknown-linux-musl" ;;
+	esac
+}
+
+shvr_meson_cpu ()
+{
+	case "$(shvr_arch)" in
+		amd64) echo "x86_64" ;;
+		arm64) echo "aarch64" ;;
+	esac
+}
+
+shvr_kernel_arch ()
+{
+	case "$(shvr_arch)" in
+		amd64) echo "x86_64" ;;
+		arm64) echo "aarch64" ;;
+	esac
+}
+
+SHVR_MCM_TARGET="$(shvr_musl_target)"
 
 shvr_download_musl_cross_make ()
 {
@@ -41,7 +87,14 @@ OUTPUT = ${SHVR_MCM_OUTPUT}
 DL_CMD = curl -sSL -o
 GNU_SITE = https://ftp.gnu.org/gnu
 MCMEOF
-		make -j"$(nproc)"
+		# Pin the parallelism to a FIXED value, not $(nproc). GCC's build is not
+		# reproducible across different -j (parallel codegen ordering leaks into
+		# the compiler binary), so building with the host's core count bakes the
+		# host into the toolchain — and thus into every shell it compiles. A fixed
+		# -j makes the toolchain (and all build checksums) byte-identical on any
+		# Docker host. 4 matches the GitHub-hosted runner core count, so the
+		# existing committed checksums are preserved.
+		make -j4
 		make install
 	)
 }

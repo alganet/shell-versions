@@ -76,7 +76,7 @@ shvr_build_posh ()
 	export LDFLAGS="-Wl,--build-id=none"
 
 	./configure \
-		--host=x86_64-linux-musl \
+		--host="$(shvr_musl_target)" \
 		--prefix="${SHVR_DIR_OUT}/posh_$version"
 
 	make

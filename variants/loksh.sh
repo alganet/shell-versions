@@ -90,8 +90,8 @@ shvr_build_loksh ()
 
 		[host_machine]
 		system = 'linux'
-		cpu_family = 'x86_64'
-		cpu = 'x86_64'
+		cpu_family = '$(shvr_meson_cpu)'
+		cpu = '$(shvr_meson_cpu)'
 		endian = 'little'
 	EOF
 
