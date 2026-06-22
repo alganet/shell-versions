@@ -117,11 +117,14 @@ shvr_build_zsh ()
 
 	./Util/preconfig
 
-	# Replace config.sub with a modern version that recognizes musl
+	# Replace config.sub/config.guess with modern versions that recognize musl
+	# and non-x86 build machines (the bundled config.guess predates aarch64, so
+	# it cannot self-identify an arm64 build host).
 	cp "$(automake --print-libdir)/config.sub" .
+	cp "$(automake --print-libdir)/config.guess" .
 
 	./configure \
-		--host=x86_64-linux-musl \
+		--host="$(shvr_musl_target)" \
 		--prefix="${SHVR_DIR_OUT}/zsh_$version" \
 		--disable-dynamic \
 		--with-tcsetpgrp \

@@ -118,6 +118,33 @@ shvr_build_ksh ()
 		done
 	fi
 
+	# libast's conf.tab PID_MAX probe reads the build host's
+	# /proc/sys/kernel/pid_max at build time and bakes the result into ksh's
+	# getconf table. That value is kernel-config-dependent (Docker Desktop's
+	# linuxkit VM reports 99999, a default Linux host reports 4194304), so it
+	# silently breaks cross-host reproducibility — and the getconf(1) wrapper
+	# cannot intercept this direct /proc read. Pin it to the standard Linux
+	# 64-bit default (4194304), which is exactly what a default host, the CI
+	# runners and the getconf wrapper already yield, so amd64 and existing
+	# arm64 CI outputs are unchanged.
+	if test -f src/lib/libast/comp/conf.tab
+	then
+		# Pin every form of the PID_MAX value the probe can settle on: the
+		# #ifdef branch (v = PID_MAX), the newer #else fallback (v = 99999) and
+		# the older history-fork fallback (v = -1) all become 4194304, and the
+		# /proc read is neutered. Without the -1 case the older fork would bake
+		# -1 (the probe's stdout is what conf.sh captures), differing from the
+		# 4194304 a default host's /proc already yields and breaking the amd64
+		# checksums too. 'v = -1;' occurs only in this block in the affected
+		# version, and is absent (no-op) in all others.
+		sed -i \
+			-e 's#open("/proc/sys/kernel/pid_max", 0)#open("/nonexistent/shvr-pinned-pid-max", 0)#' \
+			-e 's/v = PID_MAX;/v = 4194304;/' \
+			-e 's/v = 99999;/v = 4194304;/' \
+			-e 's/v = -1;/v = 4194304;/' \
+			src/lib/libast/comp/conf.tab
+	fi
+
 	export SOURCE_DATE_EPOCH=1
 	export TZ=UTC
 
@@ -196,7 +223,10 @@ EOF
 		if test "$fork_name" = "shvrChistory"
 		then
 			bin/package make CC=gcc-12
-			host_type="gnu.i386-64"
+			# bin/package builds into arch/<host_type>/ where host_type is
+			# arch-derived (gnu.i386-64 on amd64, gnu.aarch64 on arm64), so
+			# discover it from the built tree instead of hardcoding.
+			host_type="$(find arch -path '*/bin/ksh' -type f 2>/dev/null | head -1 | cut -d/ -f2)"
 		else
 			bin/package make CC=/usr/bin/gcc
 			host_type="$(bin/package host type)"

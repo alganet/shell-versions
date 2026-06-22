@@ -149,8 +149,13 @@ shvr_build_bash ()
 	export LDFLAGS="-Wl,--build-id=none $(shvr_ncurses_ldflags)"
 	export CPPFLAGS="$(shvr_ncurses_cflags)"
 
-	# Replace config.sub with a modern version that recognizes musl
+	# Replace config.sub/config.guess with modern versions that recognize musl
+	# and non-x86 build machines. The bundled config.guess in older bash trees
+	# predates aarch64 and aborts configure with "cannot guess build type" on an
+	# arm64 build host; the modern one recognizes both. amd64 output is
+	# unaffected (bash's MACHTYPE comes from --host, not the build triple).
 	cp "$(automake --print-libdir)/config.sub" support/
+	cp "$(automake --print-libdir)/config.guess" support/
 
 	if test "$version_major" -lt 5 || { test "$version_major" -eq 5 && test "${version_minor}" -lt 3; }
 	then
@@ -180,13 +185,13 @@ shvr_build_bash ()
 		export AUTOCONF='autoconf2.69'
 		$AUTOCONF
 		./configure \
-			--host=x86_64-linux-musl \
+			--host="$(shvr_musl_target)" \
 			--prefix="${SHVR_DIR_OUT}/bash_${version}" \
 			"$malloc_flag"
 	else
 		export CFLAGS="-frandom-seed=1 $(shvr_ncurses_cflags)"
 		./configure \
-			--host=x86_64-linux-musl \
+			--host="$(shvr_musl_target)" \
 			--prefix="${SHVR_DIR_OUT}/bash_${version}" \
 			--without-bash-malloc
 	fi
