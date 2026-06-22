@@ -106,7 +106,14 @@ jobs:
 
   toolchain:
     needs: [mirror]
-    runs-on: ubuntu-24.04
+    # One toolchain per arch, each on a native runner so its musl-cross-make and
+    # Rust target build natively. Cache refs/scopes are arch-suffixed so the two
+    # arches never cross-pollute each other's layers.
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64, arm64]
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/toolchain-downloads
@@ -129,6 +136,7 @@ jobs:
           context: .
           target: toolchain
           push: false
+          platforms: linux/${{ matrix.arch }}
           build-args: |
             TOOLCHAIN_BASE=${{ needs.mirror.outputs.toolchain_ref }}
             RUNTIME_BASE=${{ needs.mirror.outputs.runtime_ref }}
@@ -139,11 +147,11 @@ jobs:
           # toolchain layer changes (e.g. a shvr.sh edit) the per-target
           # buildcaches go stale and every build job recompiles musl-cross-make.
           cache-to: |
-            type=gha,scope=toolchain-v3,mode=max
-            ${{ github.event_name == 'push' && format('type=registry,ref=ghcr.io/{0}:cache-toolchain,mode=max', github.repository) || '' }}
+            type=gha,scope=toolchain-${{ matrix.arch }}-v3,mode=max
+            ${{ github.event_name == 'push' && format('type=registry,ref=ghcr.io/{0}:cache-toolchain-{1},mode=max', github.repository, matrix.arch) || '' }}
           cache-from: |
-            type=registry,ref=ghcr.io/${{ github.repository }}:cache-toolchain
-            type=gha,scope=toolchain-v3
+            type=registry,ref=ghcr.io/${{ github.repository }}:cache-toolchain-${{ matrix.arch }}
+            type=gha,scope=toolchain-${{ matrix.arch }}-v3
 
   # Decide which targets actually need building. Each pushed per-target image
   # carries an org.shvr.oid annotation (its content-addressed build identity);
@@ -152,8 +160,13 @@ jobs:
   plan:
     runs-on: ubuntu-24.04
     outputs:
-      matrix: ${{ steps.plan.outputs.matrix }}
-      count: ${{ steps.plan.outputs.count }}
+      # Per-arch matrices: GitHub caps a job's matrix at 256 configurations, and a
+      # full rebuild is ~250 targets PER ARCH, so the two arches must drive two
+      # separate build jobs rather than one merged 2x matrix.
+      matrix_amd64: ${{ steps.plan.outputs.matrix_amd64 }}
+      matrix_arm64: ${{ steps.plan.outputs.matrix_arm64 }}
+      count_amd64: ${{ steps.plan.outputs.count_amd64 }}
+      count_arm64: ${{ steps.plan.outputs.count_arm64 }}
       built: ${{ steps.plan.outputs.built }}
     steps:
       - uses: actions/checkout@v7
@@ -176,37 +189,51 @@ jobs:
           if [ "${FORCE_ALL:-}" = "true" ]; then force=1; fi
           if git log -1 --pretty=%B | grep -qiF '[rebuild-all]'; then force=1; fi
 
-          # Read each target's published OID from the stable :<target> tag's
-          # manifest annotation, without pulling layers. Any read failure or a
-          # missing image yields MISSING -> the target is (re)built. This makes
-          # the skip safe-by-default: it can over-build but never wrongly skip.
+          # Read each target+arch's published OID from the arch-suffixed
+          # :<target>-<arch> tag's manifest annotation, without pulling layers.
+          # Any read failure or a missing image yields MISSING -> (re)build. The
+          # skip is safe-by-default: it can over-build but never wrongly skip.
+          # The OID is arch-specific (arch is folded into the fingerprint), so the
+          # two arches are planned independently.
           : > registry_oids.txt
-          for t in $(sh shvr.sh targets); do
-            if [ "$force" = 1 ]; then
-              printf '%s FORCE\n' "$t" >> registry_oids.txt
-              continue
-            fi
-            oid=$(docker buildx imagetools inspect --raw "ghcr.io/${REPO}:${t}" 2>/dev/null \
-                  | jq -r '.annotations["org.shvr.oid"] // empty' 2>/dev/null || true)
-            printf '%s %s\n' "$t" "${oid:-MISSING}" >> registry_oids.txt
+          for arch in amd64 arm64; do
+            for t in $(sh shvr.sh targets); do
+              if [ "$force" = 1 ]; then
+                printf '%s %s FORCE\n' "$t" "$arch" >> registry_oids.txt
+                continue
+              fi
+              oid=$(docker buildx imagetools inspect --raw "ghcr.io/${REPO}:${t}-${arch}" 2>/dev/null \
+                    | jq -r '.annotations["org.shvr.oid"] // empty' 2>/dev/null || true)
+              printf '%s %s %s\n' "$t" "$arch" "${oid:-MISSING}" >> registry_oids.txt
+            done
           done
 
-          matrix=$(sh shvr.sh plan_matrix registry_oids.txt)
-          count=$(printf '%s' "$matrix" | jq '.include | length')
-          # Space-separated list of targets built this run, for the assemble job
-          # to tell apart freshly-built (run-scoped) from reused (stable) images.
-          built=$(printf '%s' "$matrix" | jq -r '[.include[].target] | join(" ")')
-          printf 'matrix=%s\n' "$matrix" >> "$GITHUB_OUTPUT"
-          printf 'count=%s\n'  "$count"  >> "$GITHUB_OUTPUT"
-          printf 'built=%s\n'  "$built"  >> "$GITHUB_OUTPUT"
-          printf '%s of %s target(s) need building\n' \
-            "$count" "$(sh shvr.sh targets | wc -l)" >> "$GITHUB_STEP_SUMMARY"
+          # plan_matrix runs once per arch (SHVR_ARCH selects the fingerprint and
+          # checksum dir); each emits a separate {include:[...]} consumed by that
+          # arch's build job. Kept separate (not merged) to stay under the 256
+          # configurations-per-matrix limit on a full rebuild.
+          amd=$(SHVR_ARCH=amd64 sh shvr.sh plan_matrix registry_oids.txt)
+          arm=$(SHVR_ARCH=arm64 sh shvr.sh plan_matrix registry_oids.txt)
+          count_amd64=$(printf '%s' "$amd" | jq '.include | length')
+          count_arm64=$(printf '%s' "$arm" | jq '.include | length')
+          # "<target>-<arch>" list of rows built this run, for the assemble job to
+          # tell apart freshly-built (run-scoped) from reused (stable) images.
+          built=$(printf '%s\n%s' "$amd" "$arm" | jq -r -s '[.[].include[] | (.target + "-" + .arch)] | join(" ")')
+          printf 'matrix_amd64=%s\n' "$amd" >> "$GITHUB_OUTPUT"
+          printf 'matrix_arm64=%s\n' "$arm" >> "$GITHUB_OUTPUT"
+          printf 'count_amd64=%s\n'  "$count_amd64" >> "$GITHUB_OUTPUT"
+          printf 'count_arm64=%s\n'  "$count_arm64" >> "$GITHUB_OUTPUT"
+          printf 'built=%s\n'        "$built"       >> "$GITHUB_OUTPUT"
+          printf '%s amd64 + %s arm64 of %s target(s) need building\n' \
+            "$count_amd64" "$count_arm64" "$(sh shvr.sh targets | wc -l)" >> "$GITHUB_STEP_SUMMARY"
 
-  build:
+  # build is split per arch because GitHub caps a job's matrix at 256
+  # configurations and a full rebuild is ~250 targets per arch. Both jobs are
+  # identical except for their native runner, their per-arch matrix, and the
+  # per-arch skip count; the steps use matrix.arch (constant within each job).
+  build-amd64:
     needs: [plan, toolchain, mirror]
-    # Skip the whole job (rather than error on an empty matrix) when nothing
-    # changed; assemble still runs (see its if:) to keep flavors fresh.
-    if: needs.plan.outputs.count != '0'
+    if: needs.plan.outputs.count_amd64 != '0'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
@@ -224,13 +251,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Log in to Docker Hub
-        if: github.event_name == 'push'
-        uses: docker/login-action@v4
-        with:
-          username: ${{ secrets.DOCKER_USER }}
-          password: ${{ secrets.DOCKER_PASS }}
-
+      # No Docker Hub login here: the per-target :<target>-<arch> images are
+      # internal building blocks and are pushed to GHCR only. Docker Hub receives
+      # just the user-facing multi-arch :<target> lists, assembled from the GHCR
+      # arch images by the target-manifest job.
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
         with:
@@ -242,24 +266,25 @@ jobs:
           context: .
           target: artifacts
           push: true
+          platforms: linux/${{ matrix.arch }}
           tags: |
-            ghcr.io/${{ github.repository }}:${{ github.event_name == 'push' && matrix.target || format('run-{0}-{1}', github.run_id, matrix.target) }}
-            ${{ github.event_name == 'push' && format('alganet/shell-versions:{0}', matrix.target) || '' }}
+            ghcr.io/${{ github.repository }}:${{ github.event_name == 'push' && format('{0}-{1}', matrix.target, matrix.arch) || format('run-{0}-{1}-{2}', github.run_id, matrix.target, matrix.arch) }}
           build-args: |
             TARGETS=${{ matrix.target }}
             TOOLCHAIN_BASE=${{ needs.mirror.outputs.toolchain_ref }}
             RUNTIME_BASE=${{ needs.mirror.outputs.runtime_ref }}
           cache-from: |
-            type=registry,ref=ghcr.io/${{ github.repository }}:cache-toolchain
-            type=gha,scope=toolchain-v3
-            type=registry,ref=ghcr.io/${{ github.repository }}:buildcache-${{ matrix.target }}
+            type=registry,ref=ghcr.io/${{ github.repository }}:cache-toolchain-${{ matrix.arch }}
+            type=gha,scope=toolchain-${{ matrix.arch }}-v3
+            type=registry,ref=ghcr.io/${{ github.repository }}:buildcache-${{ matrix.target }}-${{ matrix.arch }}
           cache-to: >-
             ${{ github.event_name == 'push'
-              && format('type=registry,ref=ghcr.io/{0}:buildcache-{1},mode=max', github.repository, matrix.target)
+              && format('type=registry,ref=ghcr.io/{0}:buildcache-{1}-{2},mode=max', github.repository, matrix.target, matrix.arch)
               || '' }}
           # Single-manifest image so the OID annotation sits at the manifest top
           # level, readable via `imagetools inspect --raw` without pulling layers.
-          # The OID comes from the plan matrix entry (shvr_plan_matrix).
+          # The OID comes from the plan matrix entry (shvr_plan_matrix) and is
+          # arch-specific.
           provenance: false
           annotations: |
             manifest:org.shvr.oid=${{ matrix.oid }}
@@ -269,18 +294,89 @@ jobs:
       - name: Verify build checksums
         uses: ./.github/actions/verify-build-checksums
         with:
+          arch: ${{ matrix.arch }}
           image: >-
             ${{ github.event_name == 'push'
-              && format('ghcr.io/{0}:{1}', github.repository, matrix.target)
-              || format('ghcr.io/{0}:run-{1}-{2}', github.repository, github.run_id, matrix.target) }}
+              && format('ghcr.io/{0}:{1}-{2}', github.repository, matrix.target, matrix.arch)
+              || format('ghcr.io/{0}:run-{1}-{2}-{3}', github.repository, github.run_id, matrix.target, matrix.arch) }}
           targets: ${{ matrix.target }}
 
     strategy:
       fail-fast: ${{ github.event_name == 'push' }}
-      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix_amd64) }}
+
+  build-arm64:
+    needs: [plan, toolchain, mirror]
+    if: needs.plan.outputs.count_arm64 != '0'
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/single-download
+        with:
+          shvr_shell: ${{ matrix.shell }}
+          shvr_version: "${{ matrix.version }}"
+          cache_path: "${{ matrix.cache_path }}"
+      - uses: ./.github/actions/toolchain-downloads
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # No Docker Hub login here: the per-target :<target>-<arch> images are
+      # internal building blocks and are pushed to GHCR only. Docker Hub receives
+      # just the user-facing multi-arch :<target> lists, assembled from the GHCR
+      # arch images by the target-manifest job.
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+        with:
+          driver-opts: image=${{ needs.mirror.outputs.buildkit_ref }}
+
+      - name: Build and push shell image
+        uses: ./.github/actions/build-push-retry
+        with:
+          context: .
+          target: artifacts
+          push: true
+          platforms: linux/${{ matrix.arch }}
+          tags: |
+            ghcr.io/${{ github.repository }}:${{ github.event_name == 'push' && format('{0}-{1}', matrix.target, matrix.arch) || format('run-{0}-{1}-{2}', github.run_id, matrix.target, matrix.arch) }}
+          build-args: |
+            TARGETS=${{ matrix.target }}
+            TOOLCHAIN_BASE=${{ needs.mirror.outputs.toolchain_ref }}
+            RUNTIME_BASE=${{ needs.mirror.outputs.runtime_ref }}
+          cache-from: |
+            type=registry,ref=ghcr.io/${{ github.repository }}:cache-toolchain-${{ matrix.arch }}
+            type=gha,scope=toolchain-${{ matrix.arch }}-v3
+            type=registry,ref=ghcr.io/${{ github.repository }}:buildcache-${{ matrix.target }}-${{ matrix.arch }}
+          cache-to: >-
+            ${{ github.event_name == 'push'
+              && format('type=registry,ref=ghcr.io/{0}:buildcache-{1}-{2},mode=max', github.repository, matrix.target, matrix.arch)
+              || '' }}
+          provenance: false
+          annotations: |
+            manifest:org.shvr.oid=${{ matrix.oid }}
+          labels: |
+            org.shvr.oid=${{ matrix.oid }}
+
+      - name: Verify build checksums
+        uses: ./.github/actions/verify-build-checksums
+        with:
+          arch: ${{ matrix.arch }}
+          image: >-
+            ${{ github.event_name == 'push'
+              && format('ghcr.io/{0}:{1}-{2}', github.repository, matrix.target, matrix.arch)
+              || format('ghcr.io/{0}:run-{1}-{2}-{3}', github.repository, github.run_id, matrix.target, matrix.arch) }}
+          targets: ${{ matrix.target }}
+
+    strategy:
+      fail-fast: ${{ github.event_name == 'push' }}
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix_arm64) }}
 
   assemble:
-    needs: [plan, build, mirror]
+    needs: [plan, build-amd64, build-arm64, mirror]
     # Run even when build was skipped (0 changed targets): flavors are
     # reassembled from the per-target images (rebuilt this run or reused from a
     # prior push) and the full-set checksum verify still guards every binary.
@@ -289,25 +385,36 @@ jobs:
       always()
       && needs.mirror.result == 'success'
       && needs.plan.result == 'success'
-      && needs.build.result != 'failure'
-      && needs.build.result != 'cancelled'
-    runs-on: ubuntu-24.04
+      && needs['build-amd64'].result != 'failure'
+      && needs['build-amd64'].result != 'cancelled'
+      && needs['build-arm64'].result != 'failure'
+      && needs['build-arm64'].result != 'cancelled'
+    # Each (flavor, arch) is assembled on its native runner: the final stage's
+    # RUN (manifest.txt generation) and the COPY --from of per-arch images both
+    # execute under the matching arch with no emulation.
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
     env:
       ALL_TARGETS: ${{ matrix.targets }}
+      ARCH: ${{ matrix.arch }}
       RUNTIME_REF: ${{ needs.mirror.outputs.runtime_ref }}
-      # Targets actually built this run (from the plan job). On a PR, these
-      # carry run-scoped tags; every other target is reused from its stable tag.
+      # Rows actually built this run (from the plan job), keyed "<target>-<arch>".
+      # On a PR these carry run-scoped tags; every other target+arch is reused
+      # from its stable tag.
       BUILT_TARGETS: ${{ needs.plan.outputs.built }}
+      # Per-arch flavor image, pushed to GHCR only (internal building block); the
+      # assemble-manifest job fuses the two arches into the user-facing multi-arch
+      # :<flavor> manifest list on Docker Hub.
       ASSEMBLY_TAG: >-
         ${{ github.event_name == 'push'
-          && format('alganet/shell-versions:{0}', matrix.flavor)
-          || format('ghcr.io/{0}:run-{1}-{2}', github.repository, github.run_id, matrix.flavor) }}
+          && format('ghcr.io/{0}:{1}-{2}', github.repository, matrix.flavor, matrix.arch)
+          || format('ghcr.io/{0}:run-{1}-{2}-{3}', github.repository, github.run_id, matrix.flavor, matrix.arch) }}
     strategy:
       fail-fast: false
       matrix:
         include:
           # AUTO-GENERATED ASSEMBLIES. DO NOT EDIT MANUALLY.
           - flavor: latest
+            arch: amd64
             targets: >
               ash_1.37.0
               ash_1.36.1
@@ -338,6 +445,291 @@ jobs:
               zsh_5.9.1
               zsh_5.8.1
           - flavor: all
+            arch: amd64
+            targets: >
+              ash_1.38.0
+              ash_1.37.0
+              ash_1.36.1
+              ash_1.35.0
+              ash_1.34.1
+              ash_1.33.2
+              ash_1.32.1
+              ash_1.31.1
+              ash_1.30.1
+              ash_1.29.3
+              ash_1.28.4
+              ash_1.27.2
+              ash_1.26.2
+              ash_1.25.1
+              ash_1.24.2
+              ash_1.23.2
+              ash_1.22.1
+              ash_1.21.1
+              ash_1.20.2
+              ash_1.19.4
+              ash_1.2.2.1
+              ash_1.2.2
+              bash_5.3.9
+              bash_5.2.37
+              bash_5.1.16
+              bash_5.0.18
+              bash_4.4.23
+              bash_4.3.48
+              bash_4.2.53
+              bash_4.1.17
+              bash_4.0.44
+              bash_3.2.57
+              bash_3.1.23
+              bash_3.0.22
+              bash_2.05.0
+              bash_2.05b.13
+              bash_2.05a.0
+              bash_2.04.0
+              bash_2.03.0
+              bash_2.02.0
+              bash_2.01.0
+              brush_0.4.0
+              brush_0.3.0
+              brush_0.2.23
+              dash_0.5.13.4
+              dash_0.5.12
+              dash_0.5.11.5
+              dash_0.5.10.2
+              dash_0.5.9.1
+              dash_0.5.8
+              dash_0.5.7
+              dash_0.5.6.1
+              dash_0.5.5.1
+              dash_0.5.4
+              dash_0.5.3
+              hush_1.38.0
+              hush_1.37.0
+              hush_1.36.1
+              hush_1.35.0
+              hush_1.34.1
+              hush_1.33.2
+              hush_1.32.1
+              hush_1.31.1
+              hush_1.30.1
+              hush_1.29.3
+              hush_1.28.4
+              hush_1.27.2
+              hush_1.26.2
+              hush_1.25.1
+              hush_1.24.2
+              hush_1.23.2
+              hush_1.22.1
+              hush_1.21.1
+              hush_1.20.2
+              hush_1.19.4
+              hush_1.2.2.1
+              hush_1.2.2
+              ksh_shvrChistory-b_2016-01-10
+              ksh_shvrChistory-b_2012-08-01
+              ksh_shvrChistory-b_2011-03-10
+              ksh_shvrChistory-b_2010-10-26
+              ksh_shvrChistory-b_2010-06-21
+              ksh_shvrChistory-b_2008-11-04
+              ksh_shvrChistory-b_2008-06-08
+              ksh_shvrChistory-b_2008-02-02
+              ksh_shvrChistory-b_2007-01-11
+              ksh_shvrB2020-2020.0.0
+              ksh_shvrA93uplusm-v1.0.10
+              ksh_shvrA93uplusm-v1.0.9
+              ksh_shvrA93uplusm-v1.0.8
+              ksh_shvrA93uplusm-v1.0.7
+              ksh_shvrA93uplusm-v1.0.6
+              ksh_shvrA93uplusm-v1.0.4
+              ksh_shvrA93uplusm-v1.0.3
+              ksh_shvrA93uplusm-v1.0.2
+              ksh_shvrA93uplusm-v1.0.1
+              loksh_7.9
+              loksh_7.8
+              loksh_7.7
+              loksh_7.6
+              loksh_7.5
+              loksh_7.4
+              loksh_7.3
+              loksh_7.2
+              loksh_7.1
+              loksh_7.0
+              loksh_6.9
+              loksh_6.8.1
+              loksh_6.7.5
+              mksh_R59c
+              mksh_R58
+              mksh_R57
+              mksh_R56c
+              mksh_R55
+              mksh_R54
+              mksh_R53a
+              mksh_R52c
+              mksh_R51
+              mksh_R50f
+              mksh_R49
+              mksh_R48b
+              mksh_R47
+              mksh_R46
+              mksh_R45
+              mksh_R44
+              mksh_R43
+              mksh_R42b
+              mksh_R41c
+              mksh_R40f
+              mksh_R39c
+              mksh_R38c
+              mksh_R37c
+              mksh_R36b
+              mksh_R35b
+              mksh_R33d
+              mksh_R32
+              mksh_R31d
+              mksh_R30
+              oksh_7.9
+              oksh_7.8
+              oksh_7.7
+              oksh_7.6
+              oksh_7.5
+              oksh_7.4
+              oksh_7.3
+              oksh_7.2
+              oksh_7.1
+              oksh_7.0
+              oksh_6.9
+              oksh_6.8.1
+              oksh_6.7.1
+              oksh_6.6
+              oksh_6.5
+              osh_0.37.0
+              osh_0.36.0
+              osh_0.35.0
+              osh_0.34.0
+              osh_0.33.0
+              osh_0.32.0
+              osh_0.31.0
+              osh_0.30.0
+              osh_0.29.0
+              osh_0.28.0
+              osh_0.27.0
+              osh_0.26.0
+              osh_0.25.0
+              posh_0.14.5
+              posh_0.13.2
+              posh_0.12.6
+              yash_2.61
+              yash_2.60
+              yash_2.59
+              yash_2.58.1
+              yash_2.57
+              yash_2.56.1
+              yash_2.55
+              yash_2.54
+              yash_2.53
+              yash_2.52
+              yash_2.51
+              yash_2.50
+              yash_2.49
+              yash_2.48
+              yash_2.47
+              yash_2.46
+              yash_2.45
+              yash_2.44
+              yash_2.43
+              yash_2.42
+              yash_2.41
+              yash_2.40
+              yash_2.39
+              yash_2.38
+              yash_2.37
+              yash_2.36
+              yash_2.35
+              yash_2.34
+              yash_2.33.1
+              yash_2.32.1
+              yash_2.31
+              yash_2.30
+              yash_2.29
+              yash_2.28
+              yash_2.27
+              yash_2.26.1
+              yash_2.25
+              yash_2.24
+              yash_2.23
+              yash_2.22
+              yash_2.21
+              yash_2.20
+              yash_2.19
+              yash_2.18
+              yash_2.17
+              yash_2.16
+              yash_2.15
+              yash_2.14
+              yash_2.13
+              yash_2.12
+              yash_2.11
+              yash_2.10
+              yashrs_3.2.0
+              yashrs_3.1.0
+              yashrs_3.0.8
+              yashrs_3.0.7
+              yashrs_3.0.5
+              yashrs_3.0.4
+              yashrs_3.0.3
+              yashrs_3.0.2
+              yashrs_3.0.1
+              yashrs_3.0.0
+              yashrs_0.4.5
+              yashrs_0.4.4
+              yashrs_0.4.3
+              yashrs_0.4.2
+              yashrs_0.4.1
+              yashrs_0.4.0
+              yashrs_0.3.0
+              zsh_5.9.1
+              zsh_5.8.1
+              zsh_5.7.1
+              zsh_5.6.2
+              zsh_5.5.1
+              zsh_5.4.2
+              zsh_5.3.1
+              zsh_5.2
+              zsh_5.1.1
+              zsh_5.0.8
+              zsh_4.2.7
+              zsh_4.0.9
+          - flavor: latest
+            arch: arm64
+            targets: >
+              ash_1.37.0
+              ash_1.36.1
+              bash_5.3.9
+              bash_5.2.37
+              brush_0.3.0
+              brush_0.2.23
+              dash_0.5.13.4
+              dash_0.5.12
+              hush_1.37.0
+              hush_1.36.1
+              ksh_shvrA93uplusm-v1.0.10
+              ksh_shvrA93uplusm-v1.0.9
+              loksh_7.9
+              loksh_7.8
+              mksh_R59c
+              mksh_R58
+              oksh_7.9
+              oksh_7.8
+              osh_0.37.0
+              osh_0.36.0
+              posh_0.14.5
+              posh_0.13.2
+              yash_2.61
+              yash_2.60
+              yashrs_3.2.0
+              yashrs_3.1.0
+              zsh_5.9.1
+              zsh_5.8.1
+          - flavor: all
+            arch: arm64
             targets: >
               ash_1.38.0
               ash_1.37.0
@@ -599,13 +991,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Log in to Docker Hub
-        if: github.event_name == 'push'
-        uses: docker/login-action@v4
-        with:
-          username: ${{ secrets.DOCKER_USER }}
-          password: ${{ secrets.DOCKER_PASS }}
-
+      # No Docker Hub login: the per-arch flavor image is pushed to GHCR only.
+      # Docker Hub receives just the fused multi-arch :<flavor> list, built from
+      # the GHCR arch images by the assemble-manifest job.
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
         with:
@@ -618,11 +1006,11 @@ jobs:
           # (~500 for "all") exceeds both. Chunk targets into shallow
           # stages, then merge the chunks.
           set -eu
-          # On a PR, a target built this run is at run-<id>-<target>; a target
-          # skipped this run is reused from its stable :<target> image (a prior
-          # push to main). On push, every target is at its stable :<target> tag
-          # (just rebuilt or reused), so all resolve to stable there.
-          is_built () { case " ${BUILT_TARGETS} " in *" $1 "*) return 0 ;; *) return 1 ;; esac ; }
+          # Per-target images are arch-suffixed (:<target>-<arch>). On a PR, a
+          # target+arch built this run is at run-<id>-<target>-<arch>; one skipped
+          # this run is reused from its stable :<target>-<arch> image (a prior push
+          # to main). On push everything resolves to the stable :<target>-<arch>.
+          is_built () { case " ${BUILT_TARGETS} " in *" $1-${ARCH} "*) return 0 ;; *) return 1 ;; esac ; }
           chunk_size=8
           i=0
           last_chunk=0
@@ -633,9 +1021,9 @@ jobs:
                 echo "FROM scratch AS chunk_${last_chunk}"
               fi
               if [ "${{ github.event_name }}" = "pull_request" ] && is_built "$target"; then
-                src="ghcr.io/${{ github.repository }}:run-${{ github.run_id }}-${target}"
+                src="ghcr.io/${{ github.repository }}:run-${{ github.run_id }}-${target}-${ARCH}"
               else
-                src="ghcr.io/${{ github.repository }}:${target}"
+                src="ghcr.io/${{ github.repository }}:${target}-${ARCH}"
               fi
               echo "COPY --from=${src} --chown=0:0 /opt /opt"
               echo "COPY --from=${src} --chown=0:0 /deps /deps"
@@ -664,12 +1052,14 @@ jobs:
         with:
           context: .
           file: Dockerfile.assembly
+          platforms: linux/${{ matrix.arch }}
           push: "true"
           tags: ${{ env.ASSEMBLY_TAG }}
 
       - name: Verify build checksums
         uses: ./.github/actions/verify-build-checksums
         with:
+          arch: ${{ matrix.arch }}
           image: ${{ env.ASSEMBLY_TAG }}
           targets: ${{ env.ALL_TARGETS }}
 
@@ -677,5 +1067,131 @@ jobs:
         if: github.event_name == 'push' && matrix.flavor == 'all'
         uses: ./.github/actions/generate-build-checksums
         with:
+          arch: ${{ matrix.arch }}
           image: ${{ env.ASSEMBLY_TAG }}
-          artifact_name: shvr-build-checksums
+          artifact_name: shvr-build-checksums-${{ matrix.arch }}
+
+  # Fuse the two per-arch flavor images (:<flavor>-amd64 + :<flavor>-arm64) into
+  # the published multi-arch manifest list :<flavor>. This is the only point the
+  # user-facing :latest / :all become multi-arch; `docker pull` then selects the
+  # native arch per platform (arm64 on Apple Silicon, no --platform, no Rosetta).
+  # imagetools create is a registry-side op on the preinstalled default builder,
+  # so no buildx container is booted (same pattern as the mirror job).
+  assemble-manifest:
+    needs: [assemble]
+    if: always() && needs.assemble.result == 'success'
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        flavor: [latest, all]
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to Docker Hub
+        if: github.event_name == 'push'
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PASS }}
+
+      - name: Fuse per-arch flavors into a multi-arch manifest list
+        env:
+          FLAVOR: ${{ matrix.flavor }}
+          RUN_ID: ${{ github.run_id }}
+          REPO: ${{ github.repository }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          set -eu
+          retry() { for a in 1 2 3; do "$@" && return 0; echo "retry $a: $*" >&2; sleep 5; done; return 1; }
+          # Sources are always the GHCR per-arch flavor images (the only place
+          # they are pushed). On push the destination is the user-facing Docker
+          # Hub :<flavor> list — imagetools create copies the source arch
+          # manifests into the Hub repo by digest. On a PR everything stays in a
+          # run-scoped GHCR tag.
+          if [ "$EVENT" = "push" ]; then
+            target="alganet/shell-versions:${FLAVOR}"
+            amd="ghcr.io/${REPO}:${FLAVOR}-amd64"
+            arm="ghcr.io/${REPO}:${FLAVOR}-arm64"
+          else
+            target="ghcr.io/${REPO}:run-${RUN_ID}-${FLAVOR}"
+            amd="ghcr.io/${REPO}:run-${RUN_ID}-${FLAVOR}-amd64"
+            arm="ghcr.io/${REPO}:run-${RUN_ID}-${FLAVOR}-arm64"
+          fi
+          retry docker buildx imagetools create --tag "$target" "$amd" "$arm"
+          # Sanity: the list must advertise both platforms.
+          docker buildx imagetools inspect "$target"
+
+  # Publish a multi-arch manifest list for EVERY per-target image so users can
+  # `docker pull .../<shell>_<version>` and get their native arch. The per-arch
+  # :<target>-<arch> images stay (the plan job reads their arch-specific OID and
+  # the assembly copies from them); this only adds the fused :<target> list on
+  # top, for both registries. Push only — on a PR the per-target images are
+  # run-scoped and ephemeral, so there is nothing stable to fuse. Runs even when
+  # build was skipped (0 changed): unchanged targets keep both arch images from a
+  # prior push and re-fusing is idempotent (identical source digests).
+  target-manifest:
+    needs: [plan, build-amd64, build-arm64]
+    if: >-
+      always()
+      && github.event_name == 'push'
+      && needs.plan.result == 'success'
+      && needs['build-amd64'].result != 'failure'
+      && needs['build-amd64'].result != 'cancelled'
+      && needs['build-arm64'].result != 'failure'
+      && needs['build-arm64'].result != 'cancelled'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PASS }}
+
+      - name: Fuse per-target arch images into multi-arch manifest lists
+        env:
+          REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          # One job per (destination, target); fuse in parallel with retry. The
+          # SOURCES are always the GHCR :<target>-<arch> images (the only place
+          # the per-arch images are pushed); the destination is either the GHCR
+          # or the Docker Hub :<target> list. imagetools create copies the source
+          # arch manifests into the Hub repo (by digest, untagged) when building
+          # the Hub list, so the multi-arch pull works without ever tagging the
+          # arch images on Hub. A missing source fails the target (and the job),
+          # which is correct — a per-arch image always exists after a successful
+          # build (or is reused from a prior push).
+          : > /tmp/fuse_jobs
+          for t in $(sh shvr.sh targets); do
+            printf 'ghcr.io/%s|%s\n' "$REPO" "$t" >> /tmp/fuse_jobs
+            printf 'alganet/shell-versions|%s\n' "$t" >> /tmp/fuse_jobs
+          done
+          fuse_one() {
+            dest="${1%%|*}"; t="${1##*|}"
+            amd="ghcr.io/${REPO}:${t}-amd64"
+            arm="ghcr.io/${REPO}:${t}-arm64"
+            for a in 1 2 3; do
+              if docker buildx imagetools create --tag "${dest}:${t}" "$amd" "$arm"; then return 0; fi
+              echo "retry $a: ${dest}:${t}" >&2; sleep 5
+            done
+            echo "FAILED ${dest}:${t}" >&2; return 1
+          }
+          export -f fuse_one
+          xargs -P 8 -a /tmp/fuse_jobs -I {} bash -c 'fuse_one "$@"' _ {}
+          printf 'fused %s per-target manifest list(s) across 2 registries (sources: GHCR)\n' \
+            "$(sh shvr.sh targets | wc -l)" >> "$GITHUB_STEP_SUMMARY"

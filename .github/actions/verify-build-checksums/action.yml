@@ -17,6 +17,7 @@ runs:
     - name: Verify build checksums
       shell: bash
       env:
+        SHVR_ARCH: ${{ inputs.arch }}
         SHVR_DIR_OUT: ${{ github.workspace }}/image_out
         SHVR_CHECKSUMS_DIR: ${{ github.workspace }}/checksums
       run: |
@@ -27,6 +28,10 @@ inputs:
   image:
     description: Docker image tag to verify (required)
     required: true
+  arch:
+    description: Build architecture (amd64|arm64) selecting checksums/build/<arch>/
+    required: false
+    default: amd64
   targets:
     description: Space-separated list of targets to verify (optional, verifies all if omitted)
     required: false

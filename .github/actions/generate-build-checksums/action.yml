@@ -17,6 +17,7 @@ runs:
     - name: Generate build checksums
       shell: bash
       env:
+        SHVR_ARCH: ${{ inputs.arch }}
         SHVR_DIR_OUT: ${{ github.workspace }}/image_out
         SHVR_CHECKSUMS_DIR: ${{ github.workspace }}/checksums
       run: |
@@ -35,13 +36,17 @@ runs:
       with:
         name: ${{ inputs.artifact_name }}
         path: |
-          checksums/build
+          checksums/build/${{ inputs.arch }}
           image_out/shvr/build-env.log
 
 inputs:
   image:
     description: Docker image tag to extract (required)
     required: true
+  arch:
+    description: Build architecture (amd64|arm64) selecting checksums/build/<arch>/
+    required: false
+    default: amd64
   artifact_name:
     description: Artifact name to upload
     required: false

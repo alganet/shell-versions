@@ -16,6 +16,10 @@ inputs:
     description: 'Build stage target'
     required: false
     default: ''
+  platforms:
+    description: 'Target platform(s), e.g. linux/arm64; empty uses the builder default'
+    required: false
+    default: ''
   push:
     description: 'Push the image'
     required: false
@@ -58,6 +62,7 @@ runs:
         context: ${{ inputs.context }}
         file: ${{ inputs.file }}
         target: ${{ inputs.target }}
+        platforms: ${{ inputs.platforms }}
         push: ${{ inputs.push }}
         tags: ${{ inputs.tags }}
         build-args: ${{ inputs.build-args }}
@@ -73,6 +78,7 @@ runs:
         context: ${{ inputs.context }}
         file: ${{ inputs.file }}
         target: ${{ inputs.target }}
+        platforms: ${{ inputs.platforms }}
         push: ${{ inputs.push }}
         tags: ${{ inputs.tags }}
         build-args: ${{ inputs.build-args }}
