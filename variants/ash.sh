@@ -46,6 +46,12 @@ shvr_build_ash ()
 {
 	shvr_versioninfo_ash "$1"
 
+	# ash and hush share build_srcdir (busybox/<version>). Remove any prior
+	# extraction/build tree so a fresh source is unpacked every time; otherwise
+	# building both shells of one version in a single container (e.g.
+	# `shvr.sh build ash_X hush_X`, as the Dockerfile does) leaves stale objects
+	# that contaminate the second build and break reproducibility on old busybox.
+	rm -rf "${build_srcdir}"
 	mkdir -p "${build_srcdir}"
 	mkdir -p /usr/src/busybox
 	# Extract with fixed ownership, mode, and time for reproducibility
@@ -62,23 +68,64 @@ shvr_build_ash ()
 
 	# Configurations to enable for ash-focused builds.
 	# Includes ash features, static linking, and individual applet support.
+	#
+	# Renamed-symbol handling: BusyBox renamed several symbols over time
+	# (e.g. ASH_BUILTIN_ECHO -> ASH_ECHO at 1.27.2, SH_MATH_SUPPORT ->
+	# FEATURE_SH_MATH, FEATURE_SH_IS_ASH -> SH_IS_ASH). allnoconfig + sed +
+	# oldconfig silently drops symbols absent from a given version, so we list
+	# BOTH the modern and legacy names; whichever exists is applied. Without
+	# the legacy names, old ash (<=1.26.2 and the 1.2.x island) ships with no
+	# echo/printf/test builtin and no arithmetic.
+	# Note: the "which shell is aliased to sh" choice (SH_IS_ASH/HUSH/NONE) is
+	# left at allnoconfig's default and never set here. Forcing a choice member
+	# via sed leaves two members =y, which makes oldconfig re-prompt the choice
+	# and abort on the build's closed stdin. The alias is irrelevant anyway: the
+	# binary is copied to bin/ash and invoked directly (applet = argv[0]).
 	setConfs='
 		CONFIG_STATIC=y
-		CONFIG_FEATURE_SH_IS_ASH=y
 		CONFIG_LAST_SUPPORTED_WCHAR=0
+		CONFIG_ASH=y
 		CONFIG_ASH_ALIAS=y
 		CONFIG_ASH_CMDCMD=y
 		CONFIG_ASH_ECHO=y
+		CONFIG_ASH_BUILTIN_ECHO=y
+		CONFIG_ASH_PRINTF=y
+		CONFIG_ASH_BUILTIN_PRINTF=y
+		CONFIG_ASH_TEST=y
+		CONFIG_ASH_BUILTIN_TEST=y
 		CONFIG_ASH_INTERNAL_GLOB=y
 		CONFIG_ASH_JOB_CONTROL=y
-		CONFIG_ASH_PRINTF=y
 		CONFIG_ASH_RANDOM_SUPPORT=y
-		CONFIG_ASH_TEST=y
-		CONFIG_ASH=y
+		CONFIG_ASH_GETOPTS=y
+		CONFIG_ASH_HELP=y
+		CONFIG_ASH_BASH_COMPAT=y
+		CONFIG_ASH_BASH_NOT_FOUND_HOOK=y
+		CONFIG_ASH_EXPAND_PRMT=y
+		CONFIG_ASH_IDLE_TIMEOUT=y
+		CONFIG_ASH_MAIL=y
 		CONFIG_ECHO=y
-		CONFIG_FEATURE_SH_MATH_64=y
-		CONFIG_FEATURE_SH_MATH=y
 		CONFIG_TEST=y
+		CONFIG_FEATURE_SH_MATH=y
+		CONFIG_SH_MATH_SUPPORT=y
+		CONFIG_FEATURE_SH_MATH_64=y
+		CONFIG_SH_MATH_SUPPORT_64=y
+		CONFIG_FEATURE_SH_MATH_BASE=y
+		CONFIG_FEATURE_SH_READ_FRAC=y
+		CONFIG_FEATURE_SH_HISTFILESIZE=y
+		CONFIG_FEATURE_EDITING=y
+		CONFIG_FEATURE_EDITING_MAX_LEN=1024
+		CONFIG_FEATURE_EDITING_HISTORY=1024
+		CONFIG_FEATURE_EDITING_VI=y
+		CONFIG_FEATURE_EDITING_SAVEHISTORY=y
+		CONFIG_FEATURE_REVERSE_SEARCH=y
+		CONFIG_FEATURE_TAB_COMPLETION=y
+		CONFIG_FEATURE_EDITING_FANCY_PROMPT=y
+		CONFIG_FEATURE_EDITING_WINCH=y
+		CONFIG_UNICODE_SUPPORT=y
+		CONFIG_FEATURE_CHECK_UNICODE_IN_ENV=y
+		CONFIG_UNICODE_COMBINING_WCHARS=y
+		CONFIG_UNICODE_WIDE_WCHARS=y
+		CONFIG_SUBST_WCHAR=63
 	'
 
 	# Configurations to explicitly disable.
@@ -92,6 +139,11 @@ shvr_build_ash ()
 	# make command-line override beats Rules.mak's `:=` and is exported to
 	# the config tool; on modern busybox BUILDTIME is unused, so this is a
 	# no-op there. Keep it on every make call so config and compile agree.
+	#
+	# FEATURE_USERNAME_COMPLETION is deliberately NOT enabled: old busybox
+	# (e.g. 1.21.1) implements complete_username() with getpwent_r(), a glibc
+	# extension musl lacks, so the static musl link fails. Plain
+	# FEATURE_TAB_COMPLETION (files/commands) needs no such symbol.
 	BUILDTIME="1970.01.01-00:00+0000"
 
 	# Start with minimal config (all disabled)
