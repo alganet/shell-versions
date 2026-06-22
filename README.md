@@ -15,6 +15,18 @@ Multiple versions of multiple shells. Ideal for testing portable shell scripts.
 Shells are built on debian-slim, and copied during multi-stage to a barebones
 busybox image (you get busybox tools + all shells).
 
+Both images are **multi-arch manifest lists** covering `linux/amd64` and
+`linux/arm64`, so `docker pull` selects the right architecture automatically —
+on Apple Silicon macOS you get native `arm64` binaries with no Rosetta/QEMU
+emulation. The same `<shell>_<version>` set is published for every architecture.
+
+Every individual shell is published as its own multi-arch tag too, so you can
+pull a single shell instead of the whole image and still get your native arch:
+
+```sh
+$ docker pull alganet/shell-versions:bash_5.3.9
+```
+
 ## Basic Usage
 
 List all shells:
@@ -83,6 +95,18 @@ $ docker run -it --rm "mymultishell"
 
 You can pass a shorter list of versions instead of the full `$(sh shvr.sh targets)`.
 
+The build follows `--platform`: it reads BuildKit's `TARGETARCH`, so the musl
+and Rust cross-targets always match the platform you ask for. To build for
+`linux/arm64` (the native architecture on Apple Silicon), just pass the
+platform — there is no separate arch flag to keep in sync:
+
+```sh
+$ docker buildx build --platform linux/arm64 \
+    -t "mymultishell" --build-arg TARGETS="$(sh shvr.sh targets)" .
+```
+
+Omitting `--platform` builds for the host architecture.
+
 This is particularly useful if you want to test a version that we don't bundle
 by default, such as an old patch. Our scripts are able to build most
 intermediate versions without modifications, but we can't include them all in
@@ -96,6 +120,10 @@ The supported versions live in `versions/<shell>.{all,current}` (plus an optiona
 refreshes `versions/<shell>.all` from each shell's upstream source. Probe any
 newly-discovered versions before shipping them; if one fails to build with the
 current toolchain, add it to `versions/<shell>.excluded` (with a comment recording
-the failure) and re-run the update to drop it. Finally, run
+the failure) and re-run the update to drop it. An exclusion line is just the
+version (`5.3.1`), optionally followed by the architecture it fails on
+(`5.3.1 arm64`) — the version is dropped from every architecture either way (the
+published lists stay identical across architectures), and the arch tag documents
+where it failed so it can be re-enabled once fixed. Finally, run
 `sh shvr.sh github_regen_all` to regenerate the `.github/` build matrix from the
 data files, and commit `versions/` and `.github/` together.
