@@ -115,6 +115,17 @@ shvr_build_zsh ()
 	export LDFLAGS="-Wl,--build-id=none $(shvr_ncurses_ldflags)"
 	export CPPFLAGS="$(shvr_ncurses_cflags)"
 
+	# zsh <5.0 mathfunc.c calls the deprecated gamma() (a historical alias for
+	# lgamma, i.e. log-gamma) unconditionally; musl dropped that symbol, so
+	# statically linking zsh/mathfunc fails at link with "undefined reference to
+	# gamma". Map the call to lgamma -- it is the only `gamma(` token in the tree
+	# and the "gamma" math-function name is a string literal, so users still call
+	# gamma() and get the same value. 5.0+ guards the call on a configure probe
+	# (HAVE_GAMMA), which fails cleanly under musl, so this is only needed for 4.x.
+	if test "$version_major" -lt 5
+	then export CFLAGS="${CFLAGS} -Dgamma=lgamma"
+	fi
+
 	./Util/preconfig
 
 	# Replace config.sub/config.guess with modern versions that recognize musl
@@ -123,12 +134,45 @@ shvr_build_zsh ()
 	cp "$(automake --print-libdir)/config.sub" .
 	cp "$(automake --print-libdir)/config.guess" .
 
+	# Multibyte/Unicode: --enable-multibyte (zsh 5.0+) is on by default in 5.x but
+	# pinned here; --enable-unicode9 (5.3.1+) compiles in the in-tree Unicode-9
+	# width tables (emoji/CJK widths) and needs no external library. Both are
+	# unknown to older configure but autoconf accepts unknown --enable silently,
+	# so the version gates are for cleanliness, not safety.
+	extra_flags=
+	if test "$version_major" -ge 5
+	then extra_flags="--enable-multibyte"
+	fi
+	if test "$version_major" -gt 5 ||
+		{ test "$version_major" -eq 5 && test "$version_minor" -ge 3; }
+	then extra_flags="$extra_flags --enable-unicode9"
+	fi
+
 	./configure \
 		--host="$(shvr_musl_target)" \
 		--prefix="${SHVR_DIR_OUT}/zsh_$version" \
 		--disable-dynamic \
 		--with-tcsetpgrp \
-		--with-term-lib="ncurses"
+		--with-term-lib="ncurses" \
+		$extra_flags
+
+	# A fully static binary cannot dlopen modules, so configure marks every
+	# optional module link=no (dropped). Flip the buildable, libc-only ones to
+	# link=static so they are compiled into the binary and usable via zmodload:
+	# mathfunc (float math fns), regex (=~), system (syscall/flock), stat, mapfile,
+	# files (zf_*), zselect, zpty, net/socket+net/tcp, zftp, clone, param/private,
+	# zprof, watch, deltochar, nearcolor. (datetime, zle, complete, etc. are
+	# already link=static.) Modules needing libraries we do not ship are left
+	# link=no: cap->libcap, db/gdbm->libgdbm, pcre->libpcre2, and zsh/curses needs
+	# wide-char ncurses (ours is --disable-widec). The sed no-ops on versions that
+	# lack a given module, so one list is safe across the whole range; make prep
+	# regenerates the module tables from the edited config.modules.
+	for mod in mathfunc regex stat system mapfile files zselect zpty \
+		net/socket net/tcp zftp clone param/private zprof watch deltochar nearcolor
+	do
+		sed -i "\\#name=zsh/${mod} #s/link=no/link=static/" config.modules
+	done
+	make prep
 
 	# Single-threaded build for deterministic ordering
 	make
