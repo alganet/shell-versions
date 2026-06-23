@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: ISC
 
 . "${SHVR_DIR_SELF}/common/musl-cross-make.sh"
+. "${SHVR_DIR_SELF}/common/ncurses.sh"
 
 shvr_static_yash ()
 {
@@ -71,6 +72,10 @@ shvr_download_yash ()
 			shvr_fetch "https://github.com/magicant/yash/releases/download/${version}/yash-${version}.tar.xz" "${build_srcdir}.tar.gz"
 		fi
 	fi
+
+	# yash's built-in line editor needs a terminfo/curses library; we link the
+	# in-tree static ncurses for it.
+	shvr_download_ncurses
 }
 
 shvr_build_yash ()
@@ -99,9 +104,33 @@ shvr_build_yash ()
 	export CFLAGS="-frandom-seed=1"
 	export LDFLAGS="-Wl,--build-id=none"
 
+	# Build the in-tree static ncurses and point yash at it so its built-in line
+	# editor (emacs/vi modes, completion, history, multibyte display) is enabled.
+	# yash's configure searches its default term_lib list and links the first that
+	# satisfies a setupterm/tigetstr/tputs probe, so supplying the ncurses headers
+	# and lib path is enough on every version; no --with-term-lib is needed (it
+	# only exists >=2.19 and the older hand-written configure exits on unknown
+	# options).
+	#
+	# These flags go in CADDS, not CFLAGS, for two reasons. (1) yash uses
+	# ${CFLAGS-${cflags}}, so exporting CFLAGS would REPLACE yash's own computed
+	# cflags, and after its -O2 probe it rewrites cflags to a bare "-O2 -g" anyway,
+	# dropping any CFLAGS-based -I from the probes; CADDS is always appended and is
+	# never clobbered. (2) -DHAVE_CONFIG_H makes the build include config.h, which
+	# is where yash >=2.19 records HAVE_CURSES_H / HAVE_TERM_H; without it those
+	# versions' lineedit/terminfo.c fails to compile ("cur_term undeclared")
+	# because its curses/term includes are guarded on those macros. The musl
+	# <wchar.h> iswdigit-macro clash in arith.c that config.h's feature macros
+	# would expose is already handled by patches/yash/*/*arith-c-include-wctype*.
+	shvr_build_ncurses
+	cd "${build_srcdir}"
+	export CADDS="$(shvr_ncurses_cflags) -DHAVE_CONFIG_H"
+	export LDFLAGS="${LDFLAGS} $(shvr_ncurses_ldflags)"
+
 	# Older yash (<2.26) has no NLS feature, so its hand-written configure
 	# rejects --disable-nls as an unknown feature ("invalid option"). Pass it
-	# only when this configure actually knows the option.
+	# only when this configure actually knows the option. NLS stays off either
+	# way: musl provides no libintl.
 	nls_flag=
 	if grep -qE '^[[:space:]]*nls\)' configure
 	then nls_flag=--disable-nls
@@ -109,12 +138,11 @@ shvr_build_yash ()
 
 	./configure \
 		$nls_flag \
-		--disable-lineedit \
 		--prefix="${SHVR_DIR_OUT}/yash_$version"
 
 	make
 
-	unset SOURCE_DATE_EPOCH TZ CC AR RANLIB CFLAGS LDFLAGS
+	unset SOURCE_DATE_EPOCH TZ CC AR RANLIB CFLAGS CADDS LDFLAGS
 
 	mkdir -p "${SHVR_DIR_OUT}/yash_${version}/bin"
 	cp "yash" "${SHVR_DIR_OUT}/yash_$version/bin"
