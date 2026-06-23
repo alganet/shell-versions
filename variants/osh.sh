@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: ISC
 
 . "${SHVR_DIR_SELF}/common/musl-cross-make.sh"
+. "${SHVR_DIR_SELF}/common/readline.sh"
 
 shvr_static_osh ()
 {
@@ -45,6 +46,9 @@ shvr_download_osh ()
 	then
 		shvr_fetch "https://oils.pub/download/oils-for-unix-${version}.tar.gz" "${build_srcdir}.tar.gz"
 	fi
+
+	# osh links GNU readline for interactive line editing/history/completion.
+	shvr_download_readline
 }
 
 shvr_build_osh ()
@@ -55,6 +59,15 @@ shvr_build_osh ()
 
 	shvr_untar "${build_srcdir}.tar.gz" "${build_srcdir}"
 
+	cd "${build_srcdir}"
+
+	# Build static GNU readline (against the in-tree ncurses) so osh gets line
+	# editing, history and completion. Its libreadline.a is self-contained
+	# (termcap merged in), which matters because osh probes and links a bare
+	# `-lreadline` with no `-lncurses`. NOTE: GNU readline is GPLv3, so the osh
+	# binary is a GPL combined work (Oils itself is Apache-2.0). osh has no
+	# non-GPL editor: libedit's readline-compat is missing functions Oils calls.
+	shvr_build_readline
 	cd "${build_srcdir}"
 
 	# Static musl build with reproducible flags
@@ -72,10 +85,19 @@ shvr_build_osh ()
 		exec "$(shvr_musl_cxx)" -static -Wl,--build-id=none "\$@"
 	WRAPPER
 	chmod +x "${build_srcdir}/.musl-bin/c++"
+	# configure's feature probes (cc_quiet) default to 'cc'; without a musl 'cc'
+	# they would use the host gcc/glibc, which cannot link our musl static
+	# libreadline.a, so readline detection silently fails and osh builds without
+	# it. Provide a musl 'cc' wrapper so probes match the actual (musl) build.
+	cat > "${build_srcdir}/.musl-bin/cc" <<-WRAPPER
+		#!/bin/sh
+		exec "$(shvr_musl_cc)" -static -Wl,--build-id=none "\$@"
+	WRAPPER
+	chmod +x "${build_srcdir}/.musl-bin/cc"
 	export PATH="${build_srcdir}/.musl-bin:$PATH"
 
 	./configure \
-		--without-readline \
+		--readline "$(shvr_readline_prefix)" \
 		--prefix="${SHVR_DIR_OUT}/osh_$version"
 
 	_build/oils.sh
