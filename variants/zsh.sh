@@ -5,6 +5,7 @@
 
 . "${SHVR_DIR_SELF}/common/musl-cross-make.sh"
 . "${SHVR_DIR_SELF}/common/ncurses.sh"
+. "${SHVR_DIR_SELF}/common/pcre.sh"
 
 shvr_static_zsh ()
 {
@@ -76,6 +77,18 @@ shvr_download_zsh ()
 	fi
 
 	shvr_download_ncurses
+
+	# zsh's optional pcre module is present from 4.2 (4.0.9 lacks it); 5.9+ use
+	# PCRE2, older use the original PCRE.
+	if test "$version_major" -gt 4 ||
+		{ test "$version_major" -eq 4 && test "$version_minor" -ge 2; }
+	then
+		if test "$version_major" -gt 5 ||
+			{ test "$version_major" -eq 5 && test "$version_minor" -ge 9; }
+		then shvr_download_pcre2
+		else shvr_download_pcre1
+		fi
+	fi
 }
 
 shvr_build_zsh ()
@@ -148,6 +161,25 @@ shvr_build_zsh ()
 	then extra_flags="$extra_flags --enable-unicode9"
 	fi
 
+	# zsh's optional pcre module needs an external PCRE library; it is present from
+	# 4.2 (4.0.9 lacks it). 4.2..5.8 use the original PCRE (pcre-config), 5.9+ use
+	# PCRE2 (pcre2-config). Build the matching in-tree static library and put its
+	# *-config on PATH so --enable-pcre's configure probe finds it explicitly (zsh
+	# 4.2/5.x auto-detect pcre-config from PATH, so this must be done per version,
+	# not left to whatever a previous build left on PATH); the module itself is
+	# statically linked below. 4.0.9 has no pcre module and is skipped.
+	if test "$version_major" -gt 4 ||
+		{ test "$version_major" -eq 4 && test "$version_minor" -ge 2; }
+	then
+		if test "$version_major" -gt 5 ||
+			{ test "$version_major" -eq 5 && test "$version_minor" -ge 9; }
+		then shvr_build_pcre2; export PATH="$(dirname "$(shvr_pcre2_config)"):$PATH"
+		else shvr_build_pcre1; export PATH="$(dirname "$(shvr_pcre1_config)"):$PATH"
+		fi
+		cd "${build_srcdir}"
+		extra_flags="$extra_flags --enable-pcre"
+	fi
+
 	./configure \
 		--host="$(shvr_musl_target)" \
 		--prefix="${SHVR_DIR_OUT}/zsh_$version" \
@@ -161,14 +193,16 @@ shvr_build_zsh ()
 	# link=static so they are compiled into the binary and usable via zmodload:
 	# mathfunc (float math fns), regex (=~), system (syscall/flock), stat, mapfile,
 	# files (zf_*), zselect, zpty, net/socket+net/tcp, zftp, clone, param/private,
-	# zprof, watch, deltochar, nearcolor. (datetime, zle, complete, etc. are
-	# already link=static.) Modules needing libraries we do not ship are left
-	# link=no: cap->libcap, db/gdbm->libgdbm, pcre->libpcre2, and zsh/curses needs
-	# wide-char ncurses (ours is --disable-widec). The sed no-ops on versions that
-	# lack a given module, so one list is safe across the whole range; make prep
-	# regenerates the module tables from the edited config.modules.
+	# zprof, watch, deltochar, nearcolor, plus pcre (Perl-compatible regex; its
+	# in-tree PCRE/PCRE2 was built above for 5.x). (datetime, zle, complete, etc.
+	# are already link=static.) Modules needing libraries we do not ship are left
+	# link=no: cap->libcap, db/gdbm->libgdbm, and zsh/curses needs wide-char
+	# ncurses (ours is --disable-widec). The sed no-ops on versions that lack a
+	# given module (e.g. pcre on 4.x), so one list is safe across the whole range;
+	# make prep regenerates the module tables from the edited config.modules.
 	for mod in mathfunc regex stat system mapfile files zselect zpty \
-		net/socket net/tcp zftp clone param/private zprof watch deltochar nearcolor
+		net/socket net/tcp zftp clone param/private zprof watch deltochar nearcolor \
+		pcre
 	do
 		sed -i "\\#name=zsh/${mod} #s/link=no/link=static/" config.modules
 	done
