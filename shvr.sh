@@ -38,6 +38,156 @@ shvr_build ()
 	shvr_generate_build_checksums "${@:-}"
 }
 
+# List supported targets (optionally limited to the given <shell> args) that have NO
+# committed build checksums for the current arch — i.e. new versions surfaced by
+# `update`. shvr_build_identity prints MISSING for exactly these; we check the dir
+# directly (cheaper than computing the identity hash). One <shell>_<version> per line.
+shvr_updated_targets ()
+{
+	bcd="$(shvr_build_checksums_dir)"
+	for t in $(shvr_targets "$@")
+	do
+		if ! test -d "${bcd}/${t}"
+		then printf '%s\n' "$t"
+		fi
+	done
+}
+
+# Remove committed build-checksum dirs for targets no longer supported. The keep set is
+# always the full current build set — shvr_targets, plus shvr_testing when that command
+# exists (the later .testing work reuses this). A dropped version is dropped for every
+# arch, so reap across all checksums/build/<arch>/ trees. Build checksums only;
+# checksums/sources/ is left untouched. Prints the number of dirs pruned. (set -f is on,
+# so globs do not expand — enumerate dirs with find, as the rest of the tree does.)
+shvr_prune_build_checksums ()
+{
+	keep="$(shvr_targets)"
+	if command -v shvr_testing >/dev/null 2>&1
+	then keep="${keep}
+$(shvr_testing)"
+	fi
+
+	keeplist="${TMPDIR:-/tmp}/shvr_prune_keep.$$"
+	trap 'rm -f "$keeplist"' EXIT INT TERM
+	printf '%s\n' $keep | sed '/^[[:space:]]*$/d' > "$keeplist"
+
+	build_root="${SHVR_CHECKSUMS_DIR}/build"
+	pruned=0
+	if test -d "$build_root"
+	then
+		for arch_dir in $(find "$build_root" -mindepth 1 -maxdepth 1 -type d)
+		do
+			for target_dir in $(find "$arch_dir" -mindepth 1 -maxdepth 1 -type d)
+			do
+				t="$(basename "$target_dir")"
+				if ! grep -Fxq "$t" "$keeplist"
+				then
+					rm -rf "$target_dir"
+					echo "pruned $(basename "$arch_dir")/${t}" >&2
+					pruned=$((pruned + 1))
+				fi
+			done
+		done
+	fi
+
+	rm -f "$keeplist"
+	trap - EXIT INT TERM
+	echo "$pruned"
+}
+
+# `build_updated [<shell> ...]`: build every supported target with no committed build
+# checksums yet (a new version from `update`), generating its checksums, then prune the
+# checksum dirs of targets we no longer support. Mirrors the canonical download->build
+# sequence (deps are assumed installed, as `shvr build` assumes). Build checksums are
+# arch-sensitive: run under linux/amd64 (SHVR_ARCH=amd64) so they match the CI.
+# Build, for one arch, the given targets in a linux/<arch> image and write that arch's
+# committed build checksums from the image's /opt — the same build-then-extract-then-
+# generate flow CI uses (.github/actions/generate-build-checksums). The whole Linux-only
+# toolchain (apt deps, musl-cross-make, cargo) runs inside the container, so this works
+# from a macOS host. The platform drives the Dockerfile's TARGETARCH→SHVR_ARCH, so the
+# musl/Rust cross-targets match. Usage: shvr_build_updated_arch <arch> <target>...
+shvr_build_updated_arch ()
+(
+	arch="$1"
+	shift
+	tag="shvr-build-updated-${arch}"
+	# Scratch dir for the extracted /opt, outside the repo so nothing is polluted.
+	# Subshell function (parens) so this EXIT trap is scoped to the call.
+	workdir="$(mktemp -d "${TMPDIR:-/tmp}/shvr_build_updated.XXXXXX")"
+	trap 'rm -rf "$workdir"' EXIT INT TERM
+
+	echo "build_updated[${arch}]: docker build (linux/${arch}) for: $*" >&2
+
+	# Single-platform build loaded into the local engine so we can extract from it.
+	docker buildx build \
+		--platform "linux/${arch}" \
+		--build-arg TARGETS="$*" \
+		--load \
+		-t "$tag" \
+		"${SHVR_DIR_SELF}"
+
+	# Extract /opt and (re)generate this arch's checksums from it, like CI does.
+	container="$(docker create --platform "linux/${arch}" "$tag")"
+	docker cp "${container}:/opt" "${workdir}/opt"
+	docker rm -f "$container" >/dev/null
+
+	# Subshell: point SHVR_ARCH/SHVR_DIR_OUT at this build without leaking the override.
+	# shvr_build_checksums_dir then selects checksums/build/<arch>/ for the generate.
+	(
+		SHVR_ARCH="$arch"
+		SHVR_DIR_OUT="${workdir}/opt"
+		shvr_generate_build_checksums "$@"
+	)
+
+	echo "build_updated[${arch}]: wrote checksums/build/${arch}/" >&2
+)
+
+# `build_updated [<shell> ...]`: bring committed checksums up to date for every new
+# version surfaced by `update`. It (1) fetches the new targets' sources and mints their
+# SOURCE checksums (new versions have none committed yet — e.g. new bash patches — so the
+# fetch skips verification, then we generate them), then (2) for EACH arch (default
+# amd64 + arm64; override with SHVR_BUILD_ARCHES) builds the arch's missing targets in a
+# linux/<arch> container and writes that arch's BUILD checksums, and (3) prunes checksum
+# dirs for unsupported targets. Hands-off locally; reused by CI by setting
+# SHVR_BUILD_ARCHES=<one arch> per native runner, then committing/PRing the result.
+shvr_build_updated ()
+{
+	arches="${SHVR_BUILD_ARCHES:-amd64 arm64}"
+
+	# Union of targets missing in ANY requested arch — these need their sources fetched.
+	# shvr_updated_targets keys off SHVR_ARCH, so scope each in a subshell.
+	all_new=""
+	for arch in $arches
+	do
+		all_new="${all_new}
+$( SHVR_ARCH="$arch"; export SHVR_ARCH; shvr_updated_targets "$@" )"
+	done
+	all_new="$(printf '%s\n' $all_new | sed '/^[[:space:]]*$/d' | sort -u)"
+
+	if test -z "$all_new"
+	then echo "build_updated: no new versions" >&2
+	else
+		echo "build_updated: new versions -> $(printf '%s ' $all_new)" >&2
+		# New versions have no committed source checksums yet, so fetch without
+		# verifying, then mint them (needed by the build and by CI's single-download).
+		# Sources are arch-independent, so do this once for the whole union.
+		( SHVR_SKIP_VERIFY_SHA256=1; export SHVR_SKIP_VERIFY_SHA256; shvr_download $all_new )
+		shvr_generate_source_checksums $all_new
+	fi
+
+	for arch in $arches
+	do
+		new_arch="$( SHVR_ARCH="$arch"; export SHVR_ARCH; shvr_updated_targets "$@" )"
+		if test -z "$new_arch"
+		then echo "build_updated[${arch}]: nothing to build" >&2
+		else shvr_build_updated_arch "$arch" $new_arch
+		fi
+	done
+
+	n_pruned="$(shvr_prune_build_checksums)"
+	echo "build_updated: pruned ${n_pruned} stale checksum dir(s)" >&2
+}
+
 
 shvr_deps ()
 {
@@ -562,6 +712,38 @@ shvr_generate_checksums()
 		mkdir -p "$dest_dir"
 		# write a file containing one line with: <sha256>  basename
 		sha256sum "$f" | sed "s/  .*/  $(basename "$f")/" > "${SHVR_CHECKSUMS_DIR}/sources/${rel}.sha256sums"
+	done
+}
+
+# Generate SOURCE checksums (checksums/sources/) for specific targets — the per-target,
+# scoped counterpart of shvr_generate_checksums (which hashes the entire build/ tree). A
+# target's source artifacts are the downloaded files at build/<cache_path>.* and
+# build/<cache_path>-* (the tarball, plus bash's numbered patches); the extracted tree
+# build/<cache_path>/ is NOT a source, so the trailing-slash form is skipped. Used by
+# build_updated to mint checksums for the new sources a version brings (e.g. bash patches
+# 010-015), which have none committed yet. Usage: shvr_generate_source_checksums <t> ...
+shvr_generate_source_checksums ()
+{
+	for t in "$@"
+	do
+		shvr_clear_versioninfo
+		interpreter="${t%%_*}"
+		version="${t#*_}"
+		. "${SHVR_DIR_SELF}/variants/${interpreter}.sh"
+		"shvr_versioninfo_${interpreter}" "$version"
+		cp="${build_srcdir#${SHVR_DIR_SRC}/}"
+
+		find "${SHVR_DIR_SRC}/${interpreter}" -type f 2>/dev/null | while IFS= read -r f
+		do
+			rel="${f#${SHVR_DIR_SRC}/}"
+			case "$rel" in
+				"${cp}".*|"${cp}"-*)
+					dest="${SHVR_CHECKSUMS_DIR}/sources/${rel}.sha256sums"
+					mkdir -p "$(dirname "$dest")"
+					sha256sum "$f" | sed "s/  .*/  $(basename "$f")/" > "$dest"
+					;;
+			esac
+		done
 	done
 }
 
