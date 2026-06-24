@@ -120,7 +120,7 @@ runs:
     - uses: ./.github/actions/single-download
       with:
         shvr_shell: bash
-        shvr_version: "5.3.9"
+        shvr_version: "5.3.15"
         cache_path: "bash/5.3"
     - uses: ./.github/actions/single-download
       with:
@@ -1112,6 +1112,11 @@ runs:
         shvr_shell: yash
         shvr_version: "2.10"
         cache_path: "yash/2.10"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: yashrs
+        shvr_version: "3.2.1"
+        cache_path: "yashrs/3.2.1"
     - uses: ./.github/actions/single-download
       with:
         shvr_shell: yashrs
