@@ -26,11 +26,17 @@ shvr_versions_from_html_listing ()
 	url="$1"
 	regex="$2"
 
-	base="${TMPDIR:-/tmp}/shvr_html_listing.$$"
-	raw="${base}.raw"
-	err="${base}.err"
-	out="${base}.out"
-	trap 'rm -f "$raw" "$err" "$out"' EXIT INT TERM
+	# A unique temp dir per call: $$ is the (shared) main-shell PID even inside this
+	# subshell function, so the previous "$$"-based paths collided when one call
+	# nested inside another — e.g. shvr_update_bash streams the baseline listing
+	# while calling this helper again per baseline to scrape its -patches/ dir. The
+	# inner call clobbered the outer's temp files, so patch discovery returned empty
+	# and every bash baseline composed to "<baseline>.0", freezing updates.
+	base="$(mktemp -d "${TMPDIR:-/tmp}/shvr_html_listing.XXXXXX")"
+	raw="${base}/raw"
+	err="${base}/err"
+	out="${base}/out"
+	trap 'rm -rf "$base"' EXIT INT TERM
 
 	if ! curl -fsSL "$url" > "$raw" 2> "$err"
 	then
