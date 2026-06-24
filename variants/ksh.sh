@@ -19,6 +19,18 @@ shvr_current_ksh ()
 	shvr_read_versions ksh current
 }
 
+# .current lineage: keep only the live 93u+m fork (each release is its own lineage),
+# so `latest` tracks the newest 93u+m releases and excludes the frozen 2020/history
+# forks. Decoupled from .all (which has no shvr_series_ksh and keeps every fork/patch).
+shvr_current_lineage_ksh ()
+{
+	shvr_versioninfo_ksh "$1"
+	case "$fork_name" in
+		*'93uplusm') printf '%s\n' "$1" ;;
+		*)           return 1 ;;
+	esac
+}
+
 shvr_targets_ksh ()
 {
 	shvr_read_versions ksh all

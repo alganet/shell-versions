@@ -416,16 +416,16 @@ jobs:
           - flavor: latest
             arch: amd64
             targets: >
+              ash_1.38.0
               ash_1.37.0
-              ash_1.36.1
               bash_5.3.9
               bash_5.2.37
+              brush_0.4.0
               brush_0.3.0
-              brush_0.2.23
               dash_0.5.13.4
               dash_0.5.12
+              hush_1.38.0
               hush_1.37.0
-              hush_1.36.1
               ksh_shvrA93uplusm-v1.0.10
               ksh_shvrA93uplusm-v1.0.9
               loksh_7.9
@@ -700,16 +700,16 @@ jobs:
           - flavor: latest
             arch: arm64
             targets: >
+              ash_1.38.0
               ash_1.37.0
-              ash_1.36.1
               bash_5.3.9
               bash_5.2.37
+              brush_0.4.0
               brush_0.3.0
-              brush_0.2.23
               dash_0.5.13.4
               dash_0.5.12
+              hush_1.38.0
               hush_1.37.0
-              hush_1.36.1
               ksh_shvrA93uplusm-v1.0.10
               ksh_shvrA93uplusm-v1.0.9
               loksh_7.9

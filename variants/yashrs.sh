@@ -11,6 +11,15 @@ shvr_current_yashrs ()
 	shvr_read_versions yashrs current
 }
 
+# .current lineage = major.minor, so `latest` tracks the newest two minor lines
+# (e.g. 3.2.0, 3.1.0). Decoupled from .all, which keeps every patch (no shvr_series).
+shvr_current_lineage_yashrs ()
+{
+	shvr_versioninfo_yashrs "$1"
+	series_rest="${version#*.}"
+	printf '%s.%s\n' "${version%%.*}" "${series_rest%%.*}"
+}
+
 shvr_targets_yashrs ()
 {
 	shvr_read_versions yashrs all
