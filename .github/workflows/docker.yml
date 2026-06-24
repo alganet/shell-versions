@@ -418,7 +418,7 @@ jobs:
             targets: >
               ash_1.38.0
               ash_1.37.0
-              bash_5.3.9
+              bash_5.3.15
               bash_5.2.37
               brush_0.4.0
               brush_0.3.0
@@ -440,7 +440,7 @@ jobs:
               posh_0.13.2
               yash_2.61
               yash_2.60
-              yashrs_3.2.0
+              yashrs_3.2.1
               yashrs_3.1.0
               zsh_5.9.1
               zsh_5.8.1
@@ -469,7 +469,7 @@ jobs:
               ash_1.19.4
               ash_1.2.2.1
               ash_1.2.2
-              bash_5.3.9
+              bash_5.3.15
               bash_5.2.37
               bash_5.1.16
               bash_5.0.18
@@ -668,6 +668,7 @@ jobs:
               yash_2.12
               yash_2.11
               yash_2.10
+              yashrs_3.2.1
               yashrs_3.2.0
               yashrs_3.1.0
               yashrs_3.0.8
@@ -702,7 +703,7 @@ jobs:
             targets: >
               ash_1.38.0
               ash_1.37.0
-              bash_5.3.9
+              bash_5.3.15
               bash_5.2.37
               brush_0.4.0
               brush_0.3.0
@@ -724,7 +725,7 @@ jobs:
               posh_0.13.2
               yash_2.61
               yash_2.60
-              yashrs_3.2.0
+              yashrs_3.2.1
               yashrs_3.1.0
               zsh_5.9.1
               zsh_5.8.1
@@ -753,7 +754,7 @@ jobs:
               ash_1.19.4
               ash_1.2.2.1
               ash_1.2.2
-              bash_5.3.9
+              bash_5.3.15
               bash_5.2.37
               bash_5.1.16
               bash_5.0.18
@@ -952,6 +953,7 @@ jobs:
               yash_2.12
               yash_2.11
               yash_2.10
+              yashrs_3.2.1
               yashrs_3.2.0
               yashrs_3.1.0
               yashrs_3.0.8
