@@ -16,6 +16,16 @@ shvr_current_osh ()
 	shvr_read_versions osh current
 }
 
+# .current lineage = major.minor (0.37, 0.36 -> 0.37.0, 0.36.0). Decoupled from .all,
+# which keeps every release (no shvr_series_osh). Identity would match today since osh
+# ships one patch per minor; this stays correct if a 0.x.1 ever appears.
+shvr_current_lineage_osh ()
+{
+	shvr_versioninfo_osh "$1"
+	series_rest="${version#*.}"
+	printf '%s.%s\n' "${version%%.*}" "${series_rest%%.*}"
+}
+
 shvr_targets_osh ()
 {
 	shvr_read_versions osh all

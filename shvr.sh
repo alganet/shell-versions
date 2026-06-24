@@ -11,6 +11,9 @@ SHVR_DIR_OUT="${SHVR_DIR_OUT:-"${SHVR_DIR_SELF}/out"}"
 SHVR_CHECKSUMS_DIR="${SHVR_CHECKSUMS_DIR:-"${SHVR_DIR_SELF}/checksums"}"
 # Default: verify by default; set SHVR_SKIP_VERIFY_SHA256=1 to disable verification
 SHVR_SKIP_VERIFY_SHA256="${SHVR_SKIP_VERIFY_SHA256:-0}"
+# How many newest lineages each versions/<shell>.current keeps (a shell may override
+# per-shell via a shvr_current_count_<shell> hook). See shvr_regen_current.
+SHVR_CURRENT_LINEAGES="${SHVR_CURRENT_LINEAGES:-2}"
 
 shvr ()
 {
@@ -87,11 +90,94 @@ shvr_update ()
 		interpreter="$1"
 		. "${SHVR_DIR_SELF}/variants/${interpreter}.sh"
 		if command -v "shvr_update_${interpreter}" >/dev/null 2>&1
-		then "shvr_update_${interpreter}"
+		then
+			"shvr_update_${interpreter}"
+			# Refresh versions/<shell>.current from the just-merged .all
+			# (no-op for shells without their own .all, e.g. ash/hush).
+			shvr_regen_current_one "${interpreter}"
 		else echo "skip: ${interpreter} has no updater yet" >&2
 		fi
 		shift
 	done
+}
+
+# Regenerate versions/<shell>.current from versions/<shell>.all by keeping the newest
+# N lineages. With no argument, regenerates every interpreter (the one-shot migration
+# / drift-check entry point); ./shvr.sh regen_current [<shell> ...] routes here.
+shvr_regen_current ()
+{
+	if test -z "$*"
+	then set -- $(printf '%s ' $(shvr_interpreters))
+	fi
+
+	while test $# -gt 0
+	do
+		interpreter="$1"
+		. "${SHVR_DIR_SELF}/variants/${interpreter}.sh"
+		shvr_regen_current_one "${interpreter}"
+		shift
+	done
+}
+
+# Worker: rewrite a single versions/<shell>.current from its .all. The variant must
+# already be sourced (so its shvr_current_lineage_<shell>/shvr_series_<shell> hooks are
+# visible). The lineage key is chosen as: a dedicated shvr_current_lineage_<shell>, else
+# the .all-dedup hook shvr_series_<shell>, else identity (each version its own lineage).
+# shvr_filter_latest_per_series keeps the latest version per lineage, sorted descending;
+# head -n N then keeps the newest N. .current is version-only (no date column).
+shvr_regen_current_one ()
+{
+	interpreter="$1"
+	file="${SHVR_DIR_SELF}/versions/${interpreter}.all"
+
+	# Derived shells (ash/hush) carry no .all of their own: they back onto another
+	# shell via shvr_versionsource_<shell> (e.g. busybox, whose hooks are already
+	# sourced by the deriving variant). Regenerate the backing shell's .current — the
+	# derived ones inherit it at read time through their busybox_->ash_ rewrite.
+	if ! test -f "$file"
+	then
+		if command -v "shvr_versionsource_${interpreter}" >/dev/null 2>&1
+		then shvr_regen_current_one "$("shvr_versionsource_${interpreter}")"
+		fi
+		return 0
+	fi
+
+	if command -v "shvr_current_lineage_${interpreter}" >/dev/null 2>&1
+	then keyfn="shvr_current_lineage_${interpreter}"
+	elif command -v "shvr_series_${interpreter}" >/dev/null 2>&1
+	then keyfn="shvr_series_${interpreter}"
+	else keyfn="shvr_identity_line"
+	fi
+
+	if command -v "shvr_current_count_${interpreter}" >/dev/null 2>&1
+	then count="$("shvr_current_count_${interpreter}")"
+	else count="${SHVR_CURRENT_LINEAGES}"
+	fi
+
+	current="${SHVR_DIR_SELF}/versions/${interpreter}.current"
+	tmp="${current}.tmp.$$"
+
+	# Strip the date column / comments / blanks (same idiom as shvr_read_versions),
+	# collapse to the latest per lineage, then keep the newest N lineages.
+	sed -e '/^[[:space:]]*$/d' -e '/^[[:space:]]*#/d' -e 's/[[:space:]].*$//' "$file" |
+		shvr_filter_latest_per_series "$keyfn" |
+		head -n "$count" > "$tmp"
+
+	if test -f "$current" && cmp -s "$tmp" "$current"
+	then
+		rm -f "$tmp"
+		echo "${interpreter}.current: no change" >&2
+	else
+		mv "$tmp" "$current"
+		echo "${interpreter}.current: updated" >&2
+	fi
+}
+
+# Identity lineage key: every version is its own lineage (fallback when a shell has no
+# lineage hook ⇒ .current is simply the newest N versions of .all).
+shvr_identity_line ()
+{
+	printf '%s\n' "$1"
 }
 
 shvr_interpreters ()
