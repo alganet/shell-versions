@@ -11,64 +11,30 @@
 # Note: the 1.2 series (1.2.2, 1.2.2.1) is a buildable island below this band
 # and is deliberately NOT excluded.
 
-# 1.17.x, 1.18.x: ash calls fdprintf(), a glibc extension musl does not
-# provide (1.17.2-1.17.4, 1.18.1-1.18.5 fail at link/compile). The earliest
-# patches of these series fail even sooner — 1.17.0/1.17.1 at the make
-# mixed-rules error below, 1.18.0 at an include/usage.h parse error. hush
-# builds at some of these, but the shared list must satisfy ash too.
-1.18.5
-1.18.4
-1.18.3
-1.18.2
-1.18.1
-1.18.0
-1.17.4
-1.17.3
-1.17.2
-1.17.1
-1.17.0
+# 1.8, 1.10..1.18: RECOVERED (see VERSIONS.md, iteration 11). The whole band
+# from 1.10 up (plus 1.8) now builds AND runs for both ash and hush via three
+# musl/toolchain fixes in shvr_busybox_fix_makefile (run after extraction):
+#   1. Makefile mixed implicit/normal rules (`config %config:`, `/ %/:`) that
+#      GNU make >= 4.3 rejects -- drop the bare normal target from each.
+#   2. include/platform.h hand-declaring intmax_t/uintmax_t/socklen_t (musl
+#      defines no libc-identity macro, so the header took its pre-stdint
+#      fallback) -- force the <stdint.h> branch and neuter the socklen_t typedef.
+#   3. fdprintf undefined at link (`#define fdprintf dprintf` was gated to
+#      __GLIBC__; musl has dprintf) -- make that guard unconditional. This is the
+#      same break that blocked the old 1.17.x/1.18.x "fdprintf" exclusion.
+# All seds match only the old text, so they no-op on the 1.2.x island and the
+# already-building >=1.19 trees.
 
-# 1.3.x..1.16.x: the pre-kbuild-2.6.36 Makefiles use "mixed implicit and
-# normal rules", which GNU make >= 4.3 rejects as a hard error, so the
-# allnoconfig target is never reached. Affects both ash and hush.
-1.16.2
-1.16.1
-1.16.0
-1.15.3
-1.15.2
-1.15.1
-1.15.0
-1.14.4
-1.14.3
-1.14.2
-1.14.1
-1.14.0
-1.13.4
-1.13.3
-1.13.2
-1.13.1
-1.13.0
-1.12.4
-1.12.3
-1.12.2
-1.12.1
-1.12.0
-1.11.3
-1.11.2
-1.11.1
-1.11.0
-1.10.4
-1.10.3
-1.10.2
-1.10.1
-1.10.0
+# 1.9: still excluded. ash 1.9.2 BUILDS but segfaults at runtime (`ash -c echo`),
+# a musl-vs-glibc behavioural break, not a build failure -- isolated between the
+# working 1.8 and 1.10. hush 1.9 is fine.
 1.9.2
 1.9.1
 1.9.0
-1.8.3
-1.8.2
-1.8.1
-1.8.0
+
+# 1.5..1.7: still excluded. With the fixes above ash builds and runs, but hush
+# BUILDS and then segfaults at runtime (1.7.5 even prints its banner before
+# crashing on exit) -- another musl runtime incompatibility in the old hush.
 1.7.5
 1.7.4
 1.7.3
@@ -81,6 +47,13 @@
 1.5.2
 1.5.1
 1.5.0
+
+# 1.3..1.4: still excluded, build failures even after the Makefile fix. 1.4.x
+# trips gcc's -Werror=unused-but-set-variable (applets/busybox.c
+# `use_symbolic_links`); 1.3.x fails linking the host-built `applets/usage`
+# generator (undefined xstrtoull_* -- the host tool pulls in target libbb
+# symbols). Both predate the runtime-stable band and would likely segfault like
+# 1.5..1.7 even if built.
 1.4.2
 1.4.1
 1.4.0
