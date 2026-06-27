@@ -59,6 +59,11 @@ shvr_build_hush ()
 
 	cd "${build_srcdir}"
 
+	# Pre-kbuild-2.6.36 trees (1.3..1.16) carry mixed implicit/normal Makefile
+	# rules that GNU make >= 4.3 rejects; drop the bare normal targets so the
+	# Makefile parses. No-op on newer trees and the 1.2.x island.
+	shvr_busybox_fix_makefile
+
 	# Configurations to enable for hush-focused builds.
 	# Includes hush features, static linking, and individual applet support.
 	#

@@ -467,6 +467,16 @@ jobs:
               ash_1.21.1
               ash_1.20.2
               ash_1.19.4
+              ash_1.18.5
+              ash_1.17.4
+              ash_1.16.2
+              ash_1.15.3
+              ash_1.14.4
+              ash_1.13.4
+              ash_1.12.4
+              ash_1.11.3
+              ash_1.10.4
+              ash_1.8.3
               ash_1.2.2.1
               ash_1.2.2
               bash_5.3.15
@@ -522,6 +532,16 @@ jobs:
               hush_1.21.1
               hush_1.20.2
               hush_1.19.4
+              hush_1.18.5
+              hush_1.17.4
+              hush_1.16.2
+              hush_1.15.3
+              hush_1.14.4
+              hush_1.13.4
+              hush_1.12.4
+              hush_1.11.3
+              hush_1.10.4
+              hush_1.8.3
               hush_1.2.2.1
               hush_1.2.2
               ksh_shvrChistory-b_2016-01-10
@@ -752,6 +772,16 @@ jobs:
               ash_1.21.1
               ash_1.20.2
               ash_1.19.4
+              ash_1.18.5
+              ash_1.17.4
+              ash_1.16.2
+              ash_1.15.3
+              ash_1.14.4
+              ash_1.13.4
+              ash_1.12.4
+              ash_1.11.3
+              ash_1.10.4
+              ash_1.8.3
               ash_1.2.2.1
               ash_1.2.2
               bash_5.3.15
@@ -807,6 +837,16 @@ jobs:
               hush_1.21.1
               hush_1.20.2
               hush_1.19.4
+              hush_1.18.5
+              hush_1.17.4
+              hush_1.16.2
+              hush_1.15.3
+              hush_1.14.4
+              hush_1.13.4
+              hush_1.12.4
+              hush_1.11.3
+              hush_1.10.4
+              hush_1.8.3
               hush_1.2.2.1
               hush_1.2.2
               ksh_shvrChistory-b_2016-01-10
