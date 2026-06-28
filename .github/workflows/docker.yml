@@ -426,8 +426,8 @@ jobs:
               dash_0.5.12
               hush_1.38.0
               hush_1.37.0
-              ksh_shvrA93uplusm-v1.0.10
-              ksh_shvrA93uplusm-v1.0.9
+              ksh_1.0.10-uplusm
+              ksh_1.0.9-uplusm
               loksh_7.9
               loksh_7.8
               mksh_R59c
@@ -545,25 +545,25 @@ jobs:
               hush_1.8.3
               hush_1.2.2.1
               hush_1.2.2
-              ksh_shvrChistory-b_2016-01-10
-              ksh_shvrChistory-b_2012-08-01
-              ksh_shvrChistory-b_2011-03-10
-              ksh_shvrChistory-b_2010-10-26
-              ksh_shvrChistory-b_2010-06-21
-              ksh_shvrChistory-b_2008-11-04
-              ksh_shvrChistory-b_2008-06-08
-              ksh_shvrChistory-b_2008-02-02
-              ksh_shvrChistory-b_2007-01-11
-              ksh_shvrB2020-2020.0.0
-              ksh_shvrA93uplusm-v1.0.10
-              ksh_shvrA93uplusm-v1.0.9
-              ksh_shvrA93uplusm-v1.0.8
-              ksh_shvrA93uplusm-v1.0.7
-              ksh_shvrA93uplusm-v1.0.6
-              ksh_shvrA93uplusm-v1.0.4
-              ksh_shvrA93uplusm-v1.0.3
-              ksh_shvrA93uplusm-v1.0.2
-              ksh_shvrA93uplusm-v1.0.1
+              ksh_1.0.10-uplusm
+              ksh_1.0.9-uplusm
+              ksh_1.0.8-uplusm
+              ksh_1.0.7-uplusm
+              ksh_1.0.6-uplusm
+              ksh_1.0.4-uplusm
+              ksh_1.0.3-uplusm
+              ksh_1.0.2-uplusm
+              ksh_1.0.1-uplusm
+              ksh_0.2020-uplus
+              ksh_0.2014-vminus
+              ksh_0.2012-uplus
+              ksh_0.2011-u
+              ksh_0.2010-uminus
+              ksh_0.2010-tplus
+              ksh_0.2008-tminus
+              ksh_0.2008-t
+              ksh_0.2008-splus
+              ksh_0.2007-s
               loksh_7.9
               loksh_7.8
               loksh_7.7
@@ -732,8 +732,8 @@ jobs:
               dash_0.5.12
               hush_1.38.0
               hush_1.37.0
-              ksh_shvrA93uplusm-v1.0.10
-              ksh_shvrA93uplusm-v1.0.9
+              ksh_1.0.10-uplusm
+              ksh_1.0.9-uplusm
               loksh_7.9
               loksh_7.8
               mksh_R59c
@@ -851,25 +851,25 @@ jobs:
               hush_1.8.3
               hush_1.2.2.1
               hush_1.2.2
-              ksh_shvrChistory-b_2016-01-10
-              ksh_shvrChistory-b_2012-08-01
-              ksh_shvrChistory-b_2011-03-10
-              ksh_shvrChistory-b_2010-10-26
-              ksh_shvrChistory-b_2010-06-21
-              ksh_shvrChistory-b_2008-11-04
-              ksh_shvrChistory-b_2008-06-08
-              ksh_shvrChistory-b_2008-02-02
-              ksh_shvrChistory-b_2007-01-11
-              ksh_shvrB2020-2020.0.0
-              ksh_shvrA93uplusm-v1.0.10
-              ksh_shvrA93uplusm-v1.0.9
-              ksh_shvrA93uplusm-v1.0.8
-              ksh_shvrA93uplusm-v1.0.7
-              ksh_shvrA93uplusm-v1.0.6
-              ksh_shvrA93uplusm-v1.0.4
-              ksh_shvrA93uplusm-v1.0.3
-              ksh_shvrA93uplusm-v1.0.2
-              ksh_shvrA93uplusm-v1.0.1
+              ksh_1.0.10-uplusm
+              ksh_1.0.9-uplusm
+              ksh_1.0.8-uplusm
+              ksh_1.0.7-uplusm
+              ksh_1.0.6-uplusm
+              ksh_1.0.4-uplusm
+              ksh_1.0.3-uplusm
+              ksh_1.0.2-uplusm
+              ksh_1.0.1-uplusm
+              ksh_0.2020-uplus
+              ksh_0.2014-vminus
+              ksh_0.2012-uplus
+              ksh_0.2011-u
+              ksh_0.2010-uminus
+              ksh_0.2010-tplus
+              ksh_0.2008-tminus
+              ksh_0.2008-t
+              ksh_0.2008-splus
+              ksh_0.2007-s
               loksh_7.9
               loksh_7.8
               loksh_7.7
