@@ -4,6 +4,13 @@
 # now installs bison (AC_PROG_YACC picks "bison -y"). Newer dash (>=0.5.5.1)
 # ships a pre-generated arith.c and never needed it.
 
-# 0.5.2: autoreconf fails under strict modern automake -- the tree omits the
-# ./AUTHORS, ./NEWS, ./README files that GNU-mode automake requires.
-0.5.2
+# 0.5.2: RECOVERED (see VERSIONS.md, iteration 7). Three stacked breaks under
+# the modern musl toolchain: (1) autoreconf failed because the tree omits the
+# GNU-required ./AUTHORS/NEWS/README -- now built with `automake --foreign`;
+# (2) it would otherwise pull in libedit (only --with-libedit >=0.5.4) -- now
+# skipped like 0.5.3; (3) the sources include <sys/cdefs.h> and use the LFS64
+# API (struct stat64/open64/lseek64) that musl 1.2.5 dropped -- a compat shim
+# at <srcdir>/sys/cdefs.h supplies __P and macro-maps the *64 names back to
+# their base symbols, force-included via CPPFLAGS. No longer excluded.
+#
+# (No versions are currently excluded for dash.)
