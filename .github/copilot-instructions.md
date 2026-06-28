@@ -32,7 +32,7 @@ Example: `bash_5.2.37` means bash version 5.2 with 37 patches applied.
 Format: `<shell>_<version>` where version may include:
 - Simple versions: `dash_0.5.13`
 - Versions with patches: `bash_5.2.37` (baseline 5.2 + 37 patches)
-- Fork variants: `ksh_shvrA93uplusm-v1.0.10` (fork identifier + version)
+- Fork variants: `ksh_1.0.10-uplusm` / `ksh_0.2012-uplus` (native ksh token; fork implicit — see KSH.md)
 
 ## Key Workflows
 

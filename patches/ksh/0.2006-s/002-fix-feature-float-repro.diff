@@ -1,0 +1,28 @@
+--- src/lib/libast/features/float
++++ src/lib/libast/features/float
+@@ -876,6 +876,8 @@
+ 		unsigned _ast_int4_t	e;
+ 		_ast_dbl_exp_t		a;
+ 		_ast_dbl_exp_t		b;
++		memset(&a, 0, sizeof(a));
++		memset(&b, 0, sizeof(b));
+ 		a.f = 1;
+ 		b.f = 2;
+ 		for (i = 0; i < sizeof(a.e) / sizeof(a.e[0]); i++)
+@@ -909,6 +911,8 @@
+ 		unsigned _ast_int4_t	e;
+ 		_ast_fltmax_exp_t	a;
+ 		_ast_fltmax_exp_t	b;
++		memset(&a, 0, sizeof(a));
++		memset(&b, 0, sizeof(b));
+ 		a.f = 1;
+ 		b.f = 2;
+ 		for (i = 0; i < sizeof(a.e) / sizeof(a.e[0]); i++)
+@@ -1045,6 +1049,7 @@
+ 	#ifdef LDBL_MAX
+ 	{
+ 		long double	f;
++		memset(&f, 0, sizeof(f));
+ 	#if STRTO
+ 		char*	e;
+ 	#endif

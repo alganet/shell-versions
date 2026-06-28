@@ -1,0 +1,10 @@
+--- src/lib/libast/features/lib
++++ src/lib/libast/features/lib
+@@ -252,6 +252,7 @@
+ 		if (argv[1])
+ 			_exit(signal(SIGHUP, SIG_DFL) != SIG_IGN);
+ 		signal(SIGHUP, SIG_IGN);
++		_exit(2);	/* shvr: pin lib_posix_spawn status=2 for reproducibility */
+ 		if (posix_spawnattr_init(&attr))
+ 			_exit(0);
+ 		if (posix_spawnattr_setpgroup(&attr, 0))

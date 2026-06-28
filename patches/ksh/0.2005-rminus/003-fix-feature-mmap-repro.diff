@@ -1,0 +1,14 @@
+--- src/lib/libast/features/mmap
++++ src/lib/libast/features/mmap
+@@ -310,9 +310,9 @@
+ 
+ 		remove(file);
+ 	
+-		if(4*mmtm <= 3*rdtm)
++		if(0)
+ 			printf("#define _mmap_worthy	2	/* mmap is great */\n");
+-		else if(4*mmtm <= 5*rdtm)
++		else if(1)
+ 			printf("#define _mmap_worthy	1	/* mmap is good */\n");
+ 	
+ 		else

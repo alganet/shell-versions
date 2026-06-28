@@ -500,98 +500,128 @@ runs:
     - uses: ./.github/actions/single-download
       with:
         shvr_shell: ksh
-        shvr_version: "shvrChistory-b_2016-01-10"
-        cache_path: "ksh/shvrChistory-b_2016-01-10"
+        shvr_version: "1.0.10-uplusm"
+        cache_path: "ksh/1.0.10-uplusm"
     - uses: ./.github/actions/single-download
       with:
         shvr_shell: ksh
-        shvr_version: "shvrChistory-b_2012-08-01"
-        cache_path: "ksh/shvrChistory-b_2012-08-01"
+        shvr_version: "1.0.9-uplusm"
+        cache_path: "ksh/1.0.9-uplusm"
     - uses: ./.github/actions/single-download
       with:
         shvr_shell: ksh
-        shvr_version: "shvrChistory-b_2011-03-10"
-        cache_path: "ksh/shvrChistory-b_2011-03-10"
+        shvr_version: "1.0.8-uplusm"
+        cache_path: "ksh/1.0.8-uplusm"
     - uses: ./.github/actions/single-download
       with:
         shvr_shell: ksh
-        shvr_version: "shvrChistory-b_2010-10-26"
-        cache_path: "ksh/shvrChistory-b_2010-10-26"
+        shvr_version: "1.0.7-uplusm"
+        cache_path: "ksh/1.0.7-uplusm"
     - uses: ./.github/actions/single-download
       with:
         shvr_shell: ksh
-        shvr_version: "shvrChistory-b_2010-06-21"
-        cache_path: "ksh/shvrChistory-b_2010-06-21"
+        shvr_version: "1.0.6-uplusm"
+        cache_path: "ksh/1.0.6-uplusm"
     - uses: ./.github/actions/single-download
       with:
         shvr_shell: ksh
-        shvr_version: "shvrChistory-b_2008-11-04"
-        cache_path: "ksh/shvrChistory-b_2008-11-04"
+        shvr_version: "1.0.4-uplusm"
+        cache_path: "ksh/1.0.4-uplusm"
     - uses: ./.github/actions/single-download
       with:
         shvr_shell: ksh
-        shvr_version: "shvrChistory-b_2008-06-08"
-        cache_path: "ksh/shvrChistory-b_2008-06-08"
+        shvr_version: "1.0.3-uplusm"
+        cache_path: "ksh/1.0.3-uplusm"
     - uses: ./.github/actions/single-download
       with:
         shvr_shell: ksh
-        shvr_version: "shvrChistory-b_2008-02-02"
-        cache_path: "ksh/shvrChistory-b_2008-02-02"
+        shvr_version: "1.0.2-uplusm"
+        cache_path: "ksh/1.0.2-uplusm"
     - uses: ./.github/actions/single-download
       with:
         shvr_shell: ksh
-        shvr_version: "shvrChistory-b_2007-01-11"
-        cache_path: "ksh/shvrChistory-b_2007-01-11"
+        shvr_version: "1.0.1-uplusm"
+        cache_path: "ksh/1.0.1-uplusm"
     - uses: ./.github/actions/single-download
       with:
         shvr_shell: ksh
-        shvr_version: "shvrB2020-2020.0.0"
-        cache_path: "ksh/shvrB2020-2020.0.0"
+        shvr_version: "0.2020-uplus"
+        cache_path: "ksh/0.2020-uplus"
     - uses: ./.github/actions/single-download
       with:
         shvr_shell: ksh
-        shvr_version: "shvrA93uplusm-v1.0.10"
-        cache_path: "ksh/shvrA93uplusm-v1.0.10"
+        shvr_version: "0.2014-vminus"
+        cache_path: "ksh/0.2014-vminus"
     - uses: ./.github/actions/single-download
       with:
         shvr_shell: ksh
-        shvr_version: "shvrA93uplusm-v1.0.9"
-        cache_path: "ksh/shvrA93uplusm-v1.0.9"
+        shvr_version: "0.2012-uplus"
+        cache_path: "ksh/0.2012-uplus"
     - uses: ./.github/actions/single-download
       with:
         shvr_shell: ksh
-        shvr_version: "shvrA93uplusm-v1.0.8"
-        cache_path: "ksh/shvrA93uplusm-v1.0.8"
+        shvr_version: "0.2011-u"
+        cache_path: "ksh/0.2011-u"
     - uses: ./.github/actions/single-download
       with:
         shvr_shell: ksh
-        shvr_version: "shvrA93uplusm-v1.0.7"
-        cache_path: "ksh/shvrA93uplusm-v1.0.7"
+        shvr_version: "0.2010-uminus"
+        cache_path: "ksh/0.2010-uminus"
     - uses: ./.github/actions/single-download
       with:
         shvr_shell: ksh
-        shvr_version: "shvrA93uplusm-v1.0.6"
-        cache_path: "ksh/shvrA93uplusm-v1.0.6"
+        shvr_version: "0.2010-tplus"
+        cache_path: "ksh/0.2010-tplus"
     - uses: ./.github/actions/single-download
       with:
         shvr_shell: ksh
-        shvr_version: "shvrA93uplusm-v1.0.4"
-        cache_path: "ksh/shvrA93uplusm-v1.0.4"
+        shvr_version: "0.2008-tminus"
+        cache_path: "ksh/0.2008-tminus"
     - uses: ./.github/actions/single-download
       with:
         shvr_shell: ksh
-        shvr_version: "shvrA93uplusm-v1.0.3"
-        cache_path: "ksh/shvrA93uplusm-v1.0.3"
+        shvr_version: "0.2008-t"
+        cache_path: "ksh/0.2008-t"
     - uses: ./.github/actions/single-download
       with:
         shvr_shell: ksh
-        shvr_version: "shvrA93uplusm-v1.0.2"
-        cache_path: "ksh/shvrA93uplusm-v1.0.2"
+        shvr_version: "0.2008-splus"
+        cache_path: "ksh/0.2008-splus"
     - uses: ./.github/actions/single-download
       with:
         shvr_shell: ksh
-        shvr_version: "shvrA93uplusm-v1.0.1"
-        cache_path: "ksh/shvrA93uplusm-v1.0.1"
+        shvr_version: "0.2007-s"
+        cache_path: "ksh/0.2007-s"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: ksh
+        shvr_version: "0.2006-s"
+        cache_path: "ksh/0.2006-s"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: ksh
+        shvr_version: "0.2006-rplus"
+        cache_path: "ksh/0.2006-rplus"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: ksh
+        shvr_version: "0.2006-r"
+        cache_path: "ksh/0.2006-r"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: ksh
+        shvr_version: "0.2005-rminus"
+        cache_path: "ksh/0.2005-rminus"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: ksh
+        shvr_version: "0.2005-q"
+        cache_path: "ksh/0.2005-q"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: ksh
+        shvr_version: "0.2004-q"
+        cache_path: "ksh/0.2004-q"
     - uses: ./.github/actions/single-download
       with:
         shvr_shell: loksh
