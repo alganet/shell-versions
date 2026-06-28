@@ -512,6 +512,7 @@ jobs:
               dash_0.5.5.1
               dash_0.5.4
               dash_0.5.3
+              dash_0.5.2
               hush_1.38.0
               hush_1.37.0
               hush_1.36.1
@@ -817,6 +818,7 @@ jobs:
               dash_0.5.5.1
               dash_0.5.4
               dash_0.5.3
+              dash_0.5.2
               hush_1.38.0
               hush_1.37.0
               hush_1.36.1

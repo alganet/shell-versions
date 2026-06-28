@@ -57,9 +57,11 @@ shvr_download_dash ()
 	fi
 
 	# >=0.5.4 builds with the in-tree libedit for line editing/history.
+	# 0.5.2/0.5.3 predate --with-libedit (0.5.3 hardcodes -DSMALL) and must not
+	# pull it in.
 	case "$version" in
-	0.5.3) ;;
-	*)     shvr_download_libedit ;;
+	0.5.2|0.5.3) ;;
+	*)           shvr_download_libedit ;;
 	esac
 }
 
@@ -77,9 +79,12 @@ shvr_build_dash ()
 	then
 		./autogen.sh
 	else
+		# --foreign: pre-0.5.3 trees (e.g. 0.5.2) ship no AUTHORS/NEWS/README,
+		# which GNU-strictness automake demands; foreign mode skips that check.
+		# Harmless on versions that do carry the files.
 		aclocal
 		autoheader
-		automake --add-missing
+		automake --foreign --add-missing
 		autoconf
 	fi
 
@@ -101,7 +106,7 @@ shvr_build_dash ()
 	# which is the wrong static link order, so reorder it in the generated Makefile.
 	libedit_flag=
 	case "$version" in
-	0.5.3) ;;
+	0.5.2|0.5.3) ;;
 	*)
 		shvr_build_libedit
 		cd "${build_srcdir}"
@@ -109,6 +114,55 @@ shvr_build_dash ()
 		export CFLAGS="${CFLAGS} $(shvr_libedit_cflags)"
 		export LDFLAGS="${LDFLAGS} $(shvr_libedit_ldflags) $(shvr_ncurses_ldflags)"
 		export LIBS="-lncurses"
+		;;
+	esac
+
+	# 0.5.2 predates musl compatibility on two fronts. (1) Its sources include
+	# <sys/cdefs.h> (for the __P prototype macro), a glibc/BSD header musl does
+	# not ship. (2) It uses the transitional LFS64 API (struct stat64, open64,
+	# lseek64, ...) which musl 1.2.5 removed entirely, so those names are
+	# undefined. A single compat shim handles both: it defines __P/__BEGIN_DECLS
+	# and macro-maps every *64 name back to its base (musl is 64-bit-off_t
+	# natively, so the remap is exact). The shim lives at <srcdir>/sys/cdefs.h so
+	# the in-source `#include <sys/cdefs.h>` lines resolve via the Makefile's
+	# `-I..`, and it is force-included through CPPFLAGS so files that use stat64
+	# without including cdefs.h still get the mappings (configure overrides
+	# CFLAGS with "-g -O2 -Wall" but keeps CPPFLAGS, which the compile applies).
+	# 0.5.3+ dropped both the header include and the *64 API, so this is gated to
+	# 0.5.2 only.
+	case "$version" in
+	0.5.2)
+		mkdir -p "${build_srcdir}/sys"
+		cat > "${build_srcdir}/sys/cdefs.h" <<-'CDEFS'
+			#ifndef _SHVR_SYS_CDEFS_H
+			#define _SHVR_SYS_CDEFS_H
+			#ifndef __P
+			#define __P(args) args
+			#endif
+			#ifndef __BEGIN_DECLS
+			#define __BEGIN_DECLS
+			#define __END_DECLS
+			#endif
+			/* musl 1.2.5 dropped the LFS64 transitional names; map them back. */
+			#define stat64 stat
+			#define lstat64 lstat
+			#define fstat64 fstat
+			#define open64 open
+			#define creat64 creat
+			#define lseek64 lseek
+			#define off64_t off_t
+			#define ino64_t ino_t
+			#define blkcnt64_t blkcnt_t
+			#define fsblkcnt64_t fsblkcnt_t
+			#define fsfilcnt64_t fsfilcnt_t
+			#define dirent64 dirent
+			#define readdir64 readdir
+			#ifndef O_LARGEFILE
+			#define O_LARGEFILE 0
+			#endif
+			#endif
+		CDEFS
+		export CPPFLAGS="-include ${build_srcdir}/sys/cdefs.h"
 		;;
 	esac
 
@@ -123,7 +177,7 @@ shvr_build_dash ()
 
 	make
 
-	unset SOURCE_DATE_EPOCH TZ CC AR RANLIB CFLAGS LDFLAGS LIBS
+	unset SOURCE_DATE_EPOCH TZ CC AR RANLIB CFLAGS LDFLAGS LIBS CPPFLAGS
 
 	mkdir -p "${SHVR_DIR_OUT}/dash_${version}/bin"
 	cp "src/dash" "${SHVR_DIR_OUT}/dash_$version/bin/dash"
