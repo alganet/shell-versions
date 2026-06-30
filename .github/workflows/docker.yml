@@ -577,6 +577,17 @@ jobs:
               loksh_6.9
               loksh_6.8.1
               loksh_6.7.5
+              loksh_6.6
+              loksh_6.5
+              loksh_6.4
+              loksh_6.3
+              loksh_6.2
+              loksh_6.1
+              loksh_6.0
+              loksh_5.9
+              loksh_5.8
+              loksh_5.7
+              loksh_5.6
               mksh_R59c
               mksh_R58
               mksh_R57
@@ -883,6 +894,17 @@ jobs:
               loksh_6.9
               loksh_6.8.1
               loksh_6.7.5
+              loksh_6.6
+              loksh_6.5
+              loksh_6.4
+              loksh_6.3
+              loksh_6.2
+              loksh_6.1
+              loksh_6.0
+              loksh_5.9
+              loksh_5.8
+              loksh_5.7
+              loksh_5.6
               mksh_R59c
               mksh_R58
               mksh_R57
