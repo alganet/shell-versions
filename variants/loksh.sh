@@ -52,6 +52,16 @@ shvr_versioninfo_loksh ()
 	build_srcdir="${SHVR_DIR_SRC}/loksh/${version}"
 }
 
+# True for the pre-meson era (< 6.7.5): those tags ship a plain Makefile and no
+# meson.build, and upstream published no release tarball for them, so they are
+# fetched from the github archive and built via the Makefile path below. 6.7.5+
+# carry meson.build and a release tarball.
+shvr_loksh_premeson ()
+{
+	test "$version_major" -lt 6 ||
+		{ test "$version_major" -eq 6 && test "$version_minor" -lt 7; }
+}
+
 shvr_download_loksh ()
 {
 	shvr_versioninfo_loksh "$1"
@@ -60,7 +70,15 @@ shvr_download_loksh ()
 
 	if ! test -f "${build_srcdir}.tar.xz"
 	then
-		shvr_fetch "https://github.com/dimkr/loksh/releases/download/$version/loksh-$version.tar.xz" "${build_srcdir}.tar.xz"
+		if shvr_loksh_premeson
+		then
+			# No release asset for these tags; the github archive tag tarball
+			# ships the full Makefile-based tree. Saved as .tar.xz so the build
+			# untar finds it (tar autodetects the gzip payload).
+			shvr_fetch "https://github.com/dimkr/loksh/archive/refs/tags/$version.tar.gz" "${build_srcdir}.tar.xz"
+		else
+			shvr_fetch "https://github.com/dimkr/loksh/releases/download/$version/loksh-$version.tar.xz" "${build_srcdir}.tar.xz"
+		fi
 	fi
 
 	# loksh's meson.build links ncurses when found and otherwise compiles a
@@ -81,6 +99,89 @@ shvr_build_loksh ()
 	# Static musl build with reproducible flags
 	export SOURCE_DATE_EPOCH=1
 	export TZ=UTC
+
+	# Pre-meson tags (< 6.7.5) ship a plain Makefile (BIN_NAME ?= ksh) and a
+	# pre-generated config.h with the emacs/vi editor enabled, so they pull in
+	# <term.h>/<curses.h> and need the terminfo library at link time. Build the
+	# in-tree static ncurses and feed its include/lib flags through CFLAGS/LDFLAGS;
+	# the Makefile honours CC/CFLAGS/LDFLAGS. (The meson path below is unchanged
+	# for 6.7.5+.)
+	if shvr_loksh_premeson
+	then
+		shvr_build_ncurses
+		cd "${build_srcdir}"
+
+		# <=6.0 emacs.c includes <sys/queue.h> (TAILQ_* for the kill-ring), a
+		# BSD header musl does not ship. Drop a minimal TAILQ-only shim at
+		# <srcdir>/sys/queue.h, which the Makefile's `-isystem .` resolves.
+		# Harmless on 6.1+ (they do not include the header).
+		mkdir -p "${build_srcdir}/sys"
+		cat > "${build_srcdir}/sys/queue.h" <<-'QUEUE'
+			#ifndef _SHVR_SYS_QUEUE_H
+			#define _SHVR_SYS_QUEUE_H
+			#define TAILQ_HEAD(name, type) struct name { \
+			    struct type *tqh_first; struct type **tqh_last; }
+			#define TAILQ_HEAD_INITIALIZER(head) { NULL, &(head).tqh_first }
+			#define TAILQ_ENTRY(type) struct { \
+			    struct type *tqe_next; struct type **tqe_prev; }
+			#define TAILQ_FIRST(head) ((head)->tqh_first)
+			#define TAILQ_END(head) NULL
+			#define TAILQ_NEXT(elm, field) ((elm)->field.tqe_next)
+			#define TAILQ_INIT(head) do { \
+			    (head)->tqh_first = NULL; \
+			    (head)->tqh_last = &(head)->tqh_first; \
+			} while (0)
+			#define TAILQ_FOREACH(var, head, field) \
+			    for ((var) = TAILQ_FIRST(head); (var) != TAILQ_END(head); \
+			        (var) = TAILQ_NEXT(var, field))
+			#define TAILQ_FOREACH_SAFE(var, head, field, tvar) \
+			    for ((var) = TAILQ_FIRST(head); \
+			        (var) != TAILQ_END(head) && \
+			        ((tvar) = TAILQ_NEXT(var, field), 1); (var) = (tvar))
+			#define TAILQ_INSERT_TAIL(head, elm, field) do { \
+			    (elm)->field.tqe_next = NULL; \
+			    (elm)->field.tqe_prev = (head)->tqh_last; \
+			    *(head)->tqh_last = (elm); \
+			    (head)->tqh_last = &(elm)->field.tqe_next; \
+			} while (0)
+			#define TAILQ_REMOVE(head, elm, field) do { \
+			    if (((elm)->field.tqe_next) != NULL) \
+			        (elm)->field.tqe_next->field.tqe_prev = (elm)->field.tqe_prev; \
+			    else \
+			        (head)->tqh_last = (elm)->field.tqe_prev; \
+			    *(elm)->field.tqe_prev = (elm)->field.tqe_next; \
+			} while (0)
+			#endif
+		QUEUE
+
+		export CC="$(shvr_musl_cc) -static"
+		export CFLAGS="-frandom-seed=1 $(shvr_ncurses_cflags)"
+		# The Makefile sources -lncurses from `pkg-config --libs ncurses`, which
+		# is empty for the in-tree (pkg-config-less) ncurses, so add the library
+		# explicitly -- after the objects in the link line (LDFLAGS is appended
+		# last) so the static terminfo symbols (cur_term/tputs/setupterm) resolve.
+		export LDFLAGS="-Wl,--build-id=none $(shvr_ncurses_ldflags) -lncurses"
+
+		# Pass these through the ENVIRONMENT, not `make VAR=...`: the Makefiles
+		# extend their own flags with `CFLAGS += -I. ...` (6.x uses `override`,
+		# 5.x a plain `+=`), and a command-line assignment would disable that
+		# append and drop the tree's own `-I.`/`-isystem .` (which is what locates
+		# the sys/queue.h shim) and `-DEMACS -DVI`. An environment value is the
+		# base that `+=` adds to, so both flag sets survive.
+		make
+
+		unset SOURCE_DATE_EPOCH TZ CC CFLAGS LDFLAGS
+
+		mkdir -p "${SHVR_DIR_OUT}/loksh_${version}/bin"
+		cp "ksh" "${SHVR_DIR_OUT}/loksh_$version/bin/loksh"
+
+		"$(shvr_musl_strip)" --strip-all "${SHVR_DIR_OUT}/loksh_${version}/bin/loksh"
+		touch -d "@1" "${SHVR_DIR_OUT}/loksh_${version}/bin/loksh"
+		chmod 755 "${SHVR_DIR_OUT}/loksh_${version}/bin/loksh"
+
+		"${SHVR_DIR_OUT}/loksh_${version}/bin/loksh" -c "echo loksh version $version"
+		return
+	fi
 
 	# Build the in-tree static ncurses so loksh's `dependency('ncurses')` resolves;
 	# without it loksh compiles the -DSMALL reduced build, dropping persistent

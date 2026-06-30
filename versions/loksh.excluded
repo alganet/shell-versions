@@ -1,18 +1,14 @@
-# Versions without an upstream release tarball. dimkr/loksh started
-# publishing release assets at 6.7.5; earlier git tags exist but the
-# URL https://github.com/dimkr/loksh/releases/download/$v/loksh-$v.tar.xz
-# returns 404, so shvr_download_loksh can't fetch the source.
-# Older patches inside the 6.7 series (6.7, 6.7.1..6.7.4) also lack
-# tarballs; the series filter picks 6.7.5 automatically so they don't
-# need to be listed here.
-6.6
-6.5
-6.4
-6.3
-6.2
-6.1
-6.0
-5.9
-5.8
-5.7
-5.6
+# 5.6..6.6: RECOVERED (see VERSIONS.md, iteration 10). The earlier "no upstream
+# release tarball" note was right that releases/download 404s for these tags,
+# but the github archive tag tarball does exist -- it just ships the pre-meson
+# tree (a plain Makefile + pre-generated config.h, no meson.build). shvr_loksh
+# now fetches that archive and builds it via the Makefile for < 6.7.5, wiring in
+# the in-tree static ncurses for <term.h>/cur_term/tputs (the Makefile sources
+# -lncurses from a pkg-config the in-tree build lacks) and dropping a minimal
+# TAILQ-only <sys/queue.h> shim for <=6.0 (musl omits that BSD header). Build
+# flags pass through the environment so each Makefile's own `CFLAGS +=` additions
+# (-I./-isystem ., -DEMACS/-DVI) survive. 6.7.5+ keep the meson path.
+#
+# Older patches inside the 6.7 series (6.7, 6.7.1..6.7.4) still lack any tarball
+# (release OR archive that builds with meson); the series filter picks 6.7.5
+# automatically so they don't surface. No versions are currently excluded.

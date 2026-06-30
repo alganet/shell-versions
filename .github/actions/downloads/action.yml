@@ -659,6 +659,61 @@ runs:
         cache_path: "loksh/6.7.5"
     - uses: ./.github/actions/single-download
       with:
+        shvr_shell: loksh
+        shvr_version: "6.6"
+        cache_path: "loksh/6.6"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: loksh
+        shvr_version: "6.5"
+        cache_path: "loksh/6.5"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: loksh
+        shvr_version: "6.4"
+        cache_path: "loksh/6.4"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: loksh
+        shvr_version: "6.3"
+        cache_path: "loksh/6.3"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: loksh
+        shvr_version: "6.2"
+        cache_path: "loksh/6.2"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: loksh
+        shvr_version: "6.1"
+        cache_path: "loksh/6.1"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: loksh
+        shvr_version: "6.0"
+        cache_path: "loksh/6.0"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: loksh
+        shvr_version: "5.9"
+        cache_path: "loksh/5.9"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: loksh
+        shvr_version: "5.8"
+        cache_path: "loksh/5.8"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: loksh
+        shvr_version: "5.7"
+        cache_path: "loksh/5.7"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: loksh
+        shvr_version: "5.6"
+        cache_path: "loksh/5.6"
+    - uses: ./.github/actions/single-download
+      with:
         shvr_shell: mksh
         shvr_version: "R59c"
         cache_path: "mksh/R59c"
