@@ -86,9 +86,21 @@ shvr_build_mksh ()
 	export CFLAGS="-frandom-seed=1"
 	export LDFLAGS="-Wl,--build-id=none"
 
+	# <R30 generates its signal-name table by preprocessing a synthetic source
+	# and parsing the expanded numbers (the "Generating list of signal names"
+	# step, and the NSIG probe before it). The cross gcc's default `-E` emits
+	# `# line` markers around every macro expansion, so `NSIG`/`SIGxxx` land on
+	# their own lines split from the surrounding text; Build.sh then reads NSIG=0
+	# and aborts with `exit 1`. Forcing the preprocessor to `-E -P` (no line
+	# markers) keeps each expansion inline. Build.sh honours a pre-set $CPP, so
+	# export it for the affected band; R30+ extract signals without this.
+	if test "$version_major" -lt 30
+	then export CPP="$(shvr_musl_cc) -static -E -P -"
+	fi
+
 	sh ./Build.sh
 
-	unset SOURCE_DATE_EPOCH TZ CC AR RANLIB CFLAGS LDFLAGS
+	unset SOURCE_DATE_EPOCH TZ CC AR RANLIB CFLAGS LDFLAGS CPP
 
 	mkdir -p "${SHVR_DIR_OUT}/mksh_${version}/bin"
 	cp "mksh" "${SHVR_DIR_OUT}/mksh_$version/bin"

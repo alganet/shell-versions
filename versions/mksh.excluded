@@ -11,15 +11,24 @@
 # neutralises the conftest cta macro uniformly (it never affects the real
 # binary, which keeps its own asserts in sh.h). No longer excluded.
 
-# <R30: gensigs.sh signal-list extraction yields NSIG=0 against modern
-# musl headers, leaving an empty signames.inc.
-R29g
-R29f
-R29e
-R29d
-R29c
-R29b
-R29
+# R29 series, R20, R19: RECOVERED (see VERSIONS.md, iteration 9). The build-time
+# signal-name extraction read NSIG=0 not because of musl headers but because the
+# cross gcc's default `-E` interleaves `# line` markers around each macro
+# expansion, splitting `NSIG`/`SIGxxx` from their numeric values; the Build.sh
+# probe then parsed an empty NSIG and aborted. Forcing the preprocessor to
+# `-E -P` (no line markers) for <R30 fixes the R29 series and the R19/R20 floor.
+# shvr_build_mksh now exports CPP="<cross-gcc> -static -E -P -" for version_major
+# < 30 (Build.sh honours a pre-set $CPP). No longer excluded.
+
+# R21..R28: still excluded. The -E -P fix is necessary but not sufficient here:
+# this band predates the inline NSIG probe and uses a separate gensigs.sh whose
+# own `$CC -E -` call hits the same fragmentation (fixable the same way), but
+# behind it sit further musl breaks that differ per sub-range -- R24..R26 fail
+# next on `sh.h: unknown type name 'int32_t'` (stdint not pulled in), R21..R23
+# still trip histrap.c's `#error "Define sys_sig{name,list}"`, and R27..R28 fail
+# earlier still. Recovering them needs a stacked, per-sub-range effort; left for
+# a future iteration. Every patch of each series is enumerated so the series
+# filter cannot promote an older fallback into .all.
 R28
 R27e
 R27d
@@ -34,5 +43,3 @@ R24
 R23
 R22
 R21
-R20
-R19

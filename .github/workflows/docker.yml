@@ -617,6 +617,9 @@ jobs:
               mksh_R32
               mksh_R31d
               mksh_R30
+              mksh_R29g
+              mksh_R20
+              mksh_R19
               oksh_7.9
               oksh_7.8
               oksh_7.7
@@ -934,6 +937,9 @@ jobs:
               mksh_R32
               mksh_R31d
               mksh_R30
+              mksh_R29g
+              mksh_R20
+              mksh_R19
               oksh_7.9
               oksh_7.8
               oksh_7.7

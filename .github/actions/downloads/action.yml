@@ -859,6 +859,21 @@ runs:
         cache_path: "mksh/R30"
     - uses: ./.github/actions/single-download
       with:
+        shvr_shell: mksh
+        shvr_version: "R29g"
+        cache_path: "mksh/R29g"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: mksh
+        shvr_version: "R20"
+        cache_path: "mksh/R20"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: mksh
+        shvr_version: "R19"
+        cache_path: "mksh/R19"
+    - uses: ./.github/actions/single-download
+      with:
         shvr_shell: oksh
         shvr_version: "7.9"
         cache_path: "oksh/7.9"
