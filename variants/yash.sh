@@ -60,16 +60,19 @@ shvr_download_yash ()
 
 	if ! test -f "${build_srcdir}.tar.gz"
 	then
-		# Upstream stopped publishing release tarballs at or below 2.40 (the
-		# releases/download asset 404s), but the git tag still resolves and
-		# its auto-generated archive tarball ships the in-tree ./configure.
-		# 2.41+ keep the release tarball so their committed source checksums
-		# stay valid. Both URLs are saved as .tar.gz (tar autodetects xz/gz).
-		if test "$version_major" -eq 2 && test "$version_minor" -le 40
+		# Upstream publishes release tarballs only from 2.41 up (the
+		# releases/download asset 404s at or below 2.40, and never existed for
+		# the 1.x / 0.x line), but the git tag still resolves and its
+		# auto-generated archive tarball ships the in-tree ./configure. 2.41+
+		# keep the release tarball so their committed source checksums stay
+		# valid; everything older fetches the archive tag tarball. Both URLs are
+		# saved as .tar.gz (tar autodetects xz/gz).
+		if test "$version_major" -gt 2 ||
+			{ test "$version_major" -eq 2 && test "$version_minor" -ge 41; }
 		then
-			shvr_fetch "https://github.com/magicant/yash/archive/refs/tags/${version}.tar.gz" "${build_srcdir}.tar.gz"
-		else
 			shvr_fetch "https://github.com/magicant/yash/releases/download/${version}/yash-${version}.tar.xz" "${build_srcdir}.tar.gz"
+		else
+			shvr_fetch "https://github.com/magicant/yash/archive/refs/tags/${version}.tar.gz" "${build_srcdir}.tar.gz"
 		fi
 	fi
 
@@ -140,7 +143,17 @@ shvr_build_yash ()
 		$nls_flag \
 		--prefix="${SHVR_DIR_OUT}/yash_$version"
 
-	make
+	# Default target is `all: yash depends`, where `depends` reruns the
+	# freshly-linked binary's `makedepend` builtin to refresh dev-time
+	# dependency lines. On 2.7 that builtin exits non-zero and aborts `make`,
+	# even though the `yash` binary is already fully linked; building the
+	# `yash` target directly skips the dev-only depends step. The produced
+	# binary is identical (depends never relinks it), so this is byte-neutral
+	# for the versions that don't need it -- but it is only required for 2.7.
+	case "$version" in
+	2.7) make yash ;;
+	*)   make ;;
+	esac
 
 	unset SOURCE_DATE_EPOCH TZ CC AR RANLIB CFLAGS CADDS LDFLAGS
 
