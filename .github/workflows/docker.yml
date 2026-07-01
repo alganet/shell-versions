@@ -708,6 +708,7 @@ jobs:
               yashrs_3.1.0
               yashrs_3.0.8
               yashrs_3.0.7
+              yashrs_3.0.6
               yashrs_3.0.5
               yashrs_3.0.4
               yashrs_3.0.3
@@ -1028,6 +1029,7 @@ jobs:
               yashrs_3.1.0
               yashrs_3.0.8
               yashrs_3.0.7
+              yashrs_3.0.6
               yashrs_3.0.5
               yashrs_3.0.4
               yashrs_3.0.3
