@@ -703,6 +703,20 @@ jobs:
               yash_2.12
               yash_2.11
               yash_2.10
+              yash_2.9
+              yash_2.8
+              yash_2.7
+              yash_2.6
+              yash_2.5
+              yash_2.4
+              yash_2.3
+              yash_2.2.2
+              yash_2.1.1
+              yash_2.0
+              yash_1.5
+              yash_1.4.1
+              yash_1.3.1
+              yash_1.2
               yashrs_3.2.1
               yashrs_3.2.0
               yashrs_3.1.0
@@ -1023,6 +1037,20 @@ jobs:
               yash_2.12
               yash_2.11
               yash_2.10
+              yash_2.9
+              yash_2.8
+              yash_2.7
+              yash_2.6
+              yash_2.5
+              yash_2.4
+              yash_2.3
+              yash_2.2.2
+              yash_2.1.1
+              yash_2.0
+              yash_1.5
+              yash_1.4.1
+              yash_1.3.1
+              yash_1.2
               yashrs_3.2.1
               yashrs_3.2.0
               yashrs_3.1.0
