@@ -3,10 +3,12 @@
 0.1.0
 0.2.0
 
-# 3.0.6: yash-env fails to compile against the pinned toolchain —
-#   error[E0599]: no method named `validate` found for
-#   mutable reference `&mut ScheduledWakerQueue`
-# This is an isolated mid-band break: 3.0.5 and 3.0.7 both build cleanly, so
-# it is not a toolchain-floor issue, just a bad point release. (Probed
-# 2026-06-10.)
-3.0.6
+# 3.0.6: RECOVERED (see VERSIONS.md, iteration 8). yash-env's
+# waker/queue.rs calls self.validate() unconditionally, but the validate
+# method is gated #[cfg(debug_assertions)], so the --release build failed with
+# error[E0599]: no method named `validate` ... &mut ScheduledWakerQueue. 3.0.5
+# and 3.0.7 are unaffected (upstream gates the call sites there). The new
+# patches/yashrs/3.0.6/001-waker-queue-release-validate.diff adds a
+# #[cfg(not(debug_assertions))] no-op validate (release builds compile out the
+# debug consistency check anyway), and shvr_build_yashrs now applies
+# patches/yashrs/<v>/ like the other variants. No longer excluded.

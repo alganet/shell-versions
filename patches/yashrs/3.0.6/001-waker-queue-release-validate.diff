@@ -1,0 +1,17 @@
+--- yash-env/src/waker/queue.rs
++++ yash-env/src/waker/queue.rs
+@@ -238,6 +238,14 @@
+             assert!(self.wakers_by_time.contains(&(*wake_time, entry.clone())));
+         }
+     }
++
++    /// No-op counterpart compiled into release builds, where the
++    /// debug-only `validate` above is absent. The queue calls `self.validate()`
++    /// unconditionally, so without this the `--release` build fails to resolve
++    /// the method (E0599). Matches the upstream fix that lands in 3.0.7.
++    #[cfg(not(debug_assertions))]
++    #[inline(always)]
++    fn validate(&self) {}
+ }
+ 
+ #[cfg(test)]

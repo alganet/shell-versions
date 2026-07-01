@@ -68,6 +68,13 @@ shvr_build_yashrs ()
 
 	cd "${build_srcdir}"
 
+	if test -d "${SHVR_DIR_SELF}/patches/yashrs/$version"
+	then
+		find "${SHVR_DIR_SELF}/patches/yashrs/$version" -type f -o -type l | sort | while read -r patch_file
+		do patch -p0 < "$patch_file"
+		done
+	fi
+
 	# Static musl build with reproducible flags. The linker is pinned to
 	# musl-cross-make's cross-gcc so the resulting bytes are independent of
 	# the build host's stock cc (which on a non-x86_64 host can't produce
