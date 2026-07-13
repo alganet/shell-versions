@@ -91,24 +91,24 @@ jobs:
         run: |
           set -ex
           # ensure clean state and perform an initial download (should succeed)
-          rm -f build/dash/0.5.13.tar.gz
-          sh shvr.sh download dash_0.5.13
+          rm -f build/dash/0.5.13.4.tar.gz
+          sh shvr.sh download dash_0.5.13.4
 
       - name: 'Corrupt checksum and assert download fails'
         run: |
           set -ex
           # backup checksum file
-          cp checksums/sources/dash/0.5.13.tar.gz.sha256sums checksums/sources/dash/0.5.13.tar.gz.sha256sums.bak
+          cp checksums/sources/dash/0.5.13.4.tar.gz.sha256sums checksums/sources/dash/0.5.13.4.tar.gz.sha256sums.bak
           # corrupt checksum: replace hash with ones; keep filename
-          printf '1111111111111111111111111111111111111111111111111111111111111111  %s\n' "0.5.13.tar.gz" > checksums/sources/dash/0.5.13.tar.gz.sha256sums
+          printf '1111111111111111111111111111111111111111111111111111111111111111  %s\n' "0.5.13.4.tar.gz" > checksums/sources/dash/0.5.13.4.tar.gz.sha256sums
           # remove any existing artifact to force re-download
-          rm -f build/dash/0.5.13.tar.gz
+          rm -f build/dash/0.5.13.4.tar.gz
           set +e
           # attempt download once; if the worker network is flaky this may fail
           # for reasons other than checksum mismatch. Capture logs and RC so we
           # can differentiate mismatch from other failures.
           # run the download and capture the exit code; write logs to file
-          sh shvr.sh download dash_0.5.13 > download.log 2>&1
+          sh shvr.sh download dash_0.5.13.4 > download.log 2>&1
           rc=$?
           # show the log to the step output so it appears in CI
           cat download.log
@@ -128,6 +128,6 @@ jobs:
       - name: 'Restore checksum and verify success'
         run: |
           set -ex
-          mv checksums/sources/dash/0.5.13.tar.gz.sha256sums.bak checksums/sources/dash/0.5.13.tar.gz.sha256sums
-          rm -f build/dash/0.5.13.tar.gz
-          sh shvr.sh download dash_0.5.13
+          mv checksums/sources/dash/0.5.13.4.tar.gz.sha256sums.bak checksums/sources/dash/0.5.13.4.tar.gz.sha256sums
+          rm -f build/dash/0.5.13.4.tar.gz
+          sh shvr.sh download dash_0.5.13.4
