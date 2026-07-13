@@ -47,6 +47,12 @@ FROM ${TOOLCHAIN_BASE} AS toolchain
     COPY "checksums/sources/musl-cross-make-*" "/shvr/checksums/sources/"
     COPY "common/musl-cross-make.sh" "/shvr/common/musl-cross-make.sh"
 
+    # shvr.sh sources common/patches.sh unconditionally, so it is part of the
+    # entry point rather than of any one variant: without it even `musl-build`,
+    # which patches nothing, cannot start. Cacheability is unaffected in practice
+    # because shvr.sh is copied here too and changes far more often.
+    COPY "common/patches.sh" "/shvr/common/patches.sh"
+
     COPY "shvr.sh" "/shvr/shvr.sh"
     RUN chmod +x "/shvr/shvr.sh"
 

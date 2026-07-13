@@ -15,6 +15,12 @@ SHVR_SKIP_VERIFY_SHA256="${SHVR_SKIP_VERIFY_SHA256:-0}"
 # per-shell via a shvr_current_count_<shell> hook). See shvr_regen_current.
 SHVR_CURRENT_LINEAGES="${SHVR_CURRENT_LINEAGES:-2}"
 
+# shvr_patchset / shvr_patch_list / shvr_apply_patches. Sourced here because
+# shvr_recipe_files resolves a target's patches without sourcing its variant;
+# the variants that patch source it again, by literal path, so that the patch
+# engine lands in their OID (see the note in common/patches.sh).
+. "${SHVR_DIR_SELF}/common/patches.sh"
+
 shvr ()
 {
 	mkdir -p "${SHVR_DIR_SRC}"
@@ -227,6 +233,123 @@ shvr_current ()
 	fi
 
 	shvr_each current "${@:-}"
+}
+
+# Print the patches that apply to each <shell>_<version>, in apply order, as
+# repo-relative paths. This is how you reproduce a tree by hand, without shvr:
+#
+#	tar xf yash-2.30.tar.xz && cd yash-2.30
+#	for p in $(sh shvr.sh patches yash_2.30); do patch -p0 < "$OLDPWD/$p"; done
+shvr_patches ()
+{
+	if test -z "$*"
+	then set -- $(printf '%s ' $(shvr_targets))
+	fi
+
+	for target in "$@"
+	do
+		shvr_patch_list "$(shvr_patchset "${target%%_*}")" "${target#*_}" |
+			sed "s#^${SHVR_DIR_SELF}/##"
+	done
+}
+
+# Check every patch set for drift against the versions it claims to patch.
+# Catches the migration mistakes that would otherwise only surface as a failed
+# build (a typo'd selector) or as silent under-patching (a version quietly
+# dropped from a band).
+shvr_check_patches ()
+{
+	rc=0
+
+	for pset in $(find "${SHVR_DIR_SELF}/patches" -mindepth 1 -maxdepth 1 -type d |
+		sed 's#.*/##' | sort)
+	do
+		pdir="${SHVR_DIR_SELF}/patches/${pset}"
+
+		if ! test -f "${pdir}/series"
+		then
+			echo "check_patches: ${pset}: no series file (pre-series layout)" >&2
+			continue
+		fi
+
+		# Which shells draw from this set, and hence which version tokens are
+		# legal selectors. Usually the set's own name; busybox feeds ash + hush.
+		shells=""
+		for shell in $(shvr_interpreters)
+		do
+			if test "$(shvr_patchset "$shell")" = "$pset"
+			then shells="${shells} ${shell}"
+			fi
+		done
+
+		if test -z "$shells"
+		then
+			echo "check_patches: ${pset}: patch set matches no shell" >&2
+			rc=1
+			continue
+		fi
+
+		known="$(for shell in $shells
+			do shvr_read_versions "$shell" all | sed "s/^${shell}_//"
+			done | sort -u)"
+
+		# Every patch a selector picks for a known version must exist, and every
+		# version a selector names must be a version we actually build.
+		sed -e ':x' -e '/\\$/{N;s/\\\n//;bx' -e '}' "${pdir}/series" |
+			while IFS= read -r line
+			do
+				case "$line" in
+				''|'#'*) continue ;;
+				esac
+
+				# shellcheck disable=SC2086
+				set -- $line
+				pfile="$1"
+				shift
+
+				if ! test -f "${pdir}/${pfile}"
+				then
+					echo "check_patches: ${pset}: series names a missing patch: ${pfile}" >&2
+					exit 1
+				fi
+
+				for pat in "$@"
+				do
+					matched=0
+					# shellcheck disable=SC2086
+					for v in $known
+					do
+						case "$v" in
+						$pat) matched=1; break ;;
+						esac
+					done
+
+					if test "$matched" = 0
+					then
+						echo "check_patches: ${pset}: selector '${pat}' (${pfile}) matches no known version" >&2
+						exit 1
+					fi
+				done
+			done || rc=1
+
+		# Every .diff in the directory must be reachable from the series file,
+		# or it is dead weight nobody applies.
+		for pfile in $(find "$pdir" -maxdepth 1 -name '*.diff' | sed 's#.*/##' | sort)
+		do
+			if ! sed -e ':x' -e '/\\$/{N;s/\\\n//;bx' -e '}' "${pdir}/series" |
+				grep -qE "^[[:space:]]*${pfile}[[:space:]]"
+			then
+				echo "check_patches: ${pset}: ${pfile} is not referenced by series" >&2
+				rc=1
+			fi
+		done
+	done
+
+	if test "$rc" = 0
+	then echo "check_patches: ok"
+	fi
+
+	return "$rc"
 }
 
 shvr_update ()
@@ -1025,14 +1148,65 @@ shvr_toolchain_fingerprint ()
 	} | sha256sum | cut -d' ' -f1
 }
 
-# List the files that define how <shell>_<version> is built: its variant, every
-# ${SHVR_DIR_SELF}/... file the variant references (sourced common/*.sh helpers
-# and directly-used files like ksh's getconf-wrapper), excluding the update-only
-# common/version_sources/, and the version's patch directory with symlinks
-# resolved (so shared _common patch bodies are captured). Folded into the build
-# identity so a recipe edit changes the OID and forces a rebuild — turning a
-# forgotten checksum regeneration into a loud verify failure instead of a silent
-# skip. Paths are emitted absolute; callers hash content under relative names.
+# Print $1 and, transitively, every ${SHVR_DIR_SELF}/... file it references
+# (sourced common/*.sh helpers and directly-used files like ksh's getconf
+# wrapper), excluding the update-only common/version_sources/. Each file is
+# emitted once.
+#
+# Transitive matters: common/libedit.sh sources common/ncurses.sh, so without
+# following that edge an ncurses.sh edit would leave dash's and osh's OIDs
+# unchanged and CI would skip rebuilding them.
+shvr_recipe_closure ()
+{
+	rc_nl='
+'
+	rc_queue="$1"
+	rc_seen=""
+
+	while test -n "$rc_queue"
+	do
+		rc_file="${rc_queue%%${rc_nl}*}"
+		case "$rc_queue" in
+		*"${rc_nl}"*) rc_queue="${rc_queue#*${rc_nl}}" ;;
+		*)            rc_queue="" ;;
+		esac
+
+		case "${rc_nl}${rc_seen}" in
+		*"${rc_nl}${rc_file}${rc_nl}"*) continue ;;
+		esac
+		rc_seen="${rc_seen}${rc_file}${rc_nl}"
+
+		printf '%s\n' "$rc_file"
+
+		rc_refs="$(grep -oE '\$\{SHVR_DIR_SELF\}/[A-Za-z0-9_./-]+' "$rc_file" |
+			sed "s#\\\${SHVR_DIR_SELF}#${SHVR_DIR_SELF}#" |
+			grep -v '/common/version_sources/' || true)"
+
+		# Unquoted on purpose: split on whitespace. `set -f` (line 6) is on, so
+		# no globbing; no recipe path contains a space.
+		# shellcheck disable=SC2086
+		for rc_ref in $rc_refs
+		do
+			if test -f "$rc_ref"
+			then rc_queue="${rc_queue}${rc_ref}${rc_nl}"
+			fi
+		done
+	done
+}
+
+# List the files that define how <shell>_<version> is built: its variant, the
+# transitive closure of the ${SHVR_DIR_SELF}/... files that variant references,
+# and the patches selected for this version. Folded into the build identity so a
+# recipe edit changes the OID and forces a rebuild — turning a forgotten checksum
+# regeneration into a loud verify failure instead of a silent skip. Paths are
+# emitted absolute; callers hash content under relative names.
+#
+# Only the *selected* patches are listed, never the whole set: hashing
+# patches/<set>/series wholesale would move every yash target's OID whenever any
+# yash selector changed, whereas hashing the resolved list keeps each version
+# isolated and still catches every meaningful edit (a version added to a selector
+# grows that version's list; an edited body changes content; a rename changes the
+# name line shvr_build_identity emits).
 shvr_recipe_files ()
 {
 	shell="$1"
@@ -1040,19 +1214,20 @@ shvr_recipe_files ()
 	variant="${SHVR_DIR_SELF}/variants/${shell}.sh"
 
 	if test -f "$variant"
-	then
-		printf '%s\n' "$variant"
-		grep -oE '\$\{SHVR_DIR_SELF\}/[A-Za-z0-9_./-]+' "$variant" |
-			sed "s#\\\${SHVR_DIR_SELF}#${SHVR_DIR_SELF}#" |
-			grep -v '/common/version_sources/' |
-			while IFS= read -r ref
-			do test -f "$ref" && printf '%s\n' "$ref"
-			done
+	then shvr_recipe_closure "$variant"
 	fi
 
-	pdir="${SHVR_DIR_SELF}/patches/${shell}/${version}"
-	if test -d "$pdir"
-	then find -L "$pdir" -type f
+	# ash and hush share the busybox source tree, hence one patch set.
+	pset="$(shvr_patchset "$shell")"
+
+	if test -f "${SHVR_DIR_SELF}/patches/${pset}/series"
+	then shvr_patch_list "$pset" "$version"
+	elif test -d "${SHVR_DIR_SELF}/patches/${pset}/${version}"
+	then
+		# Pre-series layout: patches/<set>/<version>/NNN-*.diff, where shared
+		# bodies are symlinks into _common/ (hence -L, to hash the real content).
+		# Removed once every set carries a series file.
+		find -L "${SHVR_DIR_SELF}/patches/${pset}/${version}" -type f
 	fi
 }
 
