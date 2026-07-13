@@ -5,6 +5,7 @@
 
 . "${SHVR_DIR_SELF}/common/musl-cross-make.sh"
 . "${SHVR_DIR_SELF}/common/rustup.sh"
+. "${SHVR_DIR_SELF}/common/patches.sh"
 
 shvr_current_yashrs ()
 {
@@ -68,12 +69,7 @@ shvr_build_yashrs ()
 
 	cd "${build_srcdir}"
 
-	if test -d "${SHVR_DIR_SELF}/patches/yashrs/$version"
-	then
-		find "${SHVR_DIR_SELF}/patches/yashrs/$version" -type f -o -type l | sort | while read -r patch_file
-		do patch -p0 < "$patch_file"
-		done
-	fi
+	shvr_apply_patches yashrs "$version"
 
 	# Static musl build with reproducible flags. The linker is pinned to
 	# musl-cross-make's cross-gcc so the resulting bytes are independent of

@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: ISC
 
 . "${SHVR_DIR_SELF}/common/musl-cross-make.sh"
+. "${SHVR_DIR_SELF}/common/patches.sh"
 
 shvr_static_mksh ()
 {
@@ -70,12 +71,7 @@ shvr_build_mksh ()
 
 	cd "${build_srcdir}"
 
-	if test -d "${SHVR_DIR_SELF}/patches/mksh/$version"
-	then
-		find "${SHVR_DIR_SELF}/patches/mksh/$version" -type f -o -type l | sort | while read -r patch_file
-		do patch -p0 < "$patch_file"
-		done
-	fi
+	shvr_apply_patches mksh "$version"
 
 	# Static musl build with reproducible flags
 	export SOURCE_DATE_EPOCH=1

@@ -1,3 +1,14 @@
+# SPDX-FileCopyrightText: 2025 Alexandre Gomes Gaigalas <alganet@gmail.com>
+# SPDX-License-Identifier: ISC
+
+Description: add the release-build counterpart of WakerQueue::validate
+ queue.rs defines validate() only under #[cfg(debug_assertions)] but calls
+ self.validate() unconditionally, so the --release build cannot resolve the
+ method (E0599). Add the no-op release counterpart.
+Origin: vendor, shell-versions
+Forwarded: not-needed
+Applied-Upstream: yes, 3.0.7
+
 --- yash-env/src/waker/queue.rs
 +++ yash-env/src/waker/queue.rs
 @@ -238,6 +238,14 @@
