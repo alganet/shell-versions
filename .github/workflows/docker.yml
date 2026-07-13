@@ -105,15 +105,31 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
   toolchain:
-    needs: [mirror]
+    needs: [mirror, plan]
+    # Nothing to build a toolchain for when the plan is empty, and the image is
+    # multi-GB to push. The build jobs gate on the same counts, and a job whose
+    # `needs` was skipped is skipped too, so this cannot leave a build job without
+    # its toolchain: if either arch has work, both toolchains are published.
+    if: needs.plan.outputs.count_amd64 != '0' || needs.plan.outputs.count_arm64 != '0'
     # One toolchain per arch, each on a native runner so its musl-cross-make and
     # Rust target build natively. Cache refs/scopes are arch-suffixed so the two
     # arches never cross-pollute each other's layers.
+    #
+    # This job PUBLISHES the toolchain as an image, and the build jobs consume it
+    # by name (see the build-contexts note there). It is not merely a cache warmer:
+    # a build job must never be able to re-derive the toolchain itself, because
+    # "re-derive" means compiling musl-cross-make in every one of ~250 jobs.
     strategy:
       fail-fast: false
       matrix:
         arch: [amd64, arm64]
     runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
+    env:
+      # Run-scoped, like the mirror job's tags: written by exactly one job in this
+      # run, read by that run's build jobs, and reaped by ghcr-cleanup.yml's
+      # `run-` filter. PR and push runs can never overwrite each other, and no
+      # long-lived shared tag is involved, so there is no cross-run race.
+      TOOLCHAIN_IMAGE: ghcr.io/${{ github.repository }}:run-${{ github.run_id }}-toolchain-${{ matrix.arch }}
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/toolchain-downloads
@@ -130,22 +146,24 @@ jobs:
         with:
           driver-opts: image=${{ needs.mirror.outputs.buildkit_ref }}
 
-      - name: Build toolchain image
-        uses: docker/build-push-action@v7
+      - name: Build and push toolchain image
+        uses: ./.github/actions/build-push-retry
         with:
           context: .
           target: toolchain
-          push: false
+          push: "true"
+          tags: ${{ env.TOOLCHAIN_IMAGE }}
           platforms: linux/${{ matrix.arch }}
+          # Single-arch image, and nothing consumes an attestation manifest here;
+          # provenance would only add a manifest list the build jobs must resolve.
+          provenance: false
           build-args: |
             TOOLCHAIN_BASE=${{ needs.mirror.outputs.toolchain_ref }}
             RUNTIME_BASE=${{ needs.mirror.outputs.runtime_ref }}
-          # Publish the toolchain build cache to the registry as well as GHA. A
-          # registry cache is content-addressed and reliably shared across the
-          # whole build matrix; the GHA cache is not dependable for a multi-GB
-          # toolchain read concurrently by every build job. Without this, when the
-          # toolchain layer changes (e.g. a shvr.sh edit) the per-target
-          # buildcaches go stale and every build job recompiles musl-cross-make.
+          # Layer cache for THIS job only, so an unchanged toolchain is not
+          # recompiled every run. It is no longer load-bearing for the build jobs:
+          # they consume the image above, so a cache miss here costs one job per
+          # arch rather than a musl-cross-make compile in all ~250 of them.
           cache-to: |
             type=gha,scope=toolchain-${{ matrix.arch }}-v3,mode=max
             ${{ github.event_name == 'push' && format('type=registry,ref=ghcr.io/{0}:cache-toolchain-{1},mode=max', github.repository, matrix.arch) || '' }}
@@ -273,9 +291,28 @@ jobs:
             TARGETS=${{ matrix.target }}
             TOOLCHAIN_BASE=${{ needs.mirror.outputs.toolchain_ref }}
             RUNTIME_BASE=${{ needs.mirror.outputs.runtime_ref }}
+          # THE toolchain contract. `toolchain` names a stage in the Dockerfile
+          # (FROM ${TOOLCHAIN_BASE} AS toolchain), and a named build context of the
+          # same name REPLACES that stage with this image -- so the stage is never
+          # executed here and musl-cross-make is never compiled in a build job.
+          #
+          # This is what makes toolchain reuse a fact rather than a cache-hit
+          # lottery. Previously the stage was local and reuse depended entirely on
+          # a layer-cache hit; a stale or evicted cache silently recompiled the
+          # toolchain in EVERY one of the ~250 build jobs. Silently, because a
+          # cache miss is not an error in BuildKit -- it just does the work again.
+          # Now a missing toolchain image is a hard pull failure instead.
+          #
+          # Do not delete this and do not "simplify" it back into cache-from.
+          # workflow-verification.yml fails the build if an `artifacts` build has
+          # no toolchain build context.
+          build-contexts: |
+            toolchain=docker-image://ghcr.io/${{ github.repository }}:run-${{ github.run_id }}-toolchain-${{ matrix.arch }}
+          # Only the builder-stage layers are cached per target now. The toolchain
+          # cache refs are deliberately absent: the stage above is not built here,
+          # so listing them would just make every job pull multi-GB of cache
+          # metadata it cannot use.
           cache-from: |
-            type=registry,ref=ghcr.io/${{ github.repository }}:cache-toolchain-${{ matrix.arch }}
-            type=gha,scope=toolchain-${{ matrix.arch }}-v3
             type=registry,ref=ghcr.io/${{ github.repository }}:buildcache-${{ matrix.target }}-${{ matrix.arch }}
           cache-to: >-
             ${{ github.event_name == 'push'
@@ -347,9 +384,28 @@ jobs:
             TARGETS=${{ matrix.target }}
             TOOLCHAIN_BASE=${{ needs.mirror.outputs.toolchain_ref }}
             RUNTIME_BASE=${{ needs.mirror.outputs.runtime_ref }}
+          # THE toolchain contract. `toolchain` names a stage in the Dockerfile
+          # (FROM ${TOOLCHAIN_BASE} AS toolchain), and a named build context of the
+          # same name REPLACES that stage with this image -- so the stage is never
+          # executed here and musl-cross-make is never compiled in a build job.
+          #
+          # This is what makes toolchain reuse a fact rather than a cache-hit
+          # lottery. Previously the stage was local and reuse depended entirely on
+          # a layer-cache hit; a stale or evicted cache silently recompiled the
+          # toolchain in EVERY one of the ~250 build jobs. Silently, because a
+          # cache miss is not an error in BuildKit -- it just does the work again.
+          # Now a missing toolchain image is a hard pull failure instead.
+          #
+          # Do not delete this and do not "simplify" it back into cache-from.
+          # workflow-verification.yml fails the build if an `artifacts` build has
+          # no toolchain build context.
+          build-contexts: |
+            toolchain=docker-image://ghcr.io/${{ github.repository }}:run-${{ github.run_id }}-toolchain-${{ matrix.arch }}
+          # Only the builder-stage layers are cached per target now. The toolchain
+          # cache refs are deliberately absent: the stage above is not built here,
+          # so listing them would just make every job pull multi-GB of cache
+          # metadata it cannot use.
           cache-from: |
-            type=registry,ref=ghcr.io/${{ github.repository }}:cache-toolchain-${{ matrix.arch }}
-            type=gha,scope=toolchain-${{ matrix.arch }}-v3
             type=registry,ref=ghcr.io/${{ github.repository }}:buildcache-${{ matrix.target }}-${{ matrix.arch }}
           cache-to: >-
             ${{ github.event_name == 'push'
