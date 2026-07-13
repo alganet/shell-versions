@@ -71,6 +71,14 @@ FROM ${TOOLCHAIN_BASE} AS toolchain
         rustup target add "$(shvr_rust_target)"
 
 
+# In CI this `toolchain` is NOT this file's toolchain stage. The build jobs pass
+# a named build context (`--build-context toolchain=docker-image://...`) pointing
+# at the image the toolchain job published, which replaces the stage wholesale, so
+# musl-cross-make is compiled once per arch per run instead of once per build job.
+# See the build-contexts note in .github/workflows/docker.yml.
+#
+# A plain `docker build` passes no such context, so the stage above is used and a
+# local build still works end to end -- just slowly, the first time.
 FROM toolchain AS builder
 
     # Copy contents

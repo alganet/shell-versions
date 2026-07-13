@@ -34,6 +34,53 @@ jobs:
             exit 1
           fi
 
+      # The toolchain contract, enforced.
+      #
+      # `FROM toolchain AS builder` names a stage that lives in the Dockerfile, so
+      # any build of a stage below it can re-derive the toolchain -- which means
+      # compiling musl-cross-make. BuildKit does that SILENTLY on a cache miss: it
+      # is not an error, just half an hour of work, once per build job, across
+      # ~250 jobs. That is the bug this check exists to prevent from returning.
+      #
+      # The build jobs must therefore pass a `toolchain` named build context
+      # pointing at the image the toolchain job published, which replaces the
+      # stage outright. Then reuse is a fact, and a missing toolchain image is a
+      # loud pull failure rather than a quiet recompile.
+      #
+      # So: every step that builds the `artifacts` target must carry a
+      # `toolchain=docker-image://` build context. If you are here because this
+      # check failed, do not delete the check.
+      - name: Check the toolchain is consumed as an image, not rebuilt
+        run: |
+          awk '
+            function flush() {
+              if (artifacts && !context) {
+                printf "%s:%d: builds target `artifacts` with no toolchain build context\n", FILENAME, start
+                bad = 1
+              }
+              artifacts = 0; context = 0
+            }
+            /^[[:space:]]*-[[:space:]]+(name|uses):/ { flush(); start = NR }
+            /^[[:space:]]*target:[[:space:]]*artifacts[[:space:]]*$/ { artifacts = 1 }
+            /toolchain=docker-image:\/\// { context = 1 }
+            END {
+              flush()
+              if (bad) {
+                print ""
+                print "Every `artifacts` build must consume the toolchain image published by"
+                print "the toolchain job, via:"
+                print ""
+                print "    build-contexts: |"
+                print "      toolchain=docker-image://ghcr.io/<repo>:run-<run_id>-toolchain-<arch>"
+                print ""
+                print "Without it the build re-derives the toolchain stage from source, and"
+                print "BuildKit does so silently -- every build job recompiles musl-cross-make."
+                exit 1
+              }
+            }
+          ' .github/workflows/docker.yml
+          echo "toolchain contract: ok"
+
   verify-checksums:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
