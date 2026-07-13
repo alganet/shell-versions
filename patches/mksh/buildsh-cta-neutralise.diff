@@ -1,0 +1,25 @@
+# SPDX-FileCopyrightText: 2025 Alexandre Gomes Gaigalas <alganet@gmail.com>
+# SPDX-License-Identifier: ISC
+
+Description: neutralise Build.sh's compile-time-assert macro
+ Build.sh probes the target with a struct full of compile-time assertions, each
+ declaring `char name[(assertion) ? 1 : -1]` so that a false assertion is a
+ negative array size and fails the compile. GCC bug 55009 makes gcc reject that
+ construct even when the assertion holds, so the probe fails for reasons that
+ have nothing to do with the target and Build.sh aborts. Drop the array bound:
+ the assertions are re-checked properly by the real build.
+Origin: vendor, shell-versions
+Bug: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=55009
+Forwarded: not-needed
+
+--- Build.sh
++++ Build.sh
+@@ -1856,7 +1856,7 @@
+ 	#define CHAR_BIT 8	/* defuse this test on really legacy systems */
+ 	#endif
+ 	struct ctasserts {
+-	#define cta(name, assertion) char name[(assertion) ? 1 : -1]
++	#define cta(name, assertion) char name /* shvr: neutralised (gcc bug 55009) */
+ /* this one should be defined by the standard */
+ cta(char_is_1_char, (sizeof(char) == 1) && (sizeof(signed char) == 1) &&
+     (sizeof(unsigned char) == 1));

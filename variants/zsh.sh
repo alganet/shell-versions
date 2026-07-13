@@ -6,6 +6,7 @@
 . "${SHVR_DIR_SELF}/common/musl-cross-make.sh"
 . "${SHVR_DIR_SELF}/common/ncurses.sh"
 . "${SHVR_DIR_SELF}/common/pcre.sh"
+. "${SHVR_DIR_SELF}/common/patches.sh"
 
 shvr_static_zsh ()
 {
@@ -111,12 +112,7 @@ shvr_build_zsh ()
 
 	cd "${build_srcdir}"
 
-	if test -d "${SHVR_DIR_SELF}/patches/zsh/$version"
-	then
-		find "${SHVR_DIR_SELF}/patches/zsh/$version" -type f -o -type l | sort | while read -r patch_file
-		do patch -p0 < "$patch_file"
-		done
-	fi
+	shvr_apply_patches zsh "$version"
 
 	# Static musl build with reproducible flags
 	export SOURCE_DATE_EPOCH=1

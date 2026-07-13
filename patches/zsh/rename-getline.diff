@@ -1,0 +1,35 @@
+# SPDX-FileCopyrightText: 2025 Alexandre Gomes Gaigalas <alganet@gmail.com>
+# SPDX-License-Identifier: ISC
+
+Description: rename ZLE's getline() widget to zlegetline()
+ The ZLE "get-line" widget is a C function literally named getline(), and its
+ generated prototype conflicts with the POSIX getline() musl declares in
+ <stdio.h> ("conflicting types for 'getline'"). A -Dgetline=... macro cannot fix
+ this, because it would rename musl's declaration too. Rename the widget itself,
+ in the definition and in Src/Zle/iwidgets.list; the .epro prototype is
+ regenerated from the .c, so it needs no edit.
+Origin: vendor, shell-versions
+Forwarded: not-needed
+
+--- Src/Zle/zle_hist.c
++++ Src/Zle/zle_hist.c
+@@ -558,7 +558,7 @@
+ 
+ /**/
+ int
+-getline(char **args)
++zlegetline(char **args)
+ {
+     char *s = (char *)getlinknode(bufstack);
+ 
+--- Src/Zle/iwidgets.list
++++ Src/Zle/iwidgets.list
+@@ -56,7 +56,7 @@
+ "expand-word", expandword, 0
+ "forward-char", forwardchar, 0
+ "forward-word", forwardword, 0
+-"get-line", getline, 0
++"get-line", zlegetline, 0
+ "gosmacs-transpose-chars", gosmacstransposechars, 0
+ "history-beginning-search-backward", historybeginningsearchbackward, 0
+ "history-beginning-search-forward", historybeginningsearchforward, 0
