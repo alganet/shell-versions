@@ -1,15 +1,18 @@
 # SPDX-FileCopyrightText: 2026 Alexandre Gomes Gaigalas <alganet@gmail.com>
 # SPDX-License-Identifier: ISC
-#
-# yash 2.61's common.h uses
-#   #if defined(__has_builtin) && __has_builtin(__builtin_unreachable)
-# to guard a __builtin_unreachable() call. C preprocessor #if does not
-# short-circuit at the syntactic level, so on compilers where
-# __has_builtin is built-in (not a macro), defined(__has_builtin) is
-# false but the second clause still has to parse — and __has_builtin(x)
-# is rejected as a function-like macro that doesn't exist. Splitting
-# the guard into nested #ifdef/#if avoids the parse of the inner clause
-# when the outer guard fails.
+
+Description: split the __has_builtin guard into nested #ifdef/#if
+ common.h guards a __builtin_unreachable() call with
+   #if defined(__has_builtin) && __has_builtin(__builtin_unreachable)
+ but the C preprocessor's #if does not short-circuit at the syntactic level: on
+ a compiler where __has_builtin is built in rather than a macro,
+ defined(__has_builtin) is false yet the second clause must still parse, and
+ __has_builtin(x) is then rejected as a function-like macro that does not exist.
+ Nesting the guards keeps the inner clause from being parsed when the outer one
+ fails.
+Origin: vendor, shell-versions
+Forwarded: not-needed
+
 --- common.h	2026-01-01 00:00:00 +0000
 +++ common.h	2026-01-01 00:00:00 +0000
 @@ -54,15 +54,19 @@

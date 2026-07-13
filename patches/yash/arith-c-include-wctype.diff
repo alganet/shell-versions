@@ -1,0 +1,28 @@
+# SPDX-FileCopyrightText: 2025 Alexandre Gomes Gaigalas <alganet@gmail.com>
+# SPDX-License-Identifier: ISC
+
+Description: include <wctype.h> instead of hand-declaring the isw*() functions
+ arith.c declares iswalpha/iswalnum/iswdigit/iswspace itself rather than
+ including <wctype.h>, on the assumption that pulling in the header is not worth
+ it. musl defines those functions as macros, so the hand-written extern
+ declarations clash with the real ones and arith.c fails to compile. Including
+ the standard header is correct on every libc.
+Origin: vendor, shell-versions
+Forwarded: not-needed
+Applied-Upstream: yes, 2.45 dropped the hand declarations
+
+--- arith.c
++++ arith.c
+@@ -38,11 +38,7 @@
+  * (to[a-z]*) */
+ 
+ 
+-/* we declare these functions instead of including <wctype.h> */
+-extern int iswalpha(wint_t wc);
+-extern int iswalnum(wint_t wc);
+-extern int iswdigit(wint_t wc);
+-extern int iswspace(wint_t wc);
++#include <wctype.h>
+ 
+ 
+ typedef struct word_T {
