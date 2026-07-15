@@ -84,13 +84,22 @@ For shells with idiosyncratic versions (like bash), implement `shvr_versioninfo_
 
 Versioning parsing is crucial for caching downloads and applying patches correctly.
 
-### Patch Application Pattern (Bash Only)
+### Patch Application
 
-Bash downloads a baseline tarball plus individual patch files, then applies them sequentially:
-```sh
-# Download bash-5.2.tar.gz plus bash52-001 through bash52-037
-# Extract tarball, apply patches in order with patch(1)
-```
+Source patches live in `patches/<set>/`: a flat directory of `.diff` files plus a
+`series` file saying which versions each one applies to. A variant sources
+`common/patches.sh` and calls `shvr_apply_patches <shell> "$version"` from the
+extracted source root; patches go on with `patch -p0`, in series order. See
+`patches/README.md`.
+
+Do not patch a source tree with `sed -i` or a heredoc. If a fix cannot be a diff
+because it replaces a file wholesale, it belongs in `payloads/`, not in the
+variant.
+
+Bash additionally downloads the *upstream* GNU patches (bash52-001 …) at build
+time and applies them separately, before its own series — see
+`shvr_download_bash`. Those are cached under `build/bash/<baseline>-patches/` and
+are not stored in the repo.
 
 ### Rust-Based Shells (brush, yashrs)
 
@@ -112,7 +121,8 @@ All scripts use POSIX shell syntax (#!/usr/bin/env sh) and must work with dash/b
 
 - **Built binaries**: Installed to `${SHVR_DIR_OUT}/<shell>_<version>/bin/<shell>`
 - **Build sources**: Downloaded to `${SHVR_DIR_SRC}/<shell>/<version>`
-- **Patches**: Stored in `build/<shell>/<baseline>-patches/` directory
+- **Patches**: `patches/<set>/` — flat `.diff` files plus a `series` file (see `patches/README.md`)
+- **Payloads**: `payloads/<shell>/` — files copied over something wholesale, where a diff would say nothing
 
 ## Testing
 

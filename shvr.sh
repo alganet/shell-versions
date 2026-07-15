@@ -1210,17 +1210,7 @@ shvr_recipe_files ()
 	fi
 
 	# ash and hush share the busybox source tree, hence one patch set.
-	pset="$(shvr_patchset "$shell")"
-
-	if test -f "${SHVR_DIR_SELF}/patches/${pset}/series"
-	then shvr_patch_list "$pset" "$version"
-	elif test -d "${SHVR_DIR_SELF}/patches/${pset}/${version}"
-	then
-		# Pre-series layout: patches/<set>/<version>/NNN-*.diff, where shared
-		# bodies are symlinks into _common/ (hence -L, to hash the real content).
-		# Removed once every set carries a series file.
-		find -L "${SHVR_DIR_SELF}/patches/${pset}/${version}" -type f
-	fi
+	shvr_patch_list "$(shvr_patchset "$shell")" "$version"
 }
 
 # Build identity (OID) for one target: a hash of the toolchain fingerprint, the
