@@ -144,34 +144,10 @@ shvr_build_ksh ()
 
 	cd "${build_srcdir}"
 
+	# Includes conf-tab-pin-pid-max-*, which pins libast's PID_MAX probe so the
+	# build host's /proc/sys/kernel/pid_max does not reach the binary. See the
+	# header on those patches.
 	shvr_apply_patches ksh "$version"
-
-	# libast's conf.tab PID_MAX probe reads the build host's
-	# /proc/sys/kernel/pid_max at build time and bakes the result into ksh's
-	# getconf table. That value is kernel-config-dependent (Docker Desktop's
-	# linuxkit VM reports 99999, a default Linux host reports 4194304), so it
-	# silently breaks cross-host reproducibility — and the getconf(1) wrapper
-	# cannot intercept this direct /proc read. Pin it to the standard Linux
-	# 64-bit default (4194304), which is exactly what a default host, the CI
-	# runners and the getconf wrapper already yield, so amd64 and existing
-	# arm64 CI outputs are unchanged.
-	if test -f src/lib/libast/comp/conf.tab
-	then
-		# Pin every form of the PID_MAX value the probe can settle on: the
-		# #ifdef branch (v = PID_MAX), the newer #else fallback (v = 99999) and
-		# the older history-fork fallback (v = -1) all become 4194304, and the
-		# /proc read is neutered. Without the -1 case the older fork would bake
-		# -1 (the probe's stdout is what conf.sh captures), differing from the
-		# 4194304 a default host's /proc already yields and breaking the amd64
-		# checksums too. 'v = -1;' occurs only in this block in the affected
-		# version, and is absent (no-op) in all others.
-		sed -i \
-			-e 's#open("/proc/sys/kernel/pid_max", 0)#open("/nonexistent/shvr-pinned-pid-max", 0)#' \
-			-e 's/v = PID_MAX;/v = 4194304;/' \
-			-e 's/v = 99999;/v = 4194304;/' \
-			-e 's/v = -1;/v = 4194304;/' \
-			src/lib/libast/comp/conf.tab
-	fi
 
 	export SOURCE_DATE_EPOCH=1
 	export TZ=UTC
@@ -184,10 +160,15 @@ shvr_build_ksh ()
 
 		shvr_install_getconf_wrapper
 
-		# Replace dylink.sh with a no-op - we only need static binaries
+		# Replace dylink.sh with a no-op - we only need static binaries.
+		# A payload rather than a patch: this overwrites the script wholesale
+		# and its content differs across the trees, so a diff would be a
+		# full-file replacement per version, saying nothing a copy does not.
+		# Stays below the mtime normalisation above, so the stub keeps the
+		# build-time mtime it has always had (mamake is mtime-sensitive).
 		if test -f "src/cmd/INIT/dylink.sh"
 		then
-			printf '#!/bin/sh\nexit 0\n' > "src/cmd/INIT/dylink.sh"
+			cp "${SHVR_DIR_SELF}/payloads/ksh/dylink-noop.sh" "src/cmd/INIT/dylink.sh"
 			chmod +x "src/cmd/INIT/dylink.sh"
 		fi
 

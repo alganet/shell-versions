@@ -1,0 +1,34 @@
+# SPDX-FileCopyrightText: 2026 Alexandre Gomes Gaigalas <alganet@gmail.com>
+# SPDX-License-Identifier: ISC
+
+Description: pin libast's PID_MAX probe to the Linux 64-bit default
+ conf.tab's PID_MAX probe reads the *build host's* /proc/sys/kernel/pid_max and
+ bakes the result into ksh's getconf table. That value is kernel-config dependent
+ -- Docker Desktop's linuxkit VM reports 99999, a stock Linux host reports
+ 4194304 -- so the binary is not reproducible across build hosts, and the
+ getconf(1) wrapper cannot intercept a direct /proc read.
+ .
+ Point the open() at a path that cannot exist, and pin every fallback the probe
+ can then settle on to 4194304: the #ifdef branch (v = PID_MAX), the #else
+ fallback (v = 99999), and -- on 0.2010-tplus alone -- an older v = -1 fallback.
+ 4194304 is what a stock host, the CI runners and the getconf wrapper all already
+ yield, so no output changes.
+ .
+ The four oldest history forks (0.2007-s, 0.2008-*) have no fallback assignment
+ at all: their probe simply fails once the open() fails, which is what the build
+ they were recovered under already did.
+Origin: vendor, shell-versions
+Reproducibility: required -- a build-host /proc value is baked into the binary
+Forwarded: not-needed
+
+--- src/lib/libast/comp/conf.tab
++++ src/lib/libast/comp/conf.tab
+@@ -382,7 +382,7 @@
+ 		int	fd;
+ 		int	n;
+ 		char	buf[1024];
+-		if ((fd = open("/proc/sys/kernel/pid_max", 0)) < 0)
++		if ((fd = open("/nonexistent/shvr-pinned-pid-max", 0)) < 0)
+ 			return 1;
+ 		if ((n = read(fd, buf, sizeof(buf)-1)) < 2)
+ 			return 1;
