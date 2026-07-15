@@ -1,0 +1,51 @@
+# SPDX-FileCopyrightText: 2026 Alexandre Gomes Gaigalas <alganet@gmail.com>
+# SPDX-License-Identifier: ISC
+#
+# <patch-file>  <version> [<version> ...]
+#
+# Applied with `patch -p0` from the extracted source root, in the order listed
+# here, to every version whose token matches one of the patterns on the line.
+#
+# Order matters in one place: long-double-nan-pad and fix-feature-float both
+# edit src/lib/libast/features/float, and the pad must go in first. Everything
+# else touches a file of its own, so the grouping below is for reading, not for
+# correctness.
+#
+# The 0.* tokens are the folded history forks (see shvr_ksh_hist_tag); the
+# *-uplusm tokens are the ksh93u+m line. 0.2020-uplus needs no patches.
+
+# The generated ksh93 Mamfile differs per history snapshot, so this one cannot be
+# shared -- there is a copy per version and that is inherent, not duplication.
+mamfile-0.2007-s.diff  0.2007-s
+mamfile-0.2008-splus.diff  0.2008-splus
+mamfile-0.2008-t.diff  0.2008-t
+mamfile-0.2008-tminus.diff  0.2008-tminus
+mamfile-0.2010-tplus.diff  0.2010-tplus
+mamfile-0.2010-uminus.diff  0.2010-uminus
+mamfile-0.2011-u.diff  0.2011-u
+mamfile-0.2012-uplus.diff  0.2012-uplus
+mamfile-0.2014-vminus.diff  0.2014-vminus
+
+long-double-nan-pad-0.2012-uplus.diff  0.2012-uplus
+long-double-nan-pad-0.2014-vminus.diff  0.2014-vminus
+long-double-nan-pad-1.0.2-uplusm.diff  1.0.2-uplusm
+long-double-nan-pad-history-A.diff  0.2008-splus 0.2008-t 0.2008-tminus
+long-double-nan-pad-history-B.diff  0.2010-tplus 0.2010-uminus 0.2011-u
+
+fix-feature-float-0.2007-s.diff  0.2007-s
+fix-feature-float-0.2012-uplus.diff  0.2012-uplus
+fix-feature-float-0.2014-vminus.diff  0.2014-vminus
+fix-feature-float-1.0.10-uplusm.diff  1.0.10-uplusm
+fix-feature-float-1.0.4-uplusm.diff  1.0.4-uplusm
+fix-feature-float-93u-A.diff  1.0.1-uplusm 1.0.2-uplusm 1.0.3-uplusm
+fix-feature-float-93u-B.diff  1.0.6-uplusm 1.0.7-uplusm 1.0.8-uplusm 1.0.9-uplusm
+fix-feature-float-history-A.diff  0.2008-splus 0.2008-t 0.2008-tminus
+fix-feature-float-history-B.diff  0.2010-tplus 0.2010-uminus 0.2011-u
+
+fix-feature-mmap-93u-A.diff  1.0.1-uplusm 1.0.2-uplusm 1.0.3-uplusm 1.0.4-uplusm
+fix-feature-mmap-93u-B.diff  1.0.10-uplusm 1.0.6-uplusm 1.0.7-uplusm 1.0.8-uplusm 1.0.9-uplusm
+fix-feature-mmap-history.diff  0.2007-s 0.2008-splus 0.2008-t 0.2008-tminus 0.2010-tplus 0.2010-uminus 0.2011-u 0.2012-uplus
+
+fix-feature-tvlib-93u-A.diff  1.0.1-uplusm 1.0.2-uplusm 1.0.3-uplusm 1.0.4-uplusm
+fix-feature-tvlib-93u-B.diff  1.0.10-uplusm 1.0.6-uplusm 1.0.7-uplusm 1.0.8-uplusm 1.0.9-uplusm
+

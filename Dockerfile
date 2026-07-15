@@ -92,6 +92,7 @@ FROM toolchain AS builder
     COPY "checksums/" "/shvr/checksums"
     COPY "common/" "/shvr/common"
     COPY "patches/" "/shvr/patches"
+    COPY "payloads/" "/shvr/payloads"
     COPY "variants/" "/shvr/variants"
 
     ARG TARGETS
