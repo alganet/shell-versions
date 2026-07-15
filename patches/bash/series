@@ -1,0 +1,20 @@
+# SPDX-FileCopyrightText: 2026 Alexandre Gomes Gaigalas <alganet@gmail.com>
+# SPDX-License-Identifier: ISC
+#
+# <patch-file>  <version> [<version> ...]
+#
+# Applied with `patch -p0` from the extracted source root, in the order listed
+# here, to every version whose token matches one of the patterns on the line.
+#
+# Not to be confused with bash's UPSTREAM patches (bash52-001 and friends), which
+# are downloaded at build time and applied separately -- see shvr_download_bash.
+# These are ours.
+#
+# The contents are version-derived, so there is one per baseline rather than one
+# shared diff. 2.05a and later dropped the esyscmd mechanism entirely.
+
+distribution-2.01.diff  2.01.0
+distribution-2.02.diff  2.02.0
+distribution-2.03.diff  2.03.0
+distribution-2.04.diff  2.04.0
+distribution-2.05.diff  2.05.0

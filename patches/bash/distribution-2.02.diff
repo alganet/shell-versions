@@ -1,0 +1,27 @@
+# SPDX-FileCopyrightText: 2026 Alexandre Gomes Gaigalas <alganet@gmail.com>
+# SPDX-License-Identifier: ISC
+
+Description: restore the _distribution/_patchlevel files configure.in reads
+ bash 2.02's configure.in gets the version through
+ esyscmd(cat _distribution) / esyscmd(cat _patchlevel), but the release tarball
+ does not ship those two files -- they existed only in the maintainer's tree, and
+ the shipped configure already had the values baked in.
+ .
+ We regenerate configure (the shipped one predates the toolchain), so the esyscmd
+ calls run for real, come back empty, and BASHVERS/BASHPATCH end up blank.
+ support/mkversion.sh then bails with a usage message, version.h is never
+ written, and the build dies. Put the two files back.
+ .
+ Contents are version-derived, so there is one patch per baseline. 2.05a dropped
+ this mechanism, hence 2.01..2.05 only.
+Origin: vendor, shell-versions
+Forwarded: not-needed
+
+--- /dev/null
++++ _distribution
+@@ -0,0 +1 @@
++2.02
+--- /dev/null
++++ _patchlevel
+@@ -0,0 +1 @@
++0

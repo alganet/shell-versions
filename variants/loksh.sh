@@ -111,48 +111,16 @@ shvr_build_loksh ()
 		shvr_build_ncurses
 		cd "${build_srcdir}"
 
-		# <=6.0 emacs.c includes <sys/queue.h> (TAILQ_* for the kill-ring), a
-		# BSD header musl does not ship. Drop a minimal TAILQ-only shim at
-		# <srcdir>/sys/queue.h, which the Makefile's `-isystem .` resolves.
-		# Harmless on 6.1+ (they do not include the header).
-		mkdir -p "${build_srcdir}/sys"
-		cat > "${build_srcdir}/sys/queue.h" <<-'QUEUE'
-			#ifndef _SHVR_SYS_QUEUE_H
-			#define _SHVR_SYS_QUEUE_H
-			#define TAILQ_HEAD(name, type) struct name { \
-			    struct type *tqh_first; struct type **tqh_last; }
-			#define TAILQ_HEAD_INITIALIZER(head) { NULL, &(head).tqh_first }
-			#define TAILQ_ENTRY(type) struct { \
-			    struct type *tqe_next; struct type **tqe_prev; }
-			#define TAILQ_FIRST(head) ((head)->tqh_first)
-			#define TAILQ_END(head) NULL
-			#define TAILQ_NEXT(elm, field) ((elm)->field.tqe_next)
-			#define TAILQ_INIT(head) do { \
-			    (head)->tqh_first = NULL; \
-			    (head)->tqh_last = &(head)->tqh_first; \
-			} while (0)
-			#define TAILQ_FOREACH(var, head, field) \
-			    for ((var) = TAILQ_FIRST(head); (var) != TAILQ_END(head); \
-			        (var) = TAILQ_NEXT(var, field))
-			#define TAILQ_FOREACH_SAFE(var, head, field, tvar) \
-			    for ((var) = TAILQ_FIRST(head); \
-			        (var) != TAILQ_END(head) && \
-			        ((tvar) = TAILQ_NEXT(var, field), 1); (var) = (tvar))
-			#define TAILQ_INSERT_TAIL(head, elm, field) do { \
-			    (elm)->field.tqe_next = NULL; \
-			    (elm)->field.tqe_prev = (head)->tqh_last; \
-			    *(head)->tqh_last = (elm); \
-			    (head)->tqh_last = &(elm)->field.tqe_next; \
-			} while (0)
-			#define TAILQ_REMOVE(head, elm, field) do { \
-			    if (((elm)->field.tqe_next) != NULL) \
-			        (elm)->field.tqe_next->field.tqe_prev = (elm)->field.tqe_prev; \
-			    else \
-			        (head)->tqh_last = (elm)->field.tqe_prev; \
-			    *(elm)->field.tqe_prev = (elm)->field.tqe_next; \
-			} while (0)
-			#endif
-		QUEUE
+		# emacs.c includes <sys/queue.h> for the TAILQ_* macros the kill ring uses.
+		# The tree ships OpenBSD's full queue.h, which musl cannot compile; replace
+		# it with a TAILQ-only shim carrying just what loksh calls. The Makefile's
+		# `-isystem .` is what resolves the include to this file.
+		#
+		# A payload rather than a patch: this replaces the header wholesale (the
+		# shipped one is ~650 lines and differs across the band), so a diff would
+		# be a delete-everything/add-35 per version and say nothing a copy does
+		# not. Same reasoning as ksh's dylink stub.
+		cp "${SHVR_DIR_SELF}/payloads/loksh/sys-queue-tailq-shim.h" "${build_srcdir}/sys/queue.h"
 
 		export CC="$(shvr_musl_cc) -static"
 		export CFLAGS="-frandom-seed=1 $(shvr_ncurses_cflags)"
