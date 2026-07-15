@@ -49,3 +49,16 @@ fix-feature-mmap-history.diff  0.2007-s 0.2008-splus 0.2008-t 0.2008-tminus 0.20
 fix-feature-tvlib-93u-A.diff  1.0.1-uplusm 1.0.2-uplusm 1.0.3-uplusm 1.0.4-uplusm
 fix-feature-tvlib-93u-B.diff  1.0.10-uplusm 1.0.6-uplusm 1.0.7-uplusm 1.0.8-uplusm 1.0.9-uplusm
 
+
+# Reproducibility: pin the PID_MAX probe, which otherwise reads the build
+# host's /proc/sys/kernel/pid_max. Touches conf.tab only, so its position
+# here is free; it is last because that is where the sed it replaces ran.
+conf-tab-pin-pid-max-history-A.diff  0.2007-s 0.2008-splus 0.2008-t 0.2008-tminus
+conf-tab-pin-pid-max-0.2010-tplus.diff  0.2010-tplus
+conf-tab-pin-pid-max-history-B.diff  0.2010-uminus 0.2011-u 0.2012-uplus
+conf-tab-pin-pid-max-0.2014-vminus.diff  0.2014-vminus
+conf-tab-pin-pid-max-93u-A.diff  1.0.1-uplusm 1.0.2-uplusm 1.0.3-uplusm 1.0.4-uplusm
+conf-tab-pin-pid-max-1.0.6-uplusm.diff  1.0.6-uplusm
+conf-tab-pin-pid-max-93u-B.diff  1.0.7-uplusm 1.0.8-uplusm
+conf-tab-pin-pid-max-1.0.9-uplusm.diff  1.0.9-uplusm
+conf-tab-pin-pid-max-1.0.10-uplusm.diff  1.0.10-uplusm
