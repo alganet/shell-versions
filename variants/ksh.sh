@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: ISC
 
 . "${SHVR_DIR_SELF}/common/musl-cross-make.sh"
+. "${SHVR_DIR_SELF}/common/patches.sh"
 
 shvr_static_ksh ()
 {
@@ -120,7 +121,7 @@ shvr_install_getconf_wrapper ()
 	then
 		cp /usr/bin/getconf /usr/bin/getconf.orig
 	fi
-	cp "${SHVR_DIR_SELF}/patches/ksh/_common/getconf-wrapper.sh" /usr/bin/getconf
+	cp "${SHVR_DIR_SELF}/payloads/ksh/getconf-wrapper.sh" /usr/bin/getconf
 	chmod +x /usr/bin/getconf
 }
 
@@ -143,12 +144,7 @@ shvr_build_ksh ()
 
 	cd "${build_srcdir}"
 
-	if test -d "${SHVR_DIR_SELF}/patches/ksh/$version"
-	then
-		find "${SHVR_DIR_SELF}/patches/ksh/$version" -type f -o -type l | sort | while read -r patch_file
-		do patch -p0 < "$patch_file"
-		done
-	fi
+	shvr_apply_patches ksh "$version"
 
 	# libast's conf.tab PID_MAX probe reads the build host's
 	# /proc/sys/kernel/pid_max at build time and bakes the result into ksh's
