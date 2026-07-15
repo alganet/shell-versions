@@ -5,6 +5,7 @@
 
 . "${SHVR_DIR_SELF}/common/busybox.sh"
 . "${SHVR_DIR_SELF}/common/musl-cross-make.sh"
+. "${SHVR_DIR_SELF}/common/patches.sh"
 
 shvr_static_hush ()
 {
@@ -59,10 +60,8 @@ shvr_build_hush ()
 
 	cd "${build_srcdir}"
 
-	# Pre-kbuild-2.6.36 trees (1.3..1.16) carry mixed implicit/normal Makefile
-	# rules that GNU make >= 4.3 rejects; drop the bare normal targets so the
-	# Makefile parses. No-op on newer trees and the 1.2.x island.
-	shvr_busybox_fix_makefile
+	# The busybox patch set: ash and hush build from the same tree and share it.
+	shvr_apply_patches hush "$version"
 
 	# Configurations to enable for hush-focused builds.
 	# Includes hush features, static linking, and individual applet support.
@@ -217,5 +216,5 @@ shvr_deps_hush ()
 {
 	shvr_versioninfo_hush "$1"
 	apt-get -y install \
-		curl bzip2 make
+		curl bzip2 make patch
 }

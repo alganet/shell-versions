@@ -272,26 +272,18 @@ shvr_check_patches ()
 			continue
 		fi
 
-		# Which shells draw from this set, and hence which version tokens are
-		# legal selectors. Usually the set's own name; busybox feeds ash + hush.
-		shells=""
-		for shell in $(shvr_interpreters)
-		do
-			if test "$(shvr_patchset "$shell")" = "$pset"
-			then shells="${shells} ${shell}"
-			fi
-		done
+		# The version tokens a selector may legally name. A patch set is named
+		# after the source it patches, which is also what versions/<name>.all is
+		# keyed by -- ash and hush both build busybox, and it is versions/
+		# busybox.all that lists their versions (neither has a list of its own).
+		known="$(shvr_read_versions "$pset" all | sed "s/^${pset}_//")"
 
-		if test -z "$shells"
+		if test -z "$known"
 		then
-			echo "check_patches: ${pset}: patch set matches no shell" >&2
+			echo "check_patches: ${pset}: no versions/${pset}.all to check selectors against" >&2
 			rc=1
 			continue
 		fi
-
-		known="$(for shell in $shells
-			do shvr_read_versions "$shell" all | sed "s/^${shell}_//"
-			done | sort -u)"
 
 		# Every patch a selector picks for a known version must exist, and every
 		# version a selector names must be a version we actually build.

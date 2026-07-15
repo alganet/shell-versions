@@ -1,0 +1,35 @@
+# SPDX-FileCopyrightText: 2026 Alexandre Gomes Gaigalas <alganet@gmail.com>
+# SPDX-License-Identifier: ISC
+
+Description: drop the bare normal target from two mixed kbuild rules
+ These pre-kbuild-2.6.36 trees inherit two rules that put a normal target and a
+ pattern target on the same line -- `config %config:` and `/ %/:`. GNU make 4.3
+ rejects that outright ("mixed implicit and normal rules"), so the build never
+ even reaches allnoconfig. We only ever invoke allnoconfig and oldconfig, which
+ both match %config, and never build kernel modules, which is what %/ is for, so
+ dropping the bare normal target from each rule keeps every target we use.
+ .
+ 1.17+ had already dropped these rules upstream.
+Origin: vendor, shell-versions
+Forwarded: not-needed
+
+--- Makefile
++++ Makefile
+@@ -418,7 +418,7 @@
+ -include $(srctree)/arch/$(ARCH)/Makefile
+ export KBUILD_DEFCONFIG
+ 
+-config %config: scripts_basic outputmakefile FORCE
++%config: scripts_basic outputmakefile FORCE
+ 	$(Q)mkdir -p include
+ 	$(Q)$(MAKE) $(build)=scripts/kconfig $@
+ 	$(Q)$(MAKE) -C $(srctree) KBUILD_SRC= .kernelrelease
+@@ -1266,7 +1266,7 @@
+ 	$(Q)$(MAKE) $(build)=$(build-dir) $(target-dir)$(notdir $@)
+ 
+ # Modules
+-/ %/: prepare scripts FORCE
++%/: prepare scripts FORCE
+ 	$(Q)$(MAKE) KBUILD_MODULES=$(if $(CONFIG_MODULES),1) \
+ 	$(build)=$(build-dir)
+ %.ko: prepare scripts FORCE
