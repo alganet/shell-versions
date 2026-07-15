@@ -80,6 +80,18 @@ jobs:
             }
           ' .github/workflows/docker.yml
           echo "toolchain contract: ok"
+  verify-patches:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+
+      # Series drift: a selector that matches no version we build, an entry
+      # naming a patch that is not there, a .diff nobody applies. All of these
+      # would otherwise surface as a failed build, or worse, as a version quietly
+      # going unpatched.
+      - name: 'Patch series check'
+        run: sh shvr.sh check_patches
 
   verify-checksums:
     runs-on: ubuntu-24.04
