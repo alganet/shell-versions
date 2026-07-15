@@ -74,13 +74,18 @@ shvr_patch_list ()
 		done
 }
 
-# Apply every patch selected for <version> of patch set <set>, in series order,
-# with `patch -p0` from the current directory (the extracted source root).
-# A failure aborts the build (set -e): a patch that no longer applies is a
-# recipe bug, never something to skip.
+# Apply every patch selected for <version> of <shell>, in series order, with
+# `patch -p0` from the current directory (the extracted source root). Takes the
+# shell and resolves the set through shvr_patchset, so the ash/hush -> busybox
+# mapping is stated once and shared with shvr_recipe_files -- were the call site
+# to name the set itself, the patches applied and the patches hashed into the OID
+# could drift apart.
+#
+# A failure aborts the build (set -e): a patch that no longer applies is a recipe
+# bug, never something to skip.
 shvr_apply_patches ()
 {
-	shvr_patch_list "$1" "$2" |
+	shvr_patch_list "$(shvr_patchset "$1")" "$2" |
 		while IFS= read -r ap_file
 		do
 			echo "shvr: applying ${ap_file##*/}" >&2

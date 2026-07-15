@@ -1,0 +1,55 @@
+# SPDX-FileCopyrightText: 2026 Alexandre Gomes Gaigalas <alganet@gmail.com>
+# SPDX-License-Identifier: ISC
+
+Description: make include/platform.h work under musl
+ platform.h recognises only glibc, uClibc, dietlibc and newlib as "known" libcs.
+ musl defines no libc-identity macro of its own, so the header takes its fallback
+ branch and does three unhelpful things:
+ .
+  * it hand-declares intmax_t/uintmax_t rather than including <stdint.h>, which
+    musl does ship, so the types collide ("conflicting types");
+  * it typedefs socklen_t, which musl already provides. The guard it keys off
+    (__socklen_t_defined) varies across these trees, so rename the typedef out of
+    the way instead of trying to guard it;
+  * it maps fdprintf onto the standard dprintf only under __GLIBC__, while the
+    platform.c fallback is compiled out (HAVE_FDPRINTF is on by default), so the
+    link fails with "undefined reference to fdprintf" -- the 1.16..1.18 break.
+ .
+ Force the known-libc branch and make the fdprintf guard unconditional. musl has
+ both <stdint.h> and dprintf, so nothing is lost.
+ .
+ Deliberately NOT applied to the 1.2.x island (1.2.2, 1.2.2.1). Those trees carry
+ the same text and the edit would "work", but they already build and their output
+ is checksummed; patching them would change bytes for no reason.
+Origin: vendor, shell-versions
+Forwarded: not-needed
+
+--- include/platform.h
++++ include/platform.h
+@@ -215,7 +215,7 @@
+ #ifndef __APPLE__
+ # include <arpa/inet.h>
+ # if !defined(__socklen_t_defined) && !defined(_SOCKLEN_T_DECLARED)
+-typedef int socklen_t;
++typedef int socklen_t_shvr_unused;
+ # endif
+ #else
+ # include <netinet/in.h>
+@@ -247,7 +247,7 @@
+ 
+ /* Don't perpetuate e2fsck crap into the headers.  Clean up e2fsck instead. */
+ 
+-#if defined __GLIBC__ || defined __UCLIBC__ \
++#if 1 || defined __GLIBC__ || defined __UCLIBC__ \
+  || defined __dietlibc__ || defined _NEWLIB_VERSION
+ # include <features.h>
+ # define HAVE_FEATURES_H
+@@ -348,7 +348,7 @@
+ 
+ #endif
+ 
+-#if defined(__GLIBC__)
++#if 1
+ # define fdprintf dprintf
+ #endif
+ 

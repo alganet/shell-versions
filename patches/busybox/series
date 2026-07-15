@@ -1,0 +1,37 @@
+# SPDX-FileCopyrightText: 2026 Alexandre Gomes Gaigalas <alganet@gmail.com>
+# SPDX-License-Identifier: ISC
+#
+# <patch-file>  <version> [<version> ...]
+#
+# Applied with `patch -p0` from the extracted source root, in the order listed
+# here, to every version whose token matches one of the patterns on the line.
+#
+# This set is keyed by the SOURCE, not by the shell: ash and hush are both built
+# from one busybox tree, so they draw from here (see shvr_patchset).
+#
+# Both fixes are context-sensitive and the trees drift, so there is one diff per
+# version rather than one per fix. That is inherent, not duplication.
+#
+# The recovered band is 1.8.3..1.18.5. Everything from 1.19.4 up needs nothing.
+# The 1.2.x island (1.2.2, 1.2.2.1) is deliberately absent: it carries the same
+# platform.h text, but it already builds and its output is checksummed, so
+# patching it would change bytes to no purpose. Do not "fix" that by adding it.
+
+makefile-mixed-rules-1.8.3.diff   1.8.3
+makefile-mixed-rules-1.10.4.diff  1.10.4
+makefile-mixed-rules-1.11.3.diff  1.11.3
+makefile-mixed-rules-1.12.4.diff  1.12.4
+makefile-mixed-rules-1.13.4.diff  1.13.4
+makefile-mixed-rules-1.14.4.diff  1.14.4
+makefile-mixed-rules-1.15.3.diff  1.15.3 1.16.2
+
+platform-h-musl-1.8.3.diff   1.8.3
+platform-h-musl-1.10.4.diff  1.10.4
+platform-h-musl-1.11.3.diff  1.11.3
+platform-h-musl-1.12.4.diff  1.12.4
+platform-h-musl-1.13.4.diff  1.13.4
+platform-h-musl-1.14.4.diff  1.14.4
+platform-h-musl-1.15.3.diff  1.15.3
+platform-h-musl-1.16.2.diff  1.16.2
+platform-h-musl-1.17.4.diff  1.17.4
+platform-h-musl-1.18.5.diff  1.18.5
