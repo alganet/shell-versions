@@ -1,0 +1,51 @@
+# SPDX-FileCopyrightText: 2026 Alexandre Gomes Gaigalas <alganet@gmail.com>
+# SPDX-License-Identifier: ISC
+
+Description: add a <sys/cdefs.h> shim for musl
+ dash 0.5.2 includes <sys/cdefs.h> for __P/__BEGIN_DECLS, and calls the LFS64
+ transitional API (stat64, open64, lseek64, off64_t, ...). musl ships neither:
+ it has no sys/cdefs.h, and 1.2.5 dropped the *64 names outright. Add a minimal
+ shim providing the two declaration macros and mapping every *64 name back to
+ its plain counterpart -- on musl the plain names are already 64-bit, so the
+ remap is exact rather than a narrowing.
+ .
+ The shim lands at <srcdir>/sys/cdefs.h so the in-source `#include
+ <sys/cdefs.h>` lines resolve through the Makefile's -I.. . It is ALSO
+ force-included via CPPFLAGS (-include, set in variants/dash.sh), because files
+ that use stat64 without including cdefs.h still need the mappings; this patch
+ is only half of the fix.
+ .
+ 0.5.3+ dropped both the include and the *64 API, hence 0.5.2 alone.
+Origin: vendor, shell-versions
+Forwarded: not-needed
+
+--- /dev/null
++++ sys/cdefs.h
+@@ -0,0 +1,27 @@
++#ifndef _SHVR_SYS_CDEFS_H
++#define _SHVR_SYS_CDEFS_H
++#ifndef __P
++#define __P(args) args
++#endif
++#ifndef __BEGIN_DECLS
++#define __BEGIN_DECLS
++#define __END_DECLS
++#endif
++/* musl 1.2.5 dropped the LFS64 transitional names; map them back. */
++#define stat64 stat
++#define lstat64 lstat
++#define fstat64 fstat
++#define open64 open
++#define creat64 creat
++#define lseek64 lseek
++#define off64_t off_t
++#define ino64_t ino_t
++#define blkcnt64_t blkcnt_t
++#define fsblkcnt64_t fsblkcnt_t
++#define fsfilcnt64_t fsfilcnt_t
++#define dirent64 dirent
++#define readdir64 readdir
++#ifndef O_LARGEFILE
++#define O_LARGEFILE 0
++#endif
++#endif

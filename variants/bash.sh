@@ -5,6 +5,7 @@
 
 . "${SHVR_DIR_SELF}/common/musl-cross-make.sh"
 . "${SHVR_DIR_SELF}/common/ncurses.sh"
+. "${SHVR_DIR_SELF}/common/patches.sh"
 
 shvr_static_bash ()
 {
@@ -124,6 +125,15 @@ shvr_build_bash ()
 	shvr_build_ncurses
 
 	build_srcdir="${SHVR_DIR_SRC}/bash/${version_baseline}"
+
+	# Start from a clean tree. build_srcdir is keyed on the BASELINE, but
+	# shvr_each cleans up ${SHVR_DIR_SRC}/bash/${version} -- a path that never
+	# exists -- so the extraction survives between local runs. Untarring over it
+	# restores everything the tarball carries, but not files we add ourselves:
+	# distribution-*.diff creates _distribution and _patchlevel, and a second run
+	# would find them already there and abort with "previously applied patch".
+	# CI is unaffected (fresh container), but a local rebuild must not be.
+	rm -Rf "${build_srcdir}"
 	mkdir -p "${build_srcdir}"
 
 	shvr_untar "${build_srcdir}.tar.gz" "${build_srcdir}"
@@ -139,6 +149,11 @@ shvr_build_bash ()
 			--strip=0
 	done
 	cd "${build_srcdir}"
+
+	# Ours, as opposed to the upstream GNU patches applied just above. Must land
+	# before the configure regeneration below: distribution-*.diff restores the
+	# two files configure.in reads through esyscmd().
+	shvr_apply_patches bash "$version"
 
 	# Static musl build with reproducible flags
 	export SOURCE_DATE_EPOCH=1
@@ -160,18 +175,6 @@ shvr_build_bash ()
 	if test "$version_major" -lt 5 || { test "$version_major" -eq 5 && test "${version_minor}" -lt 3; }
 	then
 		rm configure
-		# bash <=2.05 embeds its version into the maintainer-generated
-		# configure via esyscmd(cat _distribution)/esyscmd(cat _patchlevel),
-		# but those files are not shipped. Because we regenerate configure,
-		# BASHVERS/BASHPATCH would be empty and support/mkversion.sh would bail
-		# ("usage: ..."), so version.h is never made. Recreate the files. Gated
-		# to 2.01..2.05: 2.05a+ dropped this mechanism and must stay byte-stable.
-		case "$version_baseline" in
-		2.0[1-5])
-			printf '%s\n' "$version_baseline" > _distribution
-			printf '%s\n' "$version_patch" > _patchlevel
-			;;
-		esac
 		# bash renamed --with-bash-malloc in 2.04; 2.01..2.03 only know the old
 		# --with-gnu-malloc name, so --without-bash-malloc is silently ignored
 		# and bash's internal malloc (broken on modern musl: "xmalloc: cannot

@@ -5,6 +5,7 @@
 
 . "${SHVR_DIR_SELF}/common/musl-cross-make.sh"
 . "${SHVR_DIR_SELF}/common/libedit.sh"
+. "${SHVR_DIR_SELF}/common/patches.sh"
 
 shvr_static_dash ()
 {
@@ -117,51 +118,15 @@ shvr_build_dash ()
 		;;
 	esac
 
-	# 0.5.2 predates musl compatibility on two fronts. (1) Its sources include
-	# <sys/cdefs.h> (for the __P prototype macro), a glibc/BSD header musl does
-	# not ship. (2) It uses the transitional LFS64 API (struct stat64, open64,
-	# lseek64, ...) which musl 1.2.5 removed entirely, so those names are
-	# undefined. A single compat shim handles both: it defines __P/__BEGIN_DECLS
-	# and macro-maps every *64 name back to its base (musl is 64-bit-off_t
-	# natively, so the remap is exact). The shim lives at <srcdir>/sys/cdefs.h so
-	# the in-source `#include <sys/cdefs.h>` lines resolve via the Makefile's
-	# `-I..`, and it is force-included through CPPFLAGS so files that use stat64
-	# without including cdefs.h still get the mappings (configure overrides
-	# CFLAGS with "-g -O2 -Wall" but keeps CPPFLAGS, which the compile applies).
-	# 0.5.3+ dropped both the header include and the *64 API, so this is gated to
-	# 0.5.2 only.
+	# The sys/cdefs.h musl shim that 0.5.2 needs is a patch now (see
+	# patches/dash/sys-cdefs-musl-shim.diff for why). The patch is only half the
+	# fix: files that use stat64 without including cdefs.h still need the
+	# mappings, so the shim is also force-included. configure overrides CFLAGS
+	# with "-g -O2 -Wall" but leaves CPPFLAGS alone, which the compile applies.
+	shvr_apply_patches dash "$version"
+
 	case "$version" in
 	0.5.2)
-		mkdir -p "${build_srcdir}/sys"
-		cat > "${build_srcdir}/sys/cdefs.h" <<-'CDEFS'
-			#ifndef _SHVR_SYS_CDEFS_H
-			#define _SHVR_SYS_CDEFS_H
-			#ifndef __P
-			#define __P(args) args
-			#endif
-			#ifndef __BEGIN_DECLS
-			#define __BEGIN_DECLS
-			#define __END_DECLS
-			#endif
-			/* musl 1.2.5 dropped the LFS64 transitional names; map them back. */
-			#define stat64 stat
-			#define lstat64 lstat
-			#define fstat64 fstat
-			#define open64 open
-			#define creat64 creat
-			#define lseek64 lseek
-			#define off64_t off_t
-			#define ino64_t ino_t
-			#define blkcnt64_t blkcnt_t
-			#define fsblkcnt64_t fsblkcnt_t
-			#define fsfilcnt64_t fsfilcnt_t
-			#define dirent64 dirent
-			#define readdir64 readdir
-			#ifndef O_LARGEFILE
-			#define O_LARGEFILE 0
-			#endif
-			#endif
-		CDEFS
 		export CPPFLAGS="-include ${build_srcdir}/sys/cdefs.h"
 		;;
 	esac
@@ -195,5 +160,5 @@ shvr_deps_dash ()
 	# bison provides the yacc that dash <=0.5.5 needs to generate src/arith.c
 	# from arith.y (AC_PROG_YACC picks "bison -y"); pre-generated in newer dash.
 	apt-get -y install \
-		curl automake autoconf bison
+		curl patch automake autoconf bison
 }
