@@ -1338,22 +1338,35 @@ jobs:
           # arch images on Hub. A missing source fails the target (and the job),
           # which is correct — a per-arch image always exists after a successful
           # build (or is reused from a prior push).
+          # Each job is "<dest-repo>|<dest-tag>|<source-target>". The tag is usually
+          # the target itself, but the snapshot lane also gets a moving alias, so the
+          # destination tag and the source target are not always the same string.
           : > /tmp/fuse_jobs
           for t in $(sh shvr.sh buildset); do
-            printf 'ghcr.io/%s|%s\n' "$REPO" "$t" >> /tmp/fuse_jobs
-            printf 'alganet/shell-versions|%s\n' "$t" >> /tmp/fuse_jobs
+            printf 'ghcr.io/%s|%s|%s\n' "$REPO" "$t" "$t" >> /tmp/fuse_jobs
+            printf 'alganet/shell-versions|%s|%s\n' "$t" "$t" >> /tmp/fuse_jobs
+          done
+          # Moving alias: <shell>-snapshot (hyphen) is re-pointed every run at the
+          # current <shell>_snapshot-<shortsha>, so users can pull the development
+          # build without chasing a sha. The hyphen keeps the <shell>_<version>
+          # namespace reserved for real, pinned targets -- an alias is not a target.
+          # Same arch sources, second destination tag; no extra build.
+          for t in $(sh shvr.sh snapshot); do
+            printf 'ghcr.io/%s|%s-snapshot|%s\n' "$REPO" "${t%%_*}" "$t" >> /tmp/fuse_jobs
+            printf 'alganet/shell-versions|%s-snapshot|%s\n' "${t%%_*}" "$t" >> /tmp/fuse_jobs
           done
           fuse_one() {
-            dest="${1%%|*}"; t="${1##*|}"
-            amd="ghcr.io/${REPO}:${t}-amd64"
-            arm="ghcr.io/${REPO}:${t}-arm64"
+            dest="${1%%|*}"; rest="${1#*|}"
+            tag="${rest%%|*}"; src="${rest##*|}"
+            amd="ghcr.io/${REPO}:${src}-amd64"
+            arm="ghcr.io/${REPO}:${src}-arm64"
             for a in 1 2 3; do
-              if docker buildx imagetools create --tag "${dest}:${t}" "$amd" "$arm"; then return 0; fi
-              echo "retry $a: ${dest}:${t}" >&2; sleep 5
+              if docker buildx imagetools create --tag "${dest}:${tag}" "$amd" "$arm"; then return 0; fi
+              echo "retry $a: ${dest}:${tag}" >&2; sleep 5
             done
-            echo "FAILED ${dest}:${t}" >&2; return 1
+            echo "FAILED ${dest}:${tag}" >&2; return 1
           }
           export -f fuse_one
           xargs -P 8 -a /tmp/fuse_jobs -I {} bash -c 'fuse_one "$@"' _ {}
-          printf 'fused %s per-target manifest list(s) across 2 registries (sources: GHCR)\n' \
-            "$(sh shvr.sh buildset | wc -l)" >> "$GITHUB_STEP_SUMMARY"
+          printf 'fused %s manifest list(s) across 2 registries (sources: GHCR)\n' \
+            "$(( $(wc -l < /tmp/fuse_jobs) / 2 ))" >> "$GITHUB_STEP_SUMMARY"
