@@ -23,6 +23,10 @@ shvr_versions_from_sourceforge ()
 (
 	project="$1"
 	path="$2"
+	# Version token shape inside <project>-<version>.tar.*, as an awk ERE. Defaults
+	# to the dotted-numeric stable form; callers scraping a pre-release path (e.g.
+	# zsh's /zsh-test, whose tarballs are zsh-5.9.1.2-test.tar.xz) pass a wider one.
+	verpat="${3:-[0-9.]+}"
 	url="https://sourceforge.net/projects/${project}/rss?path=${path}"
 
 	base="${TMPDIR:-/tmp}/shvr_sourceforge.$$"
@@ -41,10 +45,10 @@ shvr_versions_from_sourceforge ()
 
 	# Emit "<version>\t<RFC-822 pubDate>" per item: a <title> line sets the
 	# pending version, the following <pubDate> line flushes it.
-	awk -v proj="$project" '
+	awk -v proj="$project" -v verpat="$verpat" '
 		/<title>/ {
 			ver = ""
-			if (match($0, proj "-[0-9.]+\\.tar\\.[gx]z")) {
+			if (match($0, proj "-" verpat "\\.tar\\.[gx]z")) {
 				m = substr($0, RSTART, RLENGTH)
 				sub("^" proj "-", "", m)
 				sub("\\.tar\\..*$", "", m)

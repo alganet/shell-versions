@@ -21,6 +21,7 @@ shvr_current_zsh ()
 shvr_targets_zsh ()
 {
 	shvr_read_versions zsh all
+	shvr_read_versions zsh prerelease
 }
 
 shvr_update_zsh ()
@@ -28,6 +29,12 @@ shvr_update_zsh ()
 	. "${SHVR_DIR_SELF}/common/version_sources/sourceforge.sh"
 	shvr_versions_from_sourceforge zsh /zsh |
 		shvr_merge_versions zsh
+
+	# zsh's development "test" releases live under a separate SourceForge path,
+	# zsh-test/<version>/zsh-<version>.tar.xz (e.g. 5.9.1.2-test). Discover the
+	# newest and keep only it -- feeds :all via shvr_targets_zsh, never :latest.
+	shvr_versions_from_sourceforge zsh /zsh-test '[0-9.]+-test' |
+		shvr_merge_prereleases zsh
 }
 
 shvr_series_zsh ()
@@ -43,6 +50,21 @@ shvr_versioninfo_zsh ()
 
 	if test "$version" = "$version_major"
 	then return 1
+	fi
+
+	# A "test" pre-release (5.9.1.2-test): the whole token is the version. Derive
+	# numeric major/minor from the base (5.9.1.2-test -> major 5, minor 9) so the
+	# version gates below (multibyte/unicode9/pcre2, xz vs gz) resolve as for the
+	# 5.9 line it descends from.
+	if shvr_is_prerelease "$version"
+	then
+		base="${version%%-*}"
+		version_major="${base%%.*}"
+		version_minor="${base#*.}"
+		version_minor="${version_minor%%.*}"
+		version_patch=0
+		build_srcdir="${SHVR_DIR_SRC}/zsh/${version}"
+		return 0
 	fi
 
 	version_minor="${version#$version_major\.}"
@@ -62,7 +84,15 @@ shvr_download_zsh ()
 
 	mkdir -p "${SHVR_DIR_SRC}/zsh"
 
-	if
+	# Pre-release "test" tarballs live under the zsh-test/ SourceForge folder
+	# rather than zsh/; they are always xz. Finals keep the zsh/ path below.
+	if shvr_is_prerelease "$version"
+	then
+		if ! test -f "${build_srcdir}.tar.xz"
+		then
+			shvr_fetch "https://downloads.sourceforge.net/project/zsh/zsh-test/$version/zsh-$version.tar.xz" "${build_srcdir}.tar.xz"
+		fi
+	elif
 		{ test "$version_major" -gt 4 && test "${version_minor}" -gt 0; } ||
 		test "$version_major" -gt 5
 	then
