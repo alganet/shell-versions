@@ -27,6 +27,11 @@ shvr_prerelease_ash ()
 	shvr_prerelease_busybox "$@" | sed -e 's/^busybox_/ash_/'
 }
 
+shvr_snapshot_ash ()
+{
+	shvr_snapshot_busybox "$@" | sed -e 's/^busybox_/ash_/'
+}
+
 shvr_update_ash ()
 {
 	shvr_update_busybox

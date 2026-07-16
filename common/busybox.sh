@@ -18,6 +18,11 @@ shvr_prerelease_busybox ()
 	shvr_read_versions busybox prerelease
 }
 
+shvr_snapshot_busybox ()
+{
+	shvr_read_versions busybox snapshot
+}
+
 shvr_update_busybox ()
 {
 	. "${SHVR_DIR_SELF}/common/version_sources/html_listing.sh"
