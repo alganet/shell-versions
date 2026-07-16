@@ -793,6 +793,7 @@ jobs:
               yashrs_0.4.1
               yashrs_0.4.0
               yashrs_0.3.0
+              zsh_5.9.1.2-test
               zsh_5.9.1
               zsh_5.8.1
               zsh_5.7.1
@@ -1129,6 +1130,7 @@ jobs:
               yashrs_0.4.1
               yashrs_0.4.0
               yashrs_0.3.0
+              zsh_5.9.1.2-test
               zsh_5.9.1
               zsh_5.8.1
               zsh_5.7.1

@@ -1460,6 +1460,11 @@ runs:
     - uses: ./.github/actions/single-download
       with:
         shvr_shell: zsh
+        shvr_version: "5.9.1.2-test"
+        cache_path: "zsh/5.9.1.2-test"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: zsh
         shvr_version: "5.9.1"
         cache_path: "zsh/5.9.1"
     - uses: ./.github/actions/single-download
