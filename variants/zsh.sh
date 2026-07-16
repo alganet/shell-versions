@@ -21,7 +21,6 @@ shvr_current_zsh ()
 shvr_targets_zsh ()
 {
 	shvr_read_versions zsh all
-	shvr_read_versions zsh prerelease
 }
 
 shvr_update_zsh ()
