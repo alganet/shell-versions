@@ -276,7 +276,8 @@ shvr_check_patches ()
 		# after the source it patches, which is also what versions/<name>.all is
 		# keyed by -- ash and hush both build busybox, and it is versions/
 		# busybox.all that lists their versions (neither has a list of its own).
-		known="$(shvr_read_versions "$pset" all | sed "s/^${pset}_//")"
+		known="$( { shvr_read_versions "$pset" all
+			shvr_read_versions "$pset" prerelease; } | sed "s/^${pset}_//")"
 
 		if test -z "$known"
 		then
@@ -501,6 +502,22 @@ shvr_untar()
 		--mode=go-w
 }
 
+# Return 0 if <version> carries a pre-release marker. One canonical detector,
+# shared by discovery (shvr_update_<shell>) and the .prerelease merge, so they
+# agree on what counts as a pre-release. Matches the hyphenated suffix forms the
+# upstreams use -- bash's bash-5.3-rc2 / -alpha / -beta, zsh's zsh-x.y-test, etc.
+# A released lettered baseline like bash 2.05b is NOT a pre-release (the letter is
+# part of the version, and there is no "-<word>" suffix), so it is left alone.
+shvr_is_prerelease ()
+{
+	case "$1" in
+	*-[Rr][Cc]*|*-[Aa][Ll][Pp][Hh][Aa]*|*-[Bb][Ee][Tt][Aa]*|\
+	*-[Pp][Rr][Ee]*|*-[Tt][Ee][Ss][Tt]*|*-[Dd][Ee][Vv]*|*-[Ss][Nn][Aa][Pp][Ss][Hh][Oo][Tt]*)
+		return 0 ;;
+	*) return 1 ;;
+	esac
+}
+
 shvr_read_versions ()
 {
 	interpreter="$1"
@@ -653,6 +670,59 @@ shvr_merge_versions ()
 		if ! test -s "$new_only" && ! test -s "$dropped"
 		then echo "${interpreter}: no changes" >&2
 		fi
+	)
+}
+
+# Sibling of shvr_merge_versions for the pre-release channel. Reads a discovered
+# "<version> [<date>]" stream on stdin and rewrites versions/<shell>.prerelease to
+# hold the single newest pre-release token (dropping excluded ones). Unlike .all
+# this list is NON-STICKY: it is rebuilt from scratch every update, so a newer rc
+# rolls the entry forward and an upstream that no longer ships a pre-release
+# empties it. We keep the newest pre-release outright -- no comparison against the
+# stable list -- so "the last pre-release the shell had" survives even when a
+# newer stable already exists (e.g. bash 5.3-rc2 alongside stable 5.3.x). The
+# .prerelease list feeds :all through shvr_targets_<shell> but never :latest,
+# because .current is regenerated from .all alone -- so a pre-release can never
+# leak into the latest image.
+shvr_merge_prereleases ()
+{
+	interpreter="$1"
+	file="${SHVR_DIR_SELF}/versions/${interpreter}.prerelease"
+	excluded_file="${SHVR_DIR_SELF}/versions/${interpreter}.excluded"
+	mkdir -p "$(dirname "$file")"
+
+	(
+		tmp="${file}.tmp.$$"
+		excl="${tmp}.excl"
+		trap 'rm -f "$tmp" "$excl"' EXIT INT TERM
+
+		if test -f "$excluded_file"
+		then awk '!/^[[:space:]]*#/ && NF { print $1 }' "$excluded_file" > "$excl"
+		else : > "$excl"
+		fi
+
+		# Keep only pre-release tokens, drop excluded, sort newest-first, keep one.
+		while IFS= read -r line
+		do
+			ver="${line%%[[:space:]]*}"
+			test -n "$ver" || continue
+			shvr_is_prerelease "$ver" || continue
+			if test -s "$excl" && grep -Fxq "$ver" "$excl"
+			then continue
+			fi
+			printf '%s\n' "$line"
+		done | sort -V -r | head -n1 > "$tmp"
+
+		if test -f "$file" && cmp -s "$tmp" "$file"
+		then echo "${interpreter}.prerelease: no change" >&2
+		else
+			mv "$tmp" "$file"
+			if test -s "$file"
+			then echo "${interpreter}.prerelease: $(cat "$file")" >&2
+			else echo "${interpreter}.prerelease: (none)" >&2
+			fi
+		fi
+		# The EXIT trap cleans $excl (and $tmp, already moved on the write path).
 	)
 }
 

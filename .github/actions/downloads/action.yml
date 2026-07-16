@@ -175,6 +175,11 @@ runs:
     - uses: ./.github/actions/single-download
       with:
         shvr_shell: bash
+        shvr_version: "5.3-rc2"
+        cache_path: "bash/5.3-rc2"
+    - uses: ./.github/actions/single-download
+      with:
+        shvr_shell: bash
         shvr_version: "5.2.37"
         cache_path: "bash/5.2"
     - uses: ./.github/actions/single-download
