@@ -35,7 +35,7 @@ shvr ()
 shvr_build ()
 {
 	if test -z "$*"
-	then set -- $(printf '%s ' $(shvr_targets))
+	then set -- $(printf '%s ' $(shvr_buildset))
 	fi
 
 	set -x
@@ -51,7 +51,7 @@ shvr_build ()
 shvr_updated_targets ()
 {
 	bcd="$(shvr_build_checksums_dir)"
-	for t in $(shvr_targets "$@")
+	for t in $(shvr_buildset "$@")
 	do
 		if ! test -d "${bcd}/${t}"
 		then printf '%s\n' "$t"
@@ -60,14 +60,16 @@ shvr_updated_targets ()
 }
 
 # Remove committed build-checksum dirs for targets no longer supported. The keep set is
-# always the full current build set — shvr_targets, plus shvr_testing when that command
-# exists (the later .testing work reuses this). A dropped version is dropped for every
+# always the full current build set — shvr_buildset (released + pre-release), plus
+# shvr_testing when that command exists. Keying off shvr_buildset rather than
+# shvr_targets matters: a lane absent from the keep set would have its committed
+# checksums reaped here and then fail CI's verify. A dropped version is dropped for every
 # arch, so reap across all checksums/build/<arch>/ trees. Build checksums only;
 # checksums/sources/ is left untouched. Prints the number of dirs pruned. (set -f is on,
 # so globs do not expand — enumerate dirs with find, as the rest of the tree does.)
 shvr_prune_build_checksums ()
 {
-	keep="$(shvr_targets)"
+	keep="$(shvr_buildset)"
 	if command -v shvr_testing >/dev/null 2>&1
 	then keep="${keep}
 $(shvr_testing)"
@@ -198,7 +200,7 @@ $( SHVR_ARCH="$arch"; export SHVR_ARCH; shvr_updated_targets "$@" )"
 shvr_deps ()
 {
 	if test -z "$*"
-	then set -- $(printf '%s ' $(shvr_targets))
+	then set -- $(printf '%s ' $(shvr_buildset))
 	fi
 
 	set -x
@@ -209,7 +211,7 @@ shvr_deps ()
 shvr_download ()
 {
 	if test -z "$*"
-	then set -- $(printf '%s ' $(shvr_targets))
+	then set -- $(printf '%s ' $(shvr_buildset))
 	fi
 
 	set -x
@@ -235,6 +237,45 @@ shvr_current ()
 	shvr_each current "${@:-}"
 }
 
+# The pre-release lane as a set of its own, symmetric with the snapshot lane. Reads
+# versions/<shell>.prerelease by default -- a shell opts in simply by having the file,
+# so no per-variant boilerplate. A variant overrides shvr_prerelease_<shell> only when
+# its versions come from somewhere else: ash/hush carry no list and derive busybox's,
+# rewriting the prefix, exactly as they do for targets/current.
+#
+# Deliberately NOT part of shvr_targets: targets means "released versions" and feeds the
+# :all assembly list, while this set feeds :all *and* the build/tag consumers. See
+# shvr_buildset.
+shvr_prerelease ()
+{
+	if test -z "$*"
+	then set -- $(printf '%s ' $(shvr_interpreters))
+	fi
+
+	for pr_interpreter in "$@"
+	do
+		. "${SHVR_DIR_SELF}/variants/${pr_interpreter}.sh"
+		if command -v "shvr_prerelease_${pr_interpreter}" >/dev/null 2>&1
+		then "shvr_prerelease_${pr_interpreter}"
+		else shvr_read_versions "${pr_interpreter}" prerelease
+		fi
+	done
+}
+
+# Everything we build and publish as its own <shell>_<version> tag: the released
+# versions plus the pre-release lane. This -- not shvr_targets -- is what every
+# consumer that builds, downloads, patches, checksums, prunes or tags must use, so a
+# lane cannot be silently dropped from the build by being absent from one of them.
+#
+# The :all assembly list is deliberately NOT this set. It composes shvr_targets +
+# shvr_prerelease explicitly, so that when the snapshot lane joins shvr_buildset it is
+# built and tagged without ever leaking into :all.
+shvr_buildset ()
+{
+	shvr_targets "$@"
+	shvr_prerelease "$@"
+}
+
 # Print the patches that apply to each <shell>_<version>, in apply order, as
 # repo-relative paths. This is how you reproduce a tree by hand, without shvr:
 #
@@ -243,7 +284,7 @@ shvr_current ()
 shvr_patches ()
 {
 	if test -z "$*"
-	then set -- $(printf '%s ' $(shvr_targets))
+	then set -- $(printf '%s ' $(shvr_buildset))
 	fi
 
 	for target in "$@"
@@ -1057,7 +1098,7 @@ shvr_verify_build_checksums()
 
 shvr_github_regen_downloads ()
 {
-	set -- $(printf '%s ' $(shvr_targets | sort -t'_' -k1,1 -k2Vr))
+	set -- $(printf '%s ' $(shvr_buildset | sort -t'_' -k1,1 -k2Vr))
 	local yml_file="${SHVR_DIR_SELF}/.github/actions/downloads/action.yml"
 	cp -f "$yml_file" "${yml_file}.bak"
 	IFS=
@@ -1099,7 +1140,10 @@ shvr_github_regen_downloads ()
 shvr_github_regen_docker_workflow ()
 {
 	local yml_file="${SHVR_DIR_SELF}/.github/workflows/docker.yml"
-	local all_targets="$(printf '%s ' $(shvr_targets | sort -t'_' -k1,1 -k2Vr))"
+	# The :all image is released + pre-release. Deliberately composed here instead of
+	# reusing shvr_buildset, so a later lane (snapshots) can join the build set -- and
+	# get built and tagged -- without ever leaking into :all.
+	local all_targets="$(printf '%s ' $( { shvr_targets; shvr_prerelease; } | sort -t'_' -k1,1 -k2Vr))"
 	local current_targets="$(printf '%s ' $(shvr_current | sort -t'_' -k1,1 -k2Vr))"
 	cp -f "$yml_file" "${yml_file}.bak"
 	cat "$yml_file.bak" |
@@ -1325,7 +1369,7 @@ shvr_build_identity ()
 shvr_build_identities ()
 {
 	if test -z "$*"
-	then set -- $(printf '%s ' $(shvr_targets))
+	then set -- $(printf '%s ' $(shvr_buildset))
 	fi
 	fingerprint="$(shvr_toolchain_fingerprint)"
 	for bi_target in "$@"
@@ -1357,7 +1401,7 @@ shvr_plan_matrix ()
 
 	printf '{"include":['
 	first=1
-	for target in $(shvr_targets)
+	for target in $(shvr_buildset)
 	do
 		desired="$(shvr_build_identity "$target" "$fingerprint")"
 		current="$(awk -v t="$target" -v a="$arch" '$1 == t && $2 == a {print $3; exit}' "$reg")"

@@ -22,6 +22,11 @@ shvr_targets_ash ()
 	shvr_targets_busybox "$@" | sed -e 's/^busybox_/ash_/'
 }
 
+shvr_prerelease_ash ()
+{
+	shvr_prerelease_busybox "$@" | sed -e 's/^busybox_/ash_/'
+}
+
 shvr_update_ash ()
 {
 	shvr_update_busybox

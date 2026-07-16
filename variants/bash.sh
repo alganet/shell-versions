@@ -20,7 +20,6 @@ shvr_current_bash ()
 shvr_targets_bash ()
 {
 	shvr_read_versions bash all
-	shvr_read_versions bash prerelease
 }
 
 shvr_update_bash ()

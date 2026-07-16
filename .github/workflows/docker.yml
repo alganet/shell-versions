@@ -215,7 +215,7 @@ jobs:
           # two arches are planned independently.
           : > registry_oids.txt
           for arch in amd64 arm64; do
-            for t in $(sh shvr.sh targets); do
+            for t in $(sh shvr.sh buildset); do
               if [ "$force" = 1 ]; then
                 printf '%s %s FORCE\n' "$t" "$arch" >> registry_oids.txt
                 continue
@@ -243,7 +243,7 @@ jobs:
           printf 'count_arm64=%s\n'  "$count_arm64" >> "$GITHUB_OUTPUT"
           printf 'built=%s\n'        "$built"       >> "$GITHUB_OUTPUT"
           printf '%s amd64 + %s arm64 of %s target(s) need building\n' \
-            "$count_amd64" "$count_arm64" "$(sh shvr.sh targets | wc -l)" >> "$GITHUB_STEP_SUMMARY"
+            "$count_amd64" "$count_arm64" "$(sh shvr.sh buildset | wc -l)" >> "$GITHUB_STEP_SUMMARY"
 
   # build is split per arch because GitHub caps a job's matrix at 256
   # configurations and a full rebuild is ~250 targets per arch. Both jobs are
@@ -1339,7 +1339,7 @@ jobs:
           # which is correct — a per-arch image always exists after a successful
           # build (or is reused from a prior push).
           : > /tmp/fuse_jobs
-          for t in $(sh shvr.sh targets); do
+          for t in $(sh shvr.sh buildset); do
             printf 'ghcr.io/%s|%s\n' "$REPO" "$t" >> /tmp/fuse_jobs
             printf 'alganet/shell-versions|%s\n' "$t" >> /tmp/fuse_jobs
           done
@@ -1356,4 +1356,4 @@ jobs:
           export -f fuse_one
           xargs -P 8 -a /tmp/fuse_jobs -I {} bash -c 'fuse_one "$@"' _ {}
           printf 'fused %s per-target manifest list(s) across 2 registries (sources: GHCR)\n' \
-            "$(sh shvr.sh targets | wc -l)" >> "$GITHUB_STEP_SUMMARY"
+            "$(sh shvr.sh buildset | wc -l)" >> "$GITHUB_STEP_SUMMARY"
