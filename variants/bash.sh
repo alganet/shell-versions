@@ -20,6 +20,7 @@ shvr_current_bash ()
 shvr_targets_bash ()
 {
 	shvr_read_versions bash all
+	shvr_read_versions bash prerelease
 }
 
 shvr_update_bash ()
@@ -61,6 +62,14 @@ EOF
 			fi
 		done |
 		shvr_merge_versions bash
+
+	# Pre-releases sit beside the finals as bash-X.Y-{alpha,beta,rcN}.tar.gz, a
+	# single self-contained tarball with no -patches/ dir. shvr_merge_prereleases
+	# keeps only the newest one and writes versions/bash.prerelease, which feeds
+	# :all (via shvr_targets_bash) but never :latest.
+	shvr_versions_from_html_listing "$mirror" \
+		'bash-([0-9]+\.[0-9]+-(alpha|beta|rc[0-9]*))\.tar\.gz' |
+		shvr_merge_prereleases bash
 }
 
 shvr_series_bash ()
@@ -76,6 +85,20 @@ shvr_versioninfo_bash ()
 
 	if test "$version" = "$version_major"
 	then return 1
+	fi
+
+	# A pre-release (5.3-rc2) is a standalone baseline tarball with zero numbered
+	# patches: the whole token is the baseline. Derive a numeric minor from the
+	# base (5.3-rc2 -> 3) so the configure-path gating below still keys off the
+	# real major.minor, and point build_srcdir at the token's own tree.
+	if shvr_is_prerelease "$version"
+	then
+		version_baseline="$version"
+		version_patch=0
+		version_minor="${version%%-*}"
+		version_minor="${version_minor#*.}"
+		build_srcdir="${SHVR_DIR_SRC}/bash/${version_baseline}"
+		return 0
 	fi
 
 	version_minor="${version#$version_major\.}"

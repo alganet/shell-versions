@@ -536,6 +536,7 @@ jobs:
               ash_1.2.2.1
               ash_1.2.2
               bash_5.3.15
+              bash_5.3-rc2
               bash_5.2.37
               bash_5.1.16
               bash_5.0.18
@@ -871,6 +872,7 @@ jobs:
               ash_1.2.2.1
               ash_1.2.2
               bash_5.3.15
+              bash_5.3-rc2
               bash_5.2.37
               bash_5.1.16
               bash_5.0.18
