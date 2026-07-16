@@ -262,18 +262,45 @@ shvr_prerelease ()
 	done
 }
 
-# Everything we build and publish as its own <shell>_<version> tag: the released
-# versions plus the pre-release lane. This -- not shvr_targets -- is what every
-# consumer that builds, downloads, patches, checksums, prunes or tags must use, so a
-# lane cannot be silently dropped from the build by being absent from one of them.
+# The development snapshot lane: the code that will become each shell's next version,
+# pinned to a commit. Same shape as shvr_prerelease -- reads versions/<shell>.snapshot
+# by default, so a shell opts in by having the file; a variant overrides
+# shvr_snapshot_<shell> only when its versions come from elsewhere (ash/hush derive
+# busybox's and rewrite the prefix).
 #
-# The :all assembly list is deliberately NOT this set. It composes shvr_targets +
-# shvr_prerelease explicitly, so that when the snapshot lane joins shvr_buildset it is
-# built and tagged without ever leaking into :all.
+# Snapshots are built and published as their own <shell>_snapshot-<shortsha> tag, and
+# are never assembled into :all or :latest -- see shvr_buildset.
+shvr_snapshot ()
+{
+	if test -z "$*"
+	then set -- $(printf '%s ' $(shvr_interpreters))
+	fi
+
+	for sn_interpreter in "$@"
+	do
+		. "${SHVR_DIR_SELF}/variants/${sn_interpreter}.sh"
+		if command -v "shvr_snapshot_${sn_interpreter}" >/dev/null 2>&1
+		then "shvr_snapshot_${sn_interpreter}"
+		else shvr_read_versions "${sn_interpreter}" snapshot
+		fi
+	done
+}
+
+# Everything we build and publish as its own <shell>_<version> tag: the released
+# versions, plus the pre-release lane, plus the snapshot lane. This -- not
+# shvr_targets -- is what every consumer that builds, downloads, patches, checksums,
+# prunes or tags must use, so a lane cannot be silently dropped from the build by being
+# absent from one of them.
+#
+# The :all assembly list is deliberately NOT this set: it composes shvr_targets +
+# shvr_prerelease explicitly, so the snapshot lane is built and tagged without ever
+# leaking into :all. The warm-sources download list does the same, for its own reason
+# (see shvr_github_regen_downloads).
 shvr_buildset ()
 {
 	shvr_targets "$@"
 	shvr_prerelease "$@"
+	shvr_snapshot "$@"
 }
 
 # Print the patches that apply to each <shell>_<version>, in apply order, as
@@ -317,8 +344,12 @@ shvr_check_patches ()
 		# after the source it patches, which is also what versions/<name>.all is
 		# keyed by -- ash and hush both build busybox, and it is versions/
 		# busybox.all that lists their versions (neither has a list of its own).
+		# Every lane we build, so a selector aimed at a pre-release or a snapshot is
+		# not misreported as drift. A snapshot selector can only sensibly be a glob
+		# (snapshot-*), since the token rolls on every update.
 		known="$( { shvr_read_versions "$pset" all
-			shvr_read_versions "$pset" prerelease; } | sed "s/^${pset}_//")"
+			shvr_read_versions "$pset" prerelease
+			shvr_read_versions "$pset" snapshot; } | sed "s/^${pset}_//")"
 
 		if test -z "$known"
 		then
@@ -559,6 +590,21 @@ shvr_is_prerelease ()
 	esac
 }
 
+# Return 0 if <version> is a development snapshot token (snapshot-<shortsha>).
+# Canonical detector for the snapshot lane, as shvr_is_prerelease is for its own.
+#
+# The two can never collide, which is why both can key off the bare version token:
+# every pre-release keyword needs a letter outside hex -- rc needs r, alpha needs
+# l/p/h, beta needs t, pre needs p/r, test needs t/s, dev needs v, snapshot needs
+# s/n/p/o -- so a hex short-sha cannot spell any of them.
+shvr_is_snapshot ()
+{
+	case "$1" in
+	snapshot-*) return 0 ;;
+	*) return 1 ;;
+	esac
+}
+
 shvr_read_versions ()
 {
 	interpreter="$1"
@@ -761,6 +807,56 @@ shvr_merge_prereleases ()
 			if test -s "$file"
 			then echo "${interpreter}.prerelease: $(cat "$file")" >&2
 			else echo "${interpreter}.prerelease: (none)" >&2
+			fi
+		fi
+		# The EXIT trap cleans $excl (and $tmp, already moved on the write path).
+	)
+}
+
+# Sibling of shvr_merge_prereleases for the snapshot lane. Reads a discovered
+# "snapshot-<shortsha> [<date>]" line on stdin and rewrites versions/<shell>.snapshot.
+# Non-sticky for the same reason: `shvr update` re-resolves the dev head every run, so
+# the token rolls and the previous one is simply gone. Its build checksums are reaped by
+# shvr_prune_build_checksums (the snapshot is in shvr_buildset's keep set only while it
+# is current); its published tag and source checksum are THEREAPER.md's problem.
+#
+# Unlike the pre-release merge this does NOT sort: a sha has no order, and discovery
+# yields exactly one line -- the resolved head. Taking the first is the whole selection.
+shvr_merge_snapshots ()
+{
+	interpreter="$1"
+	file="${SHVR_DIR_SELF}/versions/${interpreter}.snapshot"
+	excluded_file="${SHVR_DIR_SELF}/versions/${interpreter}.excluded"
+	mkdir -p "$(dirname "$file")"
+
+	(
+		tmp="${file}.tmp.$$"
+		excl="${tmp}.excl"
+		trap 'rm -f "$tmp" "$excl"' EXIT INT TERM
+
+		if test -f "$excluded_file"
+		then awk '!/^[[:space:]]*#/ && NF { print $1 }' "$excluded_file" > "$excl"
+		else : > "$excl"
+		fi
+
+		while IFS= read -r line
+		do
+			ver="${line%%[[:space:]]*}"
+			test -n "$ver" || continue
+			shvr_is_snapshot "$ver" || continue
+			if test -s "$excl" && grep -Fxq "$ver" "$excl"
+			then continue
+			fi
+			printf '%s\n' "$line"
+		done | head -n1 > "$tmp"
+
+		if test -f "$file" && cmp -s "$tmp" "$file"
+		then echo "${interpreter}.snapshot: no change" >&2
+		else
+			mv "$tmp" "$file"
+			if test -s "$file"
+			then echo "${interpreter}.snapshot: $(cat "$file")" >&2
+			else echo "${interpreter}.snapshot: (none)" >&2
 			fi
 		fi
 		# The EXIT trap cleans $excl (and $tmp, already moved on the write path).
