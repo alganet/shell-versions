@@ -9,8 +9,24 @@ Multiple versions of multiple shells. Ideal for testing portable shell scripts.
 
 ## Images
 
- - **latest** - Contains the two most recent versions of each shell. Ideal for testing up to date scripts.
- - **all** - Everything we can build in a single image. Ideal for testing legacy and backwards compatible scripts.
+ - **latest** - Contains the two most recent released versions of each shell. Ideal for testing up to date scripts. Never contains pre-releases.
+ - **all** - Everything we can build in a single image, including each shell's newest pre-release where upstream publishes one. Ideal for testing legacy and backwards compatible scripts, and for catching breakage before an upstream release ships.
+
+### Pre-releases
+
+Shells whose upstream publishes an alpha/beta/rc/test build contribute their
+**newest** such build to `all` (only the newest — we do not archive the whole
+pre-release history). They are named by their upstream token, so they sort and
+read as what they are:
+
+```sh
+$ docker run -it --rm alganet/shell-versions:all /opt/bash_5.3-rc2/bin/bash --version
+```
+
+A pre-release is kept as long as it is the newest one upstream offers, even when
+a newer *released* version already exists — it is the last pre-release that shell
+had. It rolls forward on its own when upstream publishes a newer one, and
+disappears if upstream withdraws it. Pre-releases never enter `latest`.
 
 Shells are built on debian-slim, and copied during multi-stage to a barebones
 busybox image (you get busybox tools + all shells).
