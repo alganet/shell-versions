@@ -1098,7 +1098,13 @@ shvr_verify_build_checksums()
 
 shvr_github_regen_downloads ()
 {
-	set -- $(printf '%s ' $(shvr_buildset | sort -t'_' -k1,1 -k2Vr))
+	# Released + pre-release, NOT shvr_buildset. This action has exactly one consumer,
+	# warm-sources.yml, whose job is to keep long-lived source caches from being evicted
+	# so a rarely-rebuilt target can still be rebuilt. A snapshot source is worth nothing
+	# there: it is fetched once by the build that mints it, and the moment its sha rolls
+	# it is superseded and never wanted again. Composed explicitly so the snapshot lane
+	# can join shvr_buildset without silently being warmed forever.
+	set -- $(printf '%s ' $( { shvr_targets; shvr_prerelease; } | sort -t'_' -k1,1 -k2Vr))
 	local yml_file="${SHVR_DIR_SELF}/.github/actions/downloads/action.yml"
 	cp -f "$yml_file" "${yml_file}.bak"
 	IFS=
