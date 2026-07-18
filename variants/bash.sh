@@ -149,36 +149,14 @@ shvr_download_bash ()
 
 	mkdir -p "${SHVR_DIR_SRC}/bash"
 
-	# A snapshot has no tarball to fetch: savannah serves no cgit snapshots (its
-	# /snapshot/ URLs answer 400) and there is no mirror to fall back on. So fetch the
-	# tree by its pinned sha -- shallow, so it costs one commit rather than bash's whole
-	# history -- and archive it into the tarball the build already knows how to unpack,
-	# leaving shvr_build_bash untouched.
-	#
-	# This is the one lane with no committed SOURCE checksum: shvr_fetch is bypassed and
-	# the sha is the pin, which is a stronger one than a sha256 of a tarball we minted
-	# ourselves. The archive's bytes need not be reproducible -- nothing checksums them
-	# -- while the BUILD checksums still are, because they are taken over the compiled
-	# binary, which depends on the tree the sha names, not on the tarball's framing.
+	# A snapshot is fetched from git at its pinned sha and archived into the tarball the
+	# build unpacks below (savannah serves no tarball anyway: its cgit /snapshot/ URLs
+	# answer 400 and there is no mirror). No upstream patches apply -- the devel tree
+	# already contains them -- so version_patch is 0 and the loop below is skipped.
 	if shvr_is_snapshot "$version"
 	then
-		if ! test -f "${build_srcdir}.tar.gz"
-		then
-			bash_sn_sha="$(shvr_snapshot_sha bash "$version")"
-			bash_sn_repo="$(shvr_snapshotsource_bash | cut -d' ' -f1)"
-			bash_sn_tmp="$(mktemp -d "${TMPDIR:-/tmp}/shvr_bash_snapshot.XXXXXX")"
-
-			git init -q "$bash_sn_tmp"
-			git -C "$bash_sn_tmp" remote add origin "$bash_sn_repo"
-			git -C "$bash_sn_tmp" fetch -q --depth 1 origin "$bash_sn_sha"
-			# Write via a temp so an interrupted fetch cannot leave a partial tarball
-			# to be cached and unpacked.
-			git -C "$bash_sn_tmp" archive --format=tar.gz \
-				--prefix="bash-${version}/" FETCH_HEAD > "${build_srcdir}.tar.gz.part"
-			mv "${build_srcdir}.tar.gz.part" "${build_srcdir}.tar.gz"
-			rm -rf "$bash_sn_tmp"
-		fi
-
+		shvr_snapshot_fetch_git bash "$version" \
+			"${build_srcdir}.tar.gz" "bash-${version}"
 		shvr_download_ncurses
 		return 0
 	fi

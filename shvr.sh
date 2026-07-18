@@ -875,6 +875,70 @@ shvr_snapshot_sha ()
 	printf '%s\n' "$sn_full"
 }
 
+# Fetch <shell>'s snapshot tree at its pinned sha and archive it into <dest> -- the
+# tarball that shell's build already knows how to unpack, so no shvr_build_<shell> has to
+# change. Shallow, so it costs one commit rather than the project's whole history.
+#
+# The WHOLE snapshot lane fetches this way, including shells whose forge would serve an
+# archive at that sha. Git verifies the object hash against the sha committed in
+# versions/<shell>.snapshot: a real cryptographic check of exactly the tree we named. A
+# forge tarball could only be checked against a sha256 we minted ourselves, and those
+# tarballs are not byte-stable (a regenerated one can fail its own committed checksum on
+# content that is perfectly correct). One code path, one guarantee, and no source
+# checksums to mint, verify or reap.
+#
+# The archive's own bytes are therefore not reproducible and deliberately not checksummed
+# -- git archive framing varies across git versions. What must be reproducible is the
+# BUILD, and it is: the tree is fixed by the sha, so the compiled binary is, and its build
+# checksums are committed and verified as for any other target.
+#
+# <dest>'s extension picks the compression, because that is what the build expects to
+# unpack (zsh wants .tar.xz, busybox .tar.bz2, most want .tar.gz).
+# Usage: shvr_snapshot_fetch_git <shell> <version> <dest> <prefix>
+shvr_snapshot_fetch_git ()
+{
+	sn_interpreter="$1"
+	sn_version="$2"
+	sn_dest="$3"
+	sn_prefix="$4"
+
+	if test -f "$sn_dest"
+	then return 0
+	fi
+
+	sn_full="$(shvr_snapshot_sha "$sn_interpreter" "$sn_version")"
+	sn_repo="$("shvr_snapshotsource_${sn_interpreter}" | cut -d' ' -f1)"
+	sn_tmp="$(mktemp -d "${TMPDIR:-/tmp}/shvr_snapshot.XXXXXX")"
+
+	mkdir -p "$(dirname "$sn_dest")"
+	git init -q "$sn_tmp"
+	git -C "$sn_tmp" remote add origin "$sn_repo"
+	# The full sha, not the short token: servers refuse an abbreviated object id.
+	git -C "$sn_tmp" fetch -q --depth 1 origin "$sn_full"
+
+	# Write via a temp so an interrupted fetch cannot leave a partial tarball behind to
+	# be cached and unpacked.
+	case "$sn_dest" in
+	*.tar.gz)
+		git -C "$sn_tmp" archive --format=tar.gz --prefix="${sn_prefix}/" FETCH_HEAD > "${sn_dest}.part"
+		;;
+	*.tar.xz)
+		git -C "$sn_tmp" archive --format=tar --prefix="${sn_prefix}/" FETCH_HEAD | xz > "${sn_dest}.part"
+		;;
+	*.tar.bz2)
+		git -C "$sn_tmp" archive --format=tar --prefix="${sn_prefix}/" FETCH_HEAD | bzip2 > "${sn_dest}.part"
+		;;
+	*)
+		rm -rf "$sn_tmp"
+		echo "shvr_snapshot_fetch_git: unsupported archive form: ${sn_dest}" >&2
+		return 1
+		;;
+	esac
+
+	mv "${sn_dest}.part" "$sn_dest"
+	rm -rf "$sn_tmp"
+}
+
 # Sibling of shvr_merge_prereleases for the snapshot lane. Reads a discovered
 # "snapshot-<shortsha> [<date>]" line on stdin and rewrites versions/<shell>.snapshot.
 # Non-sticky for the same reason: `shvr update` re-resolves the dev head every run, so
@@ -1125,13 +1189,15 @@ shvr_generate_source_checksums ()
 		interpreter="${t%%_*}"
 		version="${t#*_}"
 
-		# The snapshot lane has no source checksum, on purpose. Where upstream serves no
-		# tarball the tree is fetched by git and archived locally, so the download
-		# bypasses shvr_fetch and a sha256 here would never be verified. It would also
-		# differ between machines -- `git archive` framing is not byte-stable across git
-		# versions -- so committing one would assert a reproducibility we do not have.
-		# The commit sha in versions/<shell>.snapshot is the pin; BUILD checksums are
-		# still committed and verified, because they cover the compiled binary.
+		# The snapshot lane has no source checksums at all, on purpose. Every snapshot
+		# is fetched from git at its pinned sha (shvr_snapshot_fetch_git) and archived
+		# locally, so the download bypasses shvr_fetch and a sha256 here would never be
+		# verified. It would also differ between machines -- `git archive` framing is not
+		# byte-stable across git versions -- so committing one would assert a
+		# reproducibility we do not have. Git's own object hashing already verifies the
+		# tree against the sha in versions/<shell>.snapshot, which is the stronger check.
+		# BUILD checksums are still committed and verified: they cover the compiled
+		# binary, which the sha does fix.
 		if shvr_is_snapshot "$version"
 		then continue
 		fi
