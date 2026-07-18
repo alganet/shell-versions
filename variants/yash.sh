@@ -35,9 +35,43 @@ shvr_series_yash ()
 	printf '%s.%s\n' "${version_major}" "${version_minor}"
 }
 
+# No snapshot channel for now, deliberately. yash develops on trunk (not master/main),
+# and the token/fetch handling below is wired and works -- but trunk does not compile
+# with our cross-toolchain:
+#
+#	common.h:57:44: error: missing binary operator before token "("
+#	 57 | #if defined(__has_builtin) && __has_builtin(__builtin_unreachable)
+#
+# __has_builtin is a GCC 10 preprocessor feature and musl-cross-make pins gcc 9.4.0, so
+# the undefined identifier collapses to 0 and the #if fails to parse. Patching is not the
+# answer: a patch against a branch that moves every roll would break unpredictably, and
+# we would no longer be testing what upstream actually wrote.
+#
+# Worth noting what this predicts: when trunk becomes yash's next release, the RELEASE
+# will not build here either, so the toolchain needs a gcc bump before then. Restore the
+# channel by putting the hook back once it does:
+#
+#	shvr_snapshotsource_yash ()
+#	{
+#		echo "https://github.com/magicant/yash trunk"
+#	}
+
 shvr_versioninfo_yash ()
 {
 	version="$1"
+
+	# Before the numeric parsing below, which would reject the token (no "." in it, so
+	# version_major would equal version -> return 1). yash's trunk ships its
+	# hand-written ./configure, so the build needs nothing special.
+	if shvr_is_snapshot "$version"
+	then
+		version_major=99
+		version_minor=99
+		version_patch=0
+		build_srcdir="${SHVR_DIR_SRC}/yash/${version}"
+		return 0
+	fi
+
 	version_major="${version%%\.*}"
 
 	if test "$version" = "$version_major"
@@ -68,7 +102,10 @@ shvr_download_yash ()
 		# keep the release tarball so their committed source checksums stay
 		# valid; everything older fetches the archive tag tarball. Both URLs are
 		# saved as .tar.gz (tar autodetects xz/gz).
-		if test "$version_major" -gt 2 ||
+		if shvr_is_snapshot "$version"
+		then
+			shvr_snapshot_fetch_git yash "$version" "${build_srcdir}.tar.gz" "yash-${version}"
+		elif test "$version_major" -gt 2 ||
 			{ test "$version_major" -eq 2 && test "$version_minor" -ge 41; }
 		then
 			shvr_fetch "https://github.com/magicant/yash/releases/download/${version}/yash-${version}.tar.xz" "${build_srcdir}.tar.gz"

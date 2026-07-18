@@ -59,9 +59,28 @@ shvr_update_ksh ()
 #   0.2020-uplus      the abandoned ksh2020/ksh fork (a u+ fork)
 #   0.<year>-<letter> a ksh93-history snapshot, e.g. 0.2012-uplus (93u+), 0.2014-vminus
 # The fork is implicit in the name shape; this derives it plus the upstream ref.
+# The live ksh93/ksh fork develops on dev; there is no other active line.
+shvr_snapshotsource_ksh ()
+{
+	echo "https://github.com/ksh93/ksh dev"
+}
+
 shvr_versioninfo_ksh ()
 {
 	version="$1"
+
+	# The snapshot tracks ksh93/ksh's dev branch, i.e. the live fork, so $fork must say
+	# live: shvr_static_ksh and the history-only special-casing both key off it, and the
+	# catch-all case below would otherwise compose a nonsense fork_ref ("vsnapshot-...").
+	# fork_ref stays empty -- the snapshot fetches by pinned sha, not by tag.
+	if shvr_is_snapshot "$version"
+	then
+		fork=live
+		fork_ref=""
+		build_srcdir="${SHVR_DIR_SRC}/ksh/${version}"
+		return 0
+	fi
+
 	case "$version" in
 		*-uplusm)     fork=live;    fork_ref="v${version%-uplusm}" ;;
 		0.2020-uplus) fork=2020;    fork_ref="2020.0.0" ;;
@@ -100,6 +119,12 @@ shvr_download_ksh ()
 
 	if ! test -f "${build_srcdir}.tar.gz"
 	then
+		if shvr_is_snapshot "$version"
+		then
+			shvr_snapshot_fetch_git ksh "$version" "${build_srcdir}.tar.gz" "ksh-${version}"
+			return 0
+		fi
+
 		case "$fork" in
 			live)
 				shvr_fetch "https://github.com/ksh93/ksh/archive/refs/tags/${fork_ref}.tar.gz" "${build_srcdir}.tar.gz"
@@ -281,6 +306,29 @@ EOF
 shvr_deps_ksh ()
 {
 	shvr_versioninfo_ksh "$1"
+
+	# The dev tree's libast siglist probe runs `env kill -l` -- deliberately the external
+	# kill rather than the builtin -- and hard-fails when it yields nothing:
+	#
+	#	iffe: failed to get list of signals from external 'kill -l'
+	#
+	# debian-slim ships no external kill, so the snapshot needs procps to supply one.
+	#
+	# Scoped to the snapshot on purpose, and the released builds genuinely do not want
+	# it. Released ksh probes with `/bin/kill -l` and lets an empty result fall through,
+	# which is harmless: the signal table comes from the signal.h feature tests, and this
+	# probe only supplements it. Verified rather than assumed -- released ksh 1.0.10,
+	# built with no external kill, and this snapshot, built with one, both report the
+	# same 64 signals from `kill -l`. Upstream's change is a strictness fix, not a bug
+	# fix, so adding procps to the released env would gain nothing and would change every
+	# ksh binary, invalidating ~30 targets' committed build checksums.
+	if shvr_is_snapshot "$1"
+	then
+		apt-get -y install \
+			curl patch procps
+		return 0
+	fi
+
 	case "$fork" in
 		live)
 			apt-get -y install \
