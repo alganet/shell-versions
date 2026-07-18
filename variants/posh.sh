@@ -36,6 +36,14 @@ shvr_series_posh ()
 	printf '%s.%s\n' "${version%%.*}" "${series_rest%%.*}"
 }
 
+# posh has a single line of development on salsa.
+shvr_snapshotsource_posh ()
+{
+	echo "https://salsa.debian.org/clint/posh.git master"
+}
+
+# No snapshot branch needed: this sets only build_srcdir, and the build runs
+# `autoreconf -fi` unconditionally, so a git tree bootstraps itself.
 shvr_versioninfo_posh ()
 {
 	version="$1"
@@ -50,7 +58,10 @@ shvr_download_posh ()
 
 	if ! test -f "${build_srcdir}.tar.gz"
 	then
-		shvr_fetch "https://salsa.debian.org/clint/posh/-/archive/debian/$version/posh-debian-$version.tar.gz" "${build_srcdir}.tar.gz"
+		if shvr_is_snapshot "$version"
+		then shvr_snapshot_fetch_git posh "$version" "${build_srcdir}.tar.gz" "posh-${version}"
+		else shvr_fetch "https://salsa.debian.org/clint/posh/-/archive/debian/$version/posh-debian-$version.tar.gz" "${build_srcdir}.tar.gz"
+		fi
 	fi
 }
 

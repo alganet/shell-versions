@@ -36,6 +36,12 @@ shvr_update_zsh ()
 		shvr_merge_prereleases zsh
 }
 
+# zsh develops on master; the sourceforge releases are cut from it.
+shvr_snapshotsource_zsh ()
+{
+	echo "https://github.com/zsh-users/zsh master"
+}
+
 shvr_series_zsh ()
 {
 	shvr_versioninfo_zsh "$1" || return 1
@@ -45,6 +51,21 @@ shvr_series_zsh ()
 shvr_versioninfo_zsh ()
 {
 	version="$1"
+
+	# Before the numeric parsing below, which would reject the token outright: it has no
+	# ".", so version_major would equal version and we would return 1. The infinite
+	# version clears every gate that follows -- multibyte, unicode9 and pcre2 -- which is
+	# what a development tree wants. zsh's git tree ships no configure, but the build
+	# already runs ./Util/preconfig to generate it, so nothing else changes.
+	if shvr_is_snapshot "$version"
+	then
+		version_major=99
+		version_minor=99
+		version_patch=0
+		build_srcdir="${SHVR_DIR_SRC}/zsh/${version}"
+		return 0
+	fi
+
 	version_major="${version%%\.*}"
 
 	if test "$version" = "$version_major"
@@ -83,9 +104,14 @@ shvr_download_zsh ()
 
 	mkdir -p "${SHVR_DIR_SRC}/zsh"
 
+	# The snapshot is fetched from git at its pinned sha; .tar.xz because that is what
+	# the build unpacks for anything this modern.
+	if shvr_is_snapshot "$version"
+	then
+		shvr_snapshot_fetch_git zsh "$version" "${build_srcdir}.tar.xz" "zsh-${version}"
 	# Pre-release "test" tarballs live under the zsh-test/ SourceForge folder
 	# rather than zsh/; they are always xz. Finals keep the zsh/ path below.
-	if shvr_is_prerelease "$version"
+	elif shvr_is_prerelease "$version"
 	then
 		if ! test -f "${build_srcdir}.tar.xz"
 		then
