@@ -34,9 +34,26 @@ shvr_series_mksh ()
 	printf 'R%s\n' "${version_major}"
 }
 
+shvr_snapshotsource_mksh ()
+{
+	echo "https://github.com/MirBSD/mksh master"
+}
+
 shvr_versioninfo_mksh ()
 {
 	version="$1"
+
+	# Before the R-prefix parsing below, which would reject the token outright: it has
+	# no R, so rest would equal version and we would return 1. The infinite version
+	# clears the build's `-lt 30` gate, selecting the modern path.
+	if shvr_is_snapshot "$version"
+	then
+		version_major=99
+		version_patch=0
+		build_srcdir="${SHVR_DIR_SRC}/mksh/${version}"
+		return 0
+	fi
+
 	rest="${version#R}"
 	if test "$rest" = "$version"
 	then return 1
@@ -57,7 +74,10 @@ shvr_download_mksh ()
 
 	if ! test -f "${build_srcdir}.tar.gz"
 	then
-		shvr_fetch "https://github.com/MirBSD/mksh/archive/refs/tags/mksh-$version.tar.gz" "${build_srcdir}.tar.gz"
+		if shvr_is_snapshot "$version"
+		then shvr_snapshot_fetch_git mksh "$version" "${build_srcdir}.tar.gz" "mksh-${version}"
+		else shvr_fetch "https://github.com/MirBSD/mksh/archive/refs/tags/mksh-$version.tar.gz" "${build_srcdir}.tar.gz"
+		fi
 	fi
 }
 

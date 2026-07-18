@@ -40,6 +40,16 @@ shvr_series_dash ()
 	esac
 }
 
+# dash has a single line of development; master is what becomes the next release.
+shvr_snapshotsource_dash ()
+{
+	echo "https://git.kernel.org/pub/scm/utils/dash/dash.git master"
+}
+
+# No version gates to fool here: dash's build keys off the whole token
+# (`case "$version" in 0.5.2|0.5.3)`), which a snapshot misses, so it takes the modern
+# path -- libedit, and ./autogen.sh, which the git tree ships. So the snapshot token
+# needs nothing special beyond the build_srcdir every version already gets.
 shvr_versioninfo_dash ()
 {
 	version="$1"
@@ -54,7 +64,10 @@ shvr_download_dash ()
 
 	if ! test -f "${build_srcdir}.tar.gz"
 	then
-		shvr_fetch "https://git.kernel.org/pub/scm/utils/dash/dash.git/snapshot/dash-$version.tar.gz" "${build_srcdir}.tar.gz"
+		if shvr_is_snapshot "$version"
+		then shvr_snapshot_fetch_git dash "$version" "${build_srcdir}.tar.gz" "dash-${version}"
+		else shvr_fetch "https://git.kernel.org/pub/scm/utils/dash/dash.git/snapshot/dash-$version.tar.gz" "${build_srcdir}.tar.gz"
+		fi
 	fi
 
 	# >=0.5.4 builds with the in-tree libedit for line editing/history.
