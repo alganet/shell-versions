@@ -71,6 +71,15 @@ EOF
 		shvr_merge_prereleases bash
 }
 
+# The branch the next bash accrues on. master carries the released tree and devel the
+# development line -- at time of writing they report 5.3-release and 5.3-maint
+# respectively, so devel is where 5.4 will appear, and tracking it means users get the
+# next bash as soon as it begins to exist.
+shvr_snapshotsource_bash ()
+{
+	echo "https://git.savannah.gnu.org/git/bash.git devel"
+}
+
 shvr_series_bash ()
 {
 	shvr_versioninfo_bash "$1" || return 1
@@ -80,6 +89,28 @@ shvr_series_bash ()
 shvr_versioninfo_bash ()
 {
 	version="$1"
+
+	# A development snapshot (snapshot-<shortsha>). This must come before the numeric
+	# parsing below, which would reject the token outright: it contains no ".", so
+	# version_major would equal version and we would return 1.
+	#
+	# The gates in build/deps all ask "is this new enough for the modern behaviour", so
+	# an effectively-infinite version uniformly selects the newest code path -- which is
+	# exactly what a snapshot is. It also keeps bash off the <5.3 path, which does
+	# `rm configure; autoconf2.69`: the devel tree ships a good generated configure but
+	# NOT _distribution/_patchlevel, which configure.ac reads via esyscmd(), so
+	# regenerating would bake in an empty version (the failure that
+	# patches/bash/distribution-*.diff exists to fix for 2.01..2.05).
+	if shvr_is_snapshot "$version"
+	then
+		version_major=99
+		version_minor=99
+		version_patch=0
+		version_baseline="$version"
+		build_srcdir="${SHVR_DIR_SRC}/bash/${version}"
+		return 0
+	fi
+
 	version_major="${version%%\.*}"
 
 	if test "$version" = "$version_major"
@@ -117,6 +148,40 @@ shvr_download_bash ()
 	shvr_versioninfo_bash "$1"
 
 	mkdir -p "${SHVR_DIR_SRC}/bash"
+
+	# A snapshot has no tarball to fetch: savannah serves no cgit snapshots (its
+	# /snapshot/ URLs answer 400) and there is no mirror to fall back on. So fetch the
+	# tree by its pinned sha -- shallow, so it costs one commit rather than bash's whole
+	# history -- and archive it into the tarball the build already knows how to unpack,
+	# leaving shvr_build_bash untouched.
+	#
+	# This is the one lane with no committed SOURCE checksum: shvr_fetch is bypassed and
+	# the sha is the pin, which is a stronger one than a sha256 of a tarball we minted
+	# ourselves. The archive's bytes need not be reproducible -- nothing checksums them
+	# -- while the BUILD checksums still are, because they are taken over the compiled
+	# binary, which depends on the tree the sha names, not on the tarball's framing.
+	if shvr_is_snapshot "$version"
+	then
+		if ! test -f "${build_srcdir}.tar.gz"
+		then
+			bash_sn_sha="$(shvr_snapshot_sha bash "$version")"
+			bash_sn_repo="$(shvr_snapshotsource_bash | cut -d' ' -f1)"
+			bash_sn_tmp="$(mktemp -d "${TMPDIR:-/tmp}/shvr_bash_snapshot.XXXXXX")"
+
+			git init -q "$bash_sn_tmp"
+			git -C "$bash_sn_tmp" remote add origin "$bash_sn_repo"
+			git -C "$bash_sn_tmp" fetch -q --depth 1 origin "$bash_sn_sha"
+			# Write via a temp so an interrupted fetch cannot leave a partial tarball
+			# to be cached and unpacked.
+			git -C "$bash_sn_tmp" archive --format=tar.gz \
+				--prefix="bash-${version}/" FETCH_HEAD > "${build_srcdir}.tar.gz.part"
+			mv "${build_srcdir}.tar.gz.part" "${build_srcdir}.tar.gz"
+			rm -rf "$bash_sn_tmp"
+		fi
+
+		shvr_download_ncurses
+		return 0
+	fi
 
 	if ! test -f "${build_srcdir}.tar.gz"
 	then

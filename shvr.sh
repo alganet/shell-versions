@@ -430,6 +430,14 @@ shvr_update ()
 		if command -v "shvr_update_${interpreter}" >/dev/null 2>&1
 		then
 			"shvr_update_${interpreter}"
+			# Roll the snapshot lane for any shell that declares a channel. Central, so
+			# a variant only names its repo/ref and never repeats the discovery dance.
+			# `update` re-resolves the head every run, so the token rolls whenever
+			# upstream moves; a failed resolve refuses to overwrite rather than
+			# retiring the lane (see shvr_merge_snapshots).
+			if command -v "shvr_snapshotsource_${interpreter}" >/dev/null 2>&1
+			then shvr_discover_snapshot "${interpreter}" | shvr_merge_snapshots "${interpreter}"
+			fi
 			# Refresh versions/<shell>.current from the just-merged .all
 			# (no-op for shells without their own .all, e.g. ash/hush).
 			shvr_regen_current_one "${interpreter}"
@@ -813,6 +821,60 @@ shvr_merge_prereleases ()
 	)
 }
 
+# Resolve <shell>'s snapshot channel to a "snapshot-<shortsha> <fullsha>" line, using
+# the "<repo> <ref>" its variant declares via shvr_snapshotsource_<shell>. Prints nothing
+# for a shell with no channel.
+#
+# Both columns are load-bearing. The short sha is the version token: it names the target
+# and the published tag. But it cannot fetch the tree -- `git fetch <sha>` requires the
+# full 40-hex object id and servers refuse an abbreviation ("couldn't find remote ref")
+# -- and the branch head cannot simply be re-resolved at build time, because it moves,
+# which would silently build a different tree than the token names. So the full sha rides
+# along as the fetch pin. The two roll together in one commit, so any checkout of this
+# repo has a token and a pin that agree.
+shvr_discover_snapshot ()
+{
+	sn_interpreter="$1"
+	# Source the variant so the hook is visible when called directly; shvr_update has
+	# already sourced it, and sourcing twice is harmless.
+	. "${SHVR_DIR_SELF}/variants/${sn_interpreter}.sh"
+	command -v "shvr_snapshotsource_${sn_interpreter}" >/dev/null 2>&1 || return 0
+
+	# Deliberate word split of the hook's "<repo> <ref>".
+	# shellcheck disable=SC2046
+	set -- $("shvr_snapshotsource_${sn_interpreter}")
+	sn_repo="$1"
+	sn_ref="$2"
+
+	sn_sha="$(git ls-remote "$sn_repo" "refs/heads/${sn_ref}" 2>/dev/null | cut -f1)"
+	if test -z "$sn_sha"
+	then
+		echo "${sn_interpreter}: could not resolve ${sn_ref} at ${sn_repo}" >&2
+		return 1
+	fi
+
+	printf 'snapshot-%.12s %s\n' "$sn_sha" "$sn_sha"
+}
+
+# The full sha a snapshot token pins, from versions/<shell>.snapshot's second column.
+# The token itself carries only the short sha (it has to be a tag); see
+# shvr_discover_snapshot. Usage: shvr_snapshot_sha <shell> <version>
+shvr_snapshot_sha ()
+{
+	sn_interpreter="$1"
+	sn_version="$2"
+	sn_file="${SHVR_DIR_SELF}/versions/${sn_interpreter}.snapshot"
+
+	sn_full="$(awk -v v="$sn_version" '$1 == v { print $2; exit }' "$sn_file" 2>/dev/null)"
+	if test -z "$sn_full"
+	then
+		echo "shvr_snapshot_sha: ${sn_interpreter}: no pinned sha for ${sn_version} in ${sn_file}" >&2
+		return 1
+	fi
+
+	printf '%s\n' "$sn_full"
+}
+
 # Sibling of shvr_merge_prereleases for the snapshot lane. Reads a discovered
 # "snapshot-<shortsha> [<date>]" line on stdin and rewrites versions/<shell>.snapshot.
 # Non-sticky for the same reason: `shvr update` re-resolves the dev head every run, so
@@ -849,6 +911,17 @@ shvr_merge_snapshots ()
 			fi
 			printf '%s\n' "$line"
 		done | head -n1 > "$tmp"
+
+		# Same guard as shvr_merge_versions, and it matters more here: discovery is a
+		# live `git ls-remote`, so a network blip yields nothing. Wiping the token on
+		# empty input would drop the target from shvr_buildset, and prune would then
+		# reap its committed build checksums. Refuse instead; a channel is retired by
+		# deleting the file, not by a failed fetch.
+		if ! test -s "$tmp"
+		then
+			echo "${interpreter}: no snapshot discovered (upstream fetch may have failed); refusing to overwrite ${file}" >&2
+			exit 1
+		fi
 
 		if test -f "$file" && cmp -s "$tmp" "$file"
 		then echo "${interpreter}.snapshot: no change" >&2
@@ -1051,6 +1124,18 @@ shvr_generate_source_checksums ()
 		shvr_clear_versioninfo
 		interpreter="${t%%_*}"
 		version="${t#*_}"
+
+		# The snapshot lane has no source checksum, on purpose. Where upstream serves no
+		# tarball the tree is fetched by git and archived locally, so the download
+		# bypasses shvr_fetch and a sha256 here would never be verified. It would also
+		# differ between machines -- `git archive` framing is not byte-stable across git
+		# versions -- so committing one would assert a reproducibility we do not have.
+		# The commit sha in versions/<shell>.snapshot is the pin; BUILD checksums are
+		# still committed and verified, because they cover the compiled binary.
+		if shvr_is_snapshot "$version"
+		then continue
+		fi
+
 		. "${SHVR_DIR_SELF}/variants/${interpreter}.sh"
 		"shvr_versioninfo_${interpreter}" "$version"
 		cp="${build_srcdir#${SHVR_DIR_SRC}/}"
