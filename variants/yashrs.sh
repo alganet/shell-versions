@@ -33,6 +33,14 @@ shvr_update_yashrs ()
 		shvr_merge_versions yashrs
 }
 
+# yash-rs develops on master; the yash-cli-* tags are cut from it.
+shvr_snapshotsource_yashrs ()
+{
+	echo "https://github.com/magicant/yash-rs master"
+}
+
+# No snapshot branch needed: this sets only build_srcdir, and yash-rs is cargo-built, so
+# there are no version gates for the token to fool.
 shvr_versioninfo_yashrs ()
 {
 	version="$1"
@@ -48,7 +56,10 @@ shvr_download_yashrs ()
 
 	if ! test -f "${build_srcdir}.tar.gz"
 	then
-		shvr_fetch "https://github.com/magicant/yash-rs/archive/refs/tags/yash-cli-${version}.tar.gz" "${build_srcdir}.tar.gz"
+		if shvr_is_snapshot "$version"
+		then shvr_snapshot_fetch_git yashrs "$version" "${build_srcdir}.tar.gz" "yashrs-${version}"
+		else shvr_fetch "https://github.com/magicant/yash-rs/archive/refs/tags/yash-cli-${version}.tar.gz" "${build_srcdir}.tar.gz"
+		fi
 	fi
 }
 

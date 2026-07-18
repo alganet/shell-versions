@@ -29,9 +29,26 @@ shvr_series_brush ()
 	printf '%s.%s\n' "${version_major}" "${version_minor}"
 }
 
+shvr_snapshotsource_brush ()
+{
+	echo "https://github.com/reubeno/brush main"
+}
+
 shvr_versioninfo_brush ()
 {
 	version="$1"
+
+	# Before the numeric parsing below, which would reject the token (no "." in it).
+	# brush is cargo-built, so the tree needs no bootstrap and no version gates apply.
+	if shvr_is_snapshot "$version"
+	then
+		version_major=99
+		version_minor=99
+		version_patch=0
+		build_srcdir="${SHVR_DIR_SRC}/brush/${version}"
+		return 0
+	fi
+
 	version_major="${version%%\.*}"
 
 	if test "$version" = "$version_major"
@@ -57,7 +74,10 @@ shvr_download_brush ()
 
 	if ! test -f "${build_srcdir}.tar.gz"
 	then
-		shvr_fetch "https://github.com/reubeno/brush/archive/refs/tags/brush-shell-v${version}.tar.gz" "${build_srcdir}.tar.gz"
+		if shvr_is_snapshot "$version"
+		then shvr_snapshot_fetch_git brush "$version" "${build_srcdir}.tar.gz" "brush-${version}"
+		else shvr_fetch "https://github.com/reubeno/brush/archive/refs/tags/brush-shell-v${version}.tar.gz" "${build_srcdir}.tar.gz"
+		fi
 	fi
 }
 
