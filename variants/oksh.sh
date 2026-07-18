@@ -43,9 +43,27 @@ shvr_series_oksh ()
 	printf '%s.%s\n' "${version_major}" "${version_minor}"
 }
 
+shvr_snapshotsource_oksh ()
+{
+	echo "https://github.com/ibara/oksh main"
+}
+
 shvr_versioninfo_oksh ()
 {
 	version="$1"
+
+	# Before the numeric parsing below, which would reject the token (no "." in it, so
+	# version_major would equal version -> return 1). The infinite version makes
+	# shvr_oksh_needs_curses true, i.e. the modern ncurses-linked build.
+	if shvr_is_snapshot "$version"
+	then
+		version_major=99
+		version_minor=99
+		version_patch=0
+		build_srcdir="${SHVR_DIR_SRC}/oksh/${version}"
+		return 0
+	fi
+
 	version_major="${version%%\.*}"
 
 	if test "$version" = "$version_major"
@@ -69,7 +87,10 @@ shvr_download_oksh ()
 
 	if ! test -f "${build_srcdir}.tar.gz"
 	then
-		shvr_fetch "https://github.com/ibara/oksh/releases/download/oksh-$version/oksh-$version.tar.gz" "${build_srcdir}.tar.gz"
+		if shvr_is_snapshot "$version"
+		then shvr_snapshot_fetch_git oksh "$version" "${build_srcdir}.tar.gz" "oksh-${version}"
+		else shvr_fetch "https://github.com/ibara/oksh/releases/download/oksh-$version/oksh-$version.tar.gz" "${build_srcdir}.tar.gz"
+		fi
 	fi
 
 	if shvr_oksh_needs_curses

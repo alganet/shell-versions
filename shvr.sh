@@ -435,8 +435,17 @@ shvr_update ()
 			# `update` re-resolves the head every run, so the token rolls whenever
 			# upstream moves; a failed resolve refuses to overwrite rather than
 			# retiring the lane (see shvr_merge_snapshots).
-			if command -v "shvr_snapshotsource_${interpreter}" >/dev/null 2>&1
-			then shvr_discover_snapshot "${interpreter}" | shvr_merge_snapshots "${interpreter}"
+			#
+			# Roll the BACKING source, not the interpreter: ash and hush carry no
+			# versions of their own and derive busybox's, rewriting the prefix, exactly
+			# as shvr_regen_current_one does. Both of them resolve to busybox here, so
+			# the second is a no-op.
+			snapshot_src="${interpreter}"
+			if command -v "shvr_versionsource_${interpreter}" >/dev/null 2>&1
+			then snapshot_src="$("shvr_versionsource_${interpreter}")"
+			fi
+			if command -v "shvr_snapshotsource_${snapshot_src}" >/dev/null 2>&1
+			then shvr_discover_snapshot "${snapshot_src}" | shvr_merge_snapshots "${snapshot_src}"
 			fi
 			# Refresh versions/<shell>.current from the just-merged .all
 			# (no-op for shells without their own .all, e.g. ash/hush).
@@ -836,8 +845,12 @@ shvr_discover_snapshot ()
 {
 	sn_interpreter="$1"
 	# Source the variant so the hook is visible when called directly; shvr_update has
-	# already sourced it, and sourcing twice is harmless.
-	. "${SHVR_DIR_SELF}/variants/${sn_interpreter}.sh"
+	# already sourced it, and sourcing twice is harmless. Guarded because the argument
+	# may be a backing source rather than an interpreter: busybox has no variant of its
+	# own (ash/hush deriving it source common/busybox.sh, where its hooks live).
+	if test -f "${SHVR_DIR_SELF}/variants/${sn_interpreter}.sh"
+	then . "${SHVR_DIR_SELF}/variants/${sn_interpreter}.sh"
+	fi
 	command -v "shvr_snapshotsource_${sn_interpreter}" >/dev/null 2>&1 || return 0
 
 	# Deliberate word split of the hook's "<repo> <ref>".
@@ -906,34 +919,46 @@ shvr_snapshot_fetch_git ()
 	then return 0
 	fi
 
-	sn_full="$(shvr_snapshot_sha "$sn_interpreter" "$sn_version")"
-	sn_repo="$("shvr_snapshotsource_${sn_interpreter}" | cut -d' ' -f1)"
-	sn_tmp="$(mktemp -d "${TMPDIR:-/tmp}/shvr_snapshot.XXXXXX")"
-
-	mkdir -p "$(dirname "$sn_dest")"
-	git init -q "$sn_tmp"
-	git -C "$sn_tmp" remote add origin "$sn_repo"
-	# The full sha, not the short token: servers refuse an abbreviated object id.
-	git -C "$sn_tmp" fetch -q --depth 1 origin "$sn_full"
-
-	# Write via a temp so an interrupted fetch cannot leave a partial tarball behind to
-	# be cached and unpacked.
 	case "$sn_dest" in
-	*.tar.gz)
-		git -C "$sn_tmp" archive --format=tar.gz --prefix="${sn_prefix}/" FETCH_HEAD > "${sn_dest}.part"
-		;;
-	*.tar.xz)
-		git -C "$sn_tmp" archive --format=tar --prefix="${sn_prefix}/" FETCH_HEAD | xz > "${sn_dest}.part"
-		;;
-	*.tar.bz2)
-		git -C "$sn_tmp" archive --format=tar --prefix="${sn_prefix}/" FETCH_HEAD | bzip2 > "${sn_dest}.part"
-		;;
+	*.tar.gz)  sn_z=gzip  ;;
+	*.tar.xz)  sn_z=xz    ;;
+	*.tar.bz2) sn_z=bzip2 ;;
 	*)
-		rm -rf "$sn_tmp"
 		echo "shvr_snapshot_fetch_git: unsupported archive form: ${sn_dest}" >&2
 		return 1
 		;;
 	esac
+
+	sn_full="$(shvr_snapshot_sha "$sn_interpreter" "$sn_version")"
+	sn_repo="$("shvr_snapshotsource_${sn_interpreter}" | cut -d' ' -f1)"
+	sn_tmp="$(mktemp -d "${TMPDIR:-/tmp}/shvr_snapshot.XXXXXX")"
+	sn_work="${sn_tmp}/${sn_prefix}"
+
+	mkdir -p "$(dirname "$sn_dest")" "$sn_work"
+	git init -q "$sn_work"
+	git -C "$sn_work" remote add origin "$sn_repo"
+	# The full sha, not the short token: servers refuse an abbreviated object id.
+	git -C "$sn_work" fetch -q --depth 1 origin "$sn_full"
+
+	# Write via a temp so an interrupted fetch cannot leave a partial tarball behind to
+	# be cached and unpacked.
+	if git -C "$sn_work" cat-file -e FETCH_HEAD:.gitmodules 2>/dev/null
+	then
+		# git archive records a submodule as a bare gitlink and never its content, so a
+		# tree with submodules has to be checked out, its submodules materialised, and
+		# the worktree tarred instead. loksh is the case in point: its meson.build does
+		# subproject('lolibc'), which upstream bundles into the release tarball but git
+		# only references -- archiving it yields an empty subprojects/lolibc/ and meson
+		# fails with "Subproject exists but has no meson.build file".
+		git -C "$sn_work" checkout -q FETCH_HEAD
+		git -C "$sn_work" submodule update --init --recursive --depth 1 -q
+		tar --create --directory "$sn_tmp" --exclude-vcs --sort=name \
+			--owner=0 --group=0 --numeric-owner --mtime='@1' "$sn_prefix" |
+			"$sn_z" > "${sn_dest}.part"
+	else
+		git -C "$sn_work" archive --format=tar --prefix="${sn_prefix}/" FETCH_HEAD |
+			"$sn_z" > "${sn_dest}.part"
+	fi
 
 	mv "${sn_dest}.part" "$sn_dest"
 	rm -rf "$sn_tmp"

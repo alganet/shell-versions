@@ -34,9 +34,27 @@ shvr_series_loksh ()
 	printf '%s.%s\n' "${version_major}" "${version_minor}"
 }
 
+shvr_snapshotsource_loksh ()
+{
+	echo "https://github.com/dimkr/loksh master"
+}
+
 shvr_versioninfo_loksh ()
 {
 	version="$1"
+
+	# Before the numeric parsing below, which would reject the token (no "." in it, so
+	# version_major would equal version -> return 1). The infinite version makes
+	# shvr_loksh_premeson false, i.e. the modern meson build.
+	if shvr_is_snapshot "$version"
+	then
+		version_major=99
+		version_minor=99
+		version_patch=0
+		build_srcdir="${SHVR_DIR_SRC}/loksh/${version}"
+		return 0
+	fi
+
 	version_major="${version%%\.*}"
 
 	if test "$version" = "$version_major"
@@ -70,7 +88,10 @@ shvr_download_loksh ()
 
 	if ! test -f "${build_srcdir}.tar.xz"
 	then
-		if shvr_loksh_premeson
+		if shvr_is_snapshot "$version"
+		then
+			shvr_snapshot_fetch_git loksh "$version" "${build_srcdir}.tar.xz" "loksh-${version}"
+		elif shvr_loksh_premeson
 		then
 			# No release asset for these tags; the github archive tag tarball
 			# ships the full Makefile-based tree. Saved as .tar.xz so the build
