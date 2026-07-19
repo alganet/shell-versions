@@ -3,7 +3,14 @@
 # SPDX-FileCopyrightText: 2025 Alexandre Gomes Gaigalas <alganet@gmail.com>
 # SPDX-License-Identifier: ISC
 
-# musl-cross-make toolchain - pinned versions for reproducible builds
+# musl-cross-make toolchain - pinned versions for reproducible builds.
+#
+# GCC is pinned to 13.3.0 (config.mak below), overriding the musl-cross-make
+# commit's own default of 9.4.0. gcc 9 lacks the __has_builtin preprocessor
+# feature (added in gcc 10), which modern upstreams now use unguarded -- yash's
+# trunk is the forcing case. The pinned commit already ships verified hashes for
+# gcc 10.3.0..15.1.0, so this is a version pick, not a commit bump: the
+# musl-cross-make tarball and its committed source checksum are unchanged.
 SHVR_MCM_COMMIT="e5147dde912478dd32ad42a25003e82d4f5733aa"
 SHVR_MCM_OUTPUT="/usr/local/musl-cross"
 
@@ -84,6 +91,7 @@ shvr_build_musl_cross_make ()
 		cat > config.mak << MCMEOF
 TARGET = ${SHVR_MCM_TARGET}
 OUTPUT = ${SHVR_MCM_OUTPUT}
+GCC_VER = 13.3.0
 DL_CMD = curl -sSL -o
 GNU_SITE = https://ftp.gnu.org/gnu
 MCMEOF
