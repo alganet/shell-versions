@@ -108,7 +108,11 @@ shvr_build_dash ()
 	export CC="$(shvr_musl_cc) -static"
 	export AR="$(shvr_musl_ar)"
 	export RANLIB="$(shvr_musl_ranlib)"
-	export CFLAGS="-frandom-seed=1"
+	# gcc 10+ defaults to -fno-common, so libedit's tentative-definition globals
+	# (e.g. `el`, defined in both editline objects) collide at link on 0.5.4..0.5.10
+	# ("multiple definition of 'el'"). -fcommon restores the gcc-9 merge behavior;
+	# harmless for the versions that do not need it.
+	export CFLAGS="-fcommon -frandom-seed=1"
 	export LDFLAGS="-Wl,--build-id=none"
 
 	# Interactive line editing + history via libedit. dash gained --with-libedit

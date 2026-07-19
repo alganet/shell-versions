@@ -248,7 +248,12 @@ shvr_build_bash ()
 		case "$version_baseline" in
 		2.0[1-3]) malloc_flag=--without-gnu-malloc ;;
 		esac
-		export CFLAGS="-std=gnu90 -frandom-seed=1 $(shvr_ncurses_cflags)"
+		# gcc 10+ defaults to -fno-common; bash's tentative-definition globals
+		# (readline's `rl_dispatching`, the termcap `UP`/`BC`/`PC` shared with our
+		# static ncurses) then collide at link ("multiple definition"). -fcommon
+		# restores the gcc-9 merge behavior. Needed on both the old (2.01) and the
+		# newest (5.3-rc) trees, so it is on both CFLAGS branches.
+		export CFLAGS="-fcommon -std=gnu90 -frandom-seed=1 $(shvr_ncurses_cflags)"
 		export CFLAGS_FOR_BUILD='-std=gnu90'
 		export AUTOCONF='autoconf2.69'
 		$AUTOCONF
@@ -257,7 +262,8 @@ shvr_build_bash ()
 			--prefix="${SHVR_DIR_OUT}/bash_${version}" \
 			"$malloc_flag"
 	else
-		export CFLAGS="-frandom-seed=1 $(shvr_ncurses_cflags)"
+		# See the -fcommon note above (-fno-common is the gcc 10+ default).
+		export CFLAGS="-fcommon -frandom-seed=1 $(shvr_ncurses_cflags)"
 		./configure \
 			--host="$(shvr_musl_target)" \
 			--prefix="${SHVR_DIR_OUT}/bash_${version}" \

@@ -144,7 +144,10 @@ shvr_build_loksh ()
 		cp "${SHVR_DIR_SELF}/payloads/loksh/sys-queue-tailq-shim.h" "${build_srcdir}/sys/queue.h"
 
 		export CC="$(shvr_musl_cc) -static"
-		export CFLAGS="-frandom-seed=1 $(shvr_ncurses_cflags)"
+		# gcc 10+ defaults to -fno-common, so the pre-meson tree's tentative-definition
+		# globals (e.g. `got_sigwinch`, in both main.c and edit.c) collide at link
+		# ("multiple definition"). -fcommon restores the gcc-9 merge behavior.
+		export CFLAGS="-fcommon -frandom-seed=1 $(shvr_ncurses_cflags)"
 		# The Makefile sources -lncurses from `pkg-config --libs ncurses`, which
 		# is empty for the in-tree (pkg-config-less) ncurses, so add the library
 		# explicitly -- after the objects in the link line (LDFLAGS is appended
