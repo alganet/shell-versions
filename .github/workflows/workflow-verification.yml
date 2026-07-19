@@ -52,33 +52,40 @@ jobs:
       # check failed, do not delete the check.
       - name: Check the toolchain is consumed as an image, not rebuilt
         run: |
-          awk '
-            function flush() {
-              if (artifacts && !context) {
-                printf "%s:%d: builds target `artifacts` with no toolchain build context\n", FILENAME, start
-                bad = 1
+          set -e
+          # The `artifacts` build lives in the reusable build-images.yml (called
+          # per shard by docker.yml); docker.yml itself only builds `toolchain`.
+          # Scan both so moving the build out of docker.yml cannot silently drop
+          # the contract. set -e above fails the step on the first offending file.
+          for f in .github/workflows/docker.yml .github/workflows/build-images.yml; do
+            awk '
+              function flush() {
+                if (artifacts && !context) {
+                  printf "%s:%d: builds target `artifacts` with no toolchain build context\n", FILENAME, start
+                  bad = 1
+                }
+                artifacts = 0; context = 0
               }
-              artifacts = 0; context = 0
-            }
-            /^[[:space:]]*-[[:space:]]+(name|uses):/ { flush(); start = NR }
-            /^[[:space:]]*target:[[:space:]]*artifacts[[:space:]]*$/ { artifacts = 1 }
-            /toolchain=docker-image:\/\// { context = 1 }
-            END {
-              flush()
-              if (bad) {
-                print ""
-                print "Every `artifacts` build must consume the toolchain image published by"
-                print "the toolchain job, via:"
-                print ""
-                print "    build-contexts: |"
-                print "      toolchain=docker-image://ghcr.io/<repo>:run-<run_id>-toolchain-<arch>"
-                print ""
-                print "Without it the build re-derives the toolchain stage from source, and"
-                print "BuildKit does so silently -- every build job recompiles musl-cross-make."
-                exit 1
+              /^[[:space:]]*-[[:space:]]+(name|uses):/ { flush(); start = NR }
+              /^[[:space:]]*target:[[:space:]]*artifacts[[:space:]]*$/ { artifacts = 1 }
+              /toolchain=docker-image:\/\// { context = 1 }
+              END {
+                flush()
+                if (bad) {
+                  print ""
+                  print "Every `artifacts` build must consume the toolchain image published by"
+                  print "the toolchain job, via:"
+                  print ""
+                  print "    build-contexts: |"
+                  print "      toolchain=docker-image://ghcr.io/<repo>:run-<run_id>-toolchain-<arch>"
+                  print ""
+                  print "Without it the build re-derives the toolchain stage from source, and"
+                  print "BuildKit does so silently -- every build job recompiles musl-cross-make."
+                  exit 1
+                }
               }
-            }
-          ' .github/workflows/docker.yml
+            ' "$f"
+          done
           echo "toolchain contract: ok"
   verify-patches:
     runs-on: ubuntu-24.04
