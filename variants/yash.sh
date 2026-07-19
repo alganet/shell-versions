@@ -35,26 +35,16 @@ shvr_series_yash ()
 	printf '%s.%s\n' "${version_major}" "${version_minor}"
 }
 
-# No snapshot channel for now, deliberately. yash develops on trunk (not master/main),
-# and the token/fetch handling below is wired and works -- but trunk does not compile
-# with our cross-toolchain:
-#
-#	common.h:57:44: error: missing binary operator before token "("
-#	 57 | #if defined(__has_builtin) && __has_builtin(__builtin_unreachable)
-#
-# __has_builtin is a GCC 10 preprocessor feature and musl-cross-make pins gcc 9.4.0, so
-# the undefined identifier collapses to 0 and the #if fails to parse. Patching is not the
-# answer: a patch against a branch that moves every roll would break unpredictably, and
-# we would no longer be testing what upstream actually wrote.
-#
-# Worth noting what this predicts: when trunk becomes yash's next release, the RELEASE
-# will not build here either, so the toolchain needs a gcc bump before then. Restore the
-# channel by putting the hook back once it does:
-#
-#	shvr_snapshotsource_yash ()
-#	{
-#		echo "https://github.com/magicant/yash trunk"
-#	}
+# The branch the next yash accrues on. yash develops on trunk (not master/main), so that
+# is where the next release begins to exist and what the snapshot tracks. This was
+# deferred while the toolchain pinned gcc 9.4.0: trunk's common.h:57 uses __has_builtin in
+# a bare #if, a gcc 10 preprocessor feature, so gcc 9 failed to parse it ("missing binary
+# operator before token '('"). The toolchain now pins gcc 13.3.0 (common/musl-cross-make.sh),
+# which parses it, so the channel is live.
+shvr_snapshotsource_yash ()
+{
+	echo "https://github.com/magicant/yash trunk"
+}
 
 shvr_versioninfo_yash ()
 {
