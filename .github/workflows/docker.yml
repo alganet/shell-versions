@@ -181,8 +181,13 @@ jobs:
       # Per-arch matrices: GitHub caps a job's matrix at 256 configurations, and a
       # full rebuild is ~250 targets PER ARCH, so the two arches must drive two
       # separate build jobs rather than one merged 2x matrix.
-      matrix_amd64: ${{ steps.plan.outputs.matrix_amd64 }}
-      matrix_arm64: ${{ steps.plan.outputs.matrix_arm64 }}
+      # Per-arch shard maps: a JSON object {"<shard>": {"include":[...]}, ...},
+      # each slice <=250 entries so no build matrix exceeds GitHub's 256 cap.
+      # shards_* is the list of shard keys the build job fans out over.
+      shardmap_amd64: ${{ steps.plan.outputs.shardmap_amd64 }}
+      shardmap_arm64: ${{ steps.plan.outputs.shardmap_arm64 }}
+      shards_amd64: ${{ steps.plan.outputs.shards_amd64 }}
+      shards_arm64: ${{ steps.plan.outputs.shards_arm64 }}
       count_amd64: ${{ steps.plan.outputs.count_amd64 }}
       count_arm64: ${{ steps.plan.outputs.count_arm64 }}
       built: ${{ steps.plan.outputs.built }}
@@ -237,199 +242,61 @@ jobs:
           # "<target>-<arch>" list of rows built this run, for the assemble job to
           # tell apart freshly-built (run-scoped) from reused (stable) images.
           built=$(printf '%s\n%s' "$amd" "$arm" | jq -r -s '[.[].include[] | (.target + "-" + .arch)] | join(" ")')
-          printf 'matrix_amd64=%s\n' "$amd" >> "$GITHUB_OUTPUT"
-          printf 'matrix_arm64=%s\n' "$arm" >> "$GITHUB_OUTPUT"
+          # Shard each arch's matrix into <=250-entry slices so no build job's
+          # matrix exceeds GitHub's 256-configuration cap (a full toolchain-bump
+          # rebuild is >256 targets/arch). Emitted as a {"<shard>": {"include":[...]}}
+          # map the build job fans out over by shard key. Empty input -> {} -> no
+          # shards, and the build job's `if: count != 0` gate skips it.
+          shard() { jq -c --argjson n 250 '
+            .include as $all
+            | reduce range(0; ($all | length); $n) as $i ({};
+                . + { (($i / $n | floor) | tostring): { include: $all[$i:$i+$n] } })'; }
+          shardmap_amd64=$(printf '%s' "$amd" | shard)
+          shardmap_arm64=$(printf '%s' "$arm" | shard)
+          printf 'shardmap_amd64=%s\n' "$shardmap_amd64" >> "$GITHUB_OUTPUT"
+          printf 'shardmap_arm64=%s\n' "$shardmap_arm64" >> "$GITHUB_OUTPUT"
+          printf 'shards_amd64=%s\n' "$(printf '%s' "$shardmap_amd64" | jq -c 'keys')" >> "$GITHUB_OUTPUT"
+          printf 'shards_arm64=%s\n' "$(printf '%s' "$shardmap_arm64" | jq -c 'keys')" >> "$GITHUB_OUTPUT"
           printf 'count_amd64=%s\n'  "$count_amd64" >> "$GITHUB_OUTPUT"
           printf 'count_arm64=%s\n'  "$count_arm64" >> "$GITHUB_OUTPUT"
           printf 'built=%s\n'        "$built"       >> "$GITHUB_OUTPUT"
           printf '%s amd64 + %s arm64 of %s target(s) need building\n' \
             "$count_amd64" "$count_arm64" "$(sh shvr.sh buildset | wc -l)" >> "$GITHUB_STEP_SUMMARY"
 
-  # build is split per arch because GitHub caps a job's matrix at 256
-  # configurations and a full rebuild is ~250 targets per arch. Both jobs are
-  # identical except for their native runner, their per-arch matrix, and the
-  # per-arch skip count; the steps use matrix.arch (constant within each job).
+  # A full rebuild is >256 targets per arch, which exceeds GitHub's hard cap of
+  # 256 configurations per matrix job. So each arch fans out over the plan's
+  # shards (each <=250 targets) and calls the reusable per-target build workflow
+  # (build-images.yml) once per shard -- no single matrix ever hits the cap. This
+  # also collapses what were two byte-identical build jobs into one definition.
   build-amd64:
     needs: [plan, toolchain, mirror]
     if: needs.plan.outputs.count_amd64 != '0'
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/single-download
-        with:
-          shvr_shell: ${{ matrix.shell }}
-          shvr_version: "${{ matrix.version }}"
-          cache_path: "${{ matrix.cache_path }}"
-      - uses: ./.github/actions/toolchain-downloads
-
-      - name: Log in to GHCR
-        uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      # No Docker Hub login here: the per-target :<target>-<arch> images are
-      # internal building blocks and are pushed to GHCR only. Docker Hub receives
-      # just the user-facing multi-arch :<target> lists, assembled from the GHCR
-      # arch images by the target-manifest job.
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
-        with:
-          driver-opts: image=${{ needs.mirror.outputs.buildkit_ref }}
-
-      - name: Build and push shell image
-        uses: ./.github/actions/build-push-retry
-        with:
-          context: .
-          target: artifacts
-          push: true
-          platforms: linux/${{ matrix.arch }}
-          tags: |
-            ghcr.io/${{ github.repository }}:${{ github.event_name == 'push' && format('{0}-{1}', matrix.target, matrix.arch) || format('run-{0}-{1}-{2}', github.run_id, matrix.target, matrix.arch) }}
-          build-args: |
-            TARGETS=${{ matrix.target }}
-            TOOLCHAIN_BASE=${{ needs.mirror.outputs.toolchain_ref }}
-            RUNTIME_BASE=${{ needs.mirror.outputs.runtime_ref }}
-          # THE toolchain contract. `toolchain` names a stage in the Dockerfile
-          # (FROM ${TOOLCHAIN_BASE} AS toolchain), and a named build context of the
-          # same name REPLACES that stage with this image -- so the stage is never
-          # executed here and musl-cross-make is never compiled in a build job.
-          #
-          # This is what makes toolchain reuse a fact rather than a cache-hit
-          # lottery. Previously the stage was local and reuse depended entirely on
-          # a layer-cache hit; a stale or evicted cache silently recompiled the
-          # toolchain in EVERY one of the ~250 build jobs. Silently, because a
-          # cache miss is not an error in BuildKit -- it just does the work again.
-          # Now a missing toolchain image is a hard pull failure instead.
-          #
-          # Do not delete this and do not "simplify" it back into cache-from.
-          # workflow-verification.yml fails the build if an `artifacts` build has
-          # no toolchain build context.
-          build-contexts: |
-            toolchain=docker-image://ghcr.io/${{ github.repository }}:run-${{ github.run_id }}-toolchain-${{ matrix.arch }}
-          # Only the builder-stage layers are cached per target now. The toolchain
-          # cache refs are deliberately absent: the stage above is not built here,
-          # so listing them would just make every job pull multi-GB of cache
-          # metadata it cannot use.
-          cache-from: |
-            type=registry,ref=ghcr.io/${{ github.repository }}:buildcache-${{ matrix.target }}-${{ matrix.arch }}
-          cache-to: >-
-            ${{ github.event_name == 'push'
-              && format('type=registry,ref=ghcr.io/{0}:buildcache-{1}-{2},mode=max', github.repository, matrix.target, matrix.arch)
-              || '' }}
-          # Single-manifest image so the OID annotation sits at the manifest top
-          # level, readable via `imagetools inspect --raw` without pulling layers.
-          # The OID comes from the plan matrix entry (shvr_plan_matrix) and is
-          # arch-specific.
-          provenance: false
-          annotations: |
-            manifest:org.shvr.oid=${{ matrix.oid }}
-          labels: |
-            org.shvr.oid=${{ matrix.oid }}
-
-      - name: Verify build checksums
-        uses: ./.github/actions/verify-build-checksums
-        with:
-          arch: ${{ matrix.arch }}
-          image: >-
-            ${{ github.event_name == 'push'
-              && format('ghcr.io/{0}:{1}-{2}', github.repository, matrix.target, matrix.arch)
-              || format('ghcr.io/{0}:run-{1}-{2}-{3}', github.repository, github.run_id, matrix.target, matrix.arch) }}
-          targets: ${{ matrix.target }}
-
     strategy:
-      fail-fast: ${{ github.event_name == 'push' }}
-      matrix: ${{ fromJSON(needs.plan.outputs.matrix_amd64) }}
+      matrix:
+        shard: ${{ fromJSON(needs.plan.outputs.shards_amd64) }}
+    uses: ./.github/workflows/build-images.yml
+    with:
+      runner: ubuntu-24.04
+      matrix: ${{ toJSON(fromJSON(needs.plan.outputs.shardmap_amd64)[matrix.shard]) }}
+      toolchain_ref: ${{ needs.mirror.outputs.toolchain_ref }}
+      runtime_ref: ${{ needs.mirror.outputs.runtime_ref }}
+      buildkit_ref: ${{ needs.mirror.outputs.buildkit_ref }}
+    secrets: inherit
 
   build-arm64:
     needs: [plan, toolchain, mirror]
     if: needs.plan.outputs.count_arm64 != '0'
-    runs-on: ubuntu-24.04-arm
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/single-download
-        with:
-          shvr_shell: ${{ matrix.shell }}
-          shvr_version: "${{ matrix.version }}"
-          cache_path: "${{ matrix.cache_path }}"
-      - uses: ./.github/actions/toolchain-downloads
-
-      - name: Log in to GHCR
-        uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      # No Docker Hub login here: the per-target :<target>-<arch> images are
-      # internal building blocks and are pushed to GHCR only. Docker Hub receives
-      # just the user-facing multi-arch :<target> lists, assembled from the GHCR
-      # arch images by the target-manifest job.
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
-        with:
-          driver-opts: image=${{ needs.mirror.outputs.buildkit_ref }}
-
-      - name: Build and push shell image
-        uses: ./.github/actions/build-push-retry
-        with:
-          context: .
-          target: artifacts
-          push: true
-          platforms: linux/${{ matrix.arch }}
-          tags: |
-            ghcr.io/${{ github.repository }}:${{ github.event_name == 'push' && format('{0}-{1}', matrix.target, matrix.arch) || format('run-{0}-{1}-{2}', github.run_id, matrix.target, matrix.arch) }}
-          build-args: |
-            TARGETS=${{ matrix.target }}
-            TOOLCHAIN_BASE=${{ needs.mirror.outputs.toolchain_ref }}
-            RUNTIME_BASE=${{ needs.mirror.outputs.runtime_ref }}
-          # THE toolchain contract. `toolchain` names a stage in the Dockerfile
-          # (FROM ${TOOLCHAIN_BASE} AS toolchain), and a named build context of the
-          # same name REPLACES that stage with this image -- so the stage is never
-          # executed here and musl-cross-make is never compiled in a build job.
-          #
-          # This is what makes toolchain reuse a fact rather than a cache-hit
-          # lottery. Previously the stage was local and reuse depended entirely on
-          # a layer-cache hit; a stale or evicted cache silently recompiled the
-          # toolchain in EVERY one of the ~250 build jobs. Silently, because a
-          # cache miss is not an error in BuildKit -- it just does the work again.
-          # Now a missing toolchain image is a hard pull failure instead.
-          #
-          # Do not delete this and do not "simplify" it back into cache-from.
-          # workflow-verification.yml fails the build if an `artifacts` build has
-          # no toolchain build context.
-          build-contexts: |
-            toolchain=docker-image://ghcr.io/${{ github.repository }}:run-${{ github.run_id }}-toolchain-${{ matrix.arch }}
-          # Only the builder-stage layers are cached per target now. The toolchain
-          # cache refs are deliberately absent: the stage above is not built here,
-          # so listing them would just make every job pull multi-GB of cache
-          # metadata it cannot use.
-          cache-from: |
-            type=registry,ref=ghcr.io/${{ github.repository }}:buildcache-${{ matrix.target }}-${{ matrix.arch }}
-          cache-to: >-
-            ${{ github.event_name == 'push'
-              && format('type=registry,ref=ghcr.io/{0}:buildcache-{1}-{2},mode=max', github.repository, matrix.target, matrix.arch)
-              || '' }}
-          provenance: false
-          annotations: |
-            manifest:org.shvr.oid=${{ matrix.oid }}
-          labels: |
-            org.shvr.oid=${{ matrix.oid }}
-
-      - name: Verify build checksums
-        uses: ./.github/actions/verify-build-checksums
-        with:
-          arch: ${{ matrix.arch }}
-          image: >-
-            ${{ github.event_name == 'push'
-              && format('ghcr.io/{0}:{1}-{2}', github.repository, matrix.target, matrix.arch)
-              || format('ghcr.io/{0}:run-{1}-{2}-{3}', github.repository, github.run_id, matrix.target, matrix.arch) }}
-          targets: ${{ matrix.target }}
-
     strategy:
-      fail-fast: ${{ github.event_name == 'push' }}
-      matrix: ${{ fromJSON(needs.plan.outputs.matrix_arm64) }}
+      matrix:
+        shard: ${{ fromJSON(needs.plan.outputs.shards_arm64) }}
+    uses: ./.github/workflows/build-images.yml
+    with:
+      runner: ubuntu-24.04-arm
+      matrix: ${{ toJSON(fromJSON(needs.plan.outputs.shardmap_arm64)[matrix.shard]) }}
+      toolchain_ref: ${{ needs.mirror.outputs.toolchain_ref }}
+      runtime_ref: ${{ needs.mirror.outputs.runtime_ref }}
+      buildkit_ref: ${{ needs.mirror.outputs.buildkit_ref }}
+    secrets: inherit
 
   assemble:
     needs: [plan, build-amd64, build-arm64, mirror]
