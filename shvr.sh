@@ -1487,6 +1487,25 @@ shvr_toolchain_download ()
 	shvr_download_rustup
 }
 
+# Fetch the shared build-dependency SOURCES (ncurses, readline, libedit, pcre1/2)
+# that many shells link but that live outside any single target's cache_path, so
+# per-target single-download never caches them and every build job would otherwise
+# re-fetch them from their (flaky) upstreams. Downloaded once and cached by the
+# common-downloads action, exactly as shvr_toolchain_download is by
+# toolchain-downloads. Download-only: the untar/build stays in each shvr_build_*.
+shvr_common_download ()
+{
+	. "${SHVR_DIR_SELF}/common/ncurses.sh"
+	. "${SHVR_DIR_SELF}/common/readline.sh"
+	. "${SHVR_DIR_SELF}/common/libedit.sh"
+	. "${SHVR_DIR_SELF}/common/pcre.sh"
+	shvr_download_ncurses
+	shvr_download_readline
+	shvr_download_libedit
+	shvr_download_pcre1
+	shvr_download_pcre2
+}
+
 shvr_musl_build ()
 {
 	. "${SHVR_DIR_SELF}/common/musl-cross-make.sh"
