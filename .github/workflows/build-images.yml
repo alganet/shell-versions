@@ -43,6 +43,11 @@ jobs:
       matrix: ${{ fromJSON(inputs.matrix) }}
     steps:
       - uses: actions/checkout@v7
+      # Restore the shared dependency sources (ncurses/readline/libedit/pcre) the
+      # common-sources job cached, BEFORE single-download: shvr_download_<shell>
+      # pulls these in, and with them already present it fetches only the shell's
+      # own source instead of re-hitting their flaky upstreams.
+      - uses: ./.github/actions/common-downloads
       - uses: ./.github/actions/single-download
         with:
           shvr_shell: ${{ matrix.shell }}

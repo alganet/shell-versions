@@ -1,0 +1,39 @@
+# SPDX-FileCopyrightText: 2025 Alexandre Gomes Gaigalas <alganet@gmail.com>
+# SPDX-License-Identifier: ISC
+
+# Downloads and caches the shared build-dependency SOURCES (ncurses, readline,
+# libedit, pcre1/2). These are linked by many shells but live outside any single
+# target's cache_path, so single-download never caches them -- without this every
+# build job would re-fetch them from their flaky upstreams (ftp.gnu.org,
+# thrysoee.dk, sourceforge, github), and a single failed fetch fails that build.
+# Mirrors toolchain-downloads: the cache key is the hash of the files that pin the
+# versions, so it is stable across all jobs and invalidates only on a version bump.
+name: Common downloads
+description: Downloads and caches shared build dependencies (ncurses, readline, libedit, pcre)
+runs:
+  using: composite
+  steps:
+    - name: Restore common dependency cache
+      uses: actions/cache/restore@v5
+      id: restore-common
+      with:
+        path: |
+          build/ncurses/*.tar.*
+          build/readline/*.tar.*
+          build/libedit/*.tar.*
+          build/pcre/*.tar.*
+          build/pcre2/*.tar.*
+        key: build-common-${{ hashFiles('common/ncurses.sh', 'common/readline.sh', 'common/libedit.sh', 'common/pcre.sh') }}
+    - name: Download common dependencies
+      shell: sh
+      run: sh shvr.sh common-download
+    - uses: actions/cache/save@v5
+      if: steps.restore-common.outputs.cache-hit != 'true'
+      with:
+        path: |
+          build/ncurses/*.tar.*
+          build/readline/*.tar.*
+          build/libedit/*.tar.*
+          build/pcre/*.tar.*
+          build/pcre2/*.tar.*
+        key: build-common-${{ hashFiles('common/ncurses.sh', 'common/readline.sh', 'common/libedit.sh', 'common/pcre.sh') }}

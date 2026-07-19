@@ -263,13 +263,27 @@ jobs:
           printf '%s amd64 + %s arm64 of %s target(s) need building\n' \
             "$count_amd64" "$count_arm64" "$(sh shvr.sh buildset | wc -l)" >> "$GITHUB_STEP_SUMMARY"
 
+  # Fetch the shared build-dependency SOURCES (ncurses, readline, libedit, pcre)
+  # ONCE, before the build fan-out, and cache them. They live outside any target's
+  # single-download cache_path, so without this every build job re-fetches them
+  # from their flaky upstreams and one failed fetch fails that build. The build
+  # jobs restore this cache instead. Mirrors the toolchain job's role for the
+  # compiler sources. Runs once (no arch matrix); the tarballs are arch-neutral.
+  common-sources:
+    needs: [plan]
+    if: needs.plan.outputs.count_amd64 != '0' || needs.plan.outputs.count_arm64 != '0'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/common-downloads
+
   # A full rebuild is >256 targets per arch, which exceeds GitHub's hard cap of
   # 256 configurations per matrix job. So each arch fans out over the plan's
   # shards (each <=250 targets) and calls the reusable per-target build workflow
   # (build-images.yml) once per shard -- no single matrix ever hits the cap. This
   # also collapses what were two byte-identical build jobs into one definition.
   build-amd64:
-    needs: [plan, toolchain, mirror]
+    needs: [plan, toolchain, mirror, common-sources]
     if: needs.plan.outputs.count_amd64 != '0'
     strategy:
       matrix:
@@ -284,7 +298,7 @@ jobs:
     secrets: inherit
 
   build-arm64:
-    needs: [plan, toolchain, mirror]
+    needs: [plan, toolchain, mirror, common-sources]
     if: needs.plan.outputs.count_arm64 != '0'
     strategy:
       matrix:
