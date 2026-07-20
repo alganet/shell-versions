@@ -105,12 +105,28 @@ jobs:
           # cache refs are deliberately absent: the stage above is not built here,
           # so listing them would just make every job pull multi-GB of cache
           # metadata it cannot use.
+          #
+          # Two refs, one per event, and main reads both. A PR used to export
+          # NOWHERE (cache-to rendered to the empty string), so the merge that
+          # followed compiled from scratch against a buildcache still holding
+          # pre-PR layers -- the PR's work was thrown away every time. A PR now
+          # exports to its own `-pr` ref, which the push build also reads, so the
+          # merge replays those layers instead of recompiling them.
+          #
+          # The `-pr` ref is separate on purpose: PRs must never displace the
+          # authoritative cache. Last-writer-wins on a shared ref would let an
+          # experimental or abandoned PR evict main's layers, costing later runs a
+          # miss for no reason. Only a push writes the authoritative ref.
+          #
+          # ignore-error keeps a cache export from failing an otherwise-good
+          # build (a fork PR gets no packages:write and cannot export at all).
           cache-from: |
             type=registry,ref=ghcr.io/${{ github.repository }}:buildcache-${{ matrix.target }}-${{ matrix.arch }}
+            type=registry,ref=ghcr.io/${{ github.repository }}:buildcache-pr-${{ matrix.target }}-${{ matrix.arch }}
           cache-to: >-
             ${{ github.event_name == 'push'
-              && format('type=registry,ref=ghcr.io/{0}:buildcache-{1}-{2},mode=max', github.repository, matrix.target, matrix.arch)
-              || '' }}
+              && format('type=registry,ref=ghcr.io/{0}:buildcache-{1}-{2},mode=max,ignore-error=true', github.repository, matrix.target, matrix.arch)
+              || format('type=registry,ref=ghcr.io/{0}:buildcache-pr-{1}-{2},mode=max,ignore-error=true', github.repository, matrix.target, matrix.arch) }}
           # Single-manifest image so the OID annotation sits at the manifest top
           # level, readable via `imagetools inspect --raw` without pulling layers.
           # The OID comes from the plan matrix entry (shvr_plan_matrix) and is
