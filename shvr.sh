@@ -1675,19 +1675,30 @@ shvr_build_identities ()
 	done
 }
 
-# Print the dynamic GitHub Actions build matrix (JSON) of targets that must be
-# (re)built for the current SHVR_ARCH (default amd64). Reads
-# "<target> <arch> <current-oid>" lines from <registry_oid_file> (the OID
-# currently published for each target+arch, or MISSING/FORCE), compares against
-# the freshly computed desired OID for this arch, and includes any target that is
-# missing, forced, or mismatched. Each emitted row carries "arch" so the workflow
-# can route it to the matching native runner. Run once per arch (set SHVR_ARCH);
-# the fingerprint and checksum dir are arch-specific, so the desired OID and the
-# skip decision are independent per arch. Does no network I/O: the registry read
-# happens in the workflow and is passed in as a file.
+# Print a dynamic GitHub Actions matrix (JSON) of the targets that need work for
+# the current SHVR_ARCH (default amd64). Reads
+# "<target> <arch> <current-oid> [<promotable>]" lines from <registry_oid_file>
+# (the OID currently published for each target+arch, or MISSING/FORCE), compares
+# against the freshly computed desired OID for this arch, and includes any target
+# that is missing, forced, or mismatched. Each emitted row carries "arch" so the
+# workflow can route it to the matching native runner. Run once per arch (set
+# SHVR_ARCH); the fingerprint and checksum dir are arch-specific, so the desired
+# OID and the skip decision are independent per arch. Does no network I/O: the
+# registry read happens in the workflow and is passed in as a file.
+#
+# <mode> selects which half of the work is emitted, and the two are disjoint:
+#
+#   build    (default) targets that must actually be compiled
+#   promote  targets whose exact OID is ALREADY published, under the
+#            content-addressed oid-<arch>-<oid> tag, and so only need re-tagging
+#
+# The promotable flag is the optional 4th column, decided by the caller (it takes
+# a registry lookup, and this function does no I/O). Absent or anything but "yes"
+# means build, so a 3-column file behaves exactly as before.
 shvr_plan_matrix ()
 (
 	registry_file="$1"
+	mode="${2:-build}"
 	arch="${SHVR_ARCH:-amd64}"
 	fingerprint="$(shvr_toolchain_fingerprint)"
 
@@ -1702,9 +1713,22 @@ shvr_plan_matrix ()
 	do
 		desired="$(shvr_build_identity "$target" "$fingerprint")"
 		current="$(awk -v t="$target" -v a="$arch" '$1 == t && $2 == a {print $3; exit}' "$reg")"
+		promotable="$(awk -v t="$target" -v a="$arch" '$1 == t && $2 == a {print $4; exit}' "$reg")"
 
 		# Skip only when the published OID matches and is a real identity.
 		if test "$desired" != MISSING && test "x$current" = "x$desired"
+		then continue
+		fi
+
+		# Everything past here needs work; the only question is which kind. A row
+		# whose exact OID is already published is re-tagged, not rebuilt. Rows are
+		# assigned to exactly one mode, so build and promote never overlap and
+		# every target needing work lands in one of them.
+		row_mode=build
+		if test "x$promotable" = xyes
+		then row_mode=promote
+		fi
+		if test "x$row_mode" != "x$mode"
 		then continue
 		fi
 

@@ -200,6 +200,11 @@ jobs:
       shards_arm64: ${{ steps.plan.outputs.shards_arm64 }}
       count_amd64: ${{ steps.plan.outputs.count_amd64 }}
       count_arm64: ${{ steps.plan.outputs.count_arm64 }}
+      # Targets whose exact OID is already published under oid-<arch>-<oid> and so
+      # only need re-tagging. Disjoint from the build matrices; both arches share
+      # one matrix (see the promote job).
+      matrix_promote: ${{ steps.plan.outputs.matrix_promote }}
+      count_promote: ${{ steps.plan.outputs.count_promote }}
       built: ${{ steps.plan.outputs.built }}
     steps:
       - uses: actions/checkout@v7
@@ -228,29 +233,66 @@ jobs:
           # skip is safe-by-default: it can over-build but never wrongly skip.
           # The OID is arch-specific (arch is folded into the fingerprint), so the
           # two arches are planned independently.
+          #
+          # A target that does NOT match still might not need compiling: the
+          # content-addressed oid-<arch>-<oid> tag is written by every build,
+          # including a PR's, so when a PR built this exact OID the image already
+          # exists and only needs re-tagging. The 4th column records that, and
+          # plan_matrix routes those rows to `promote` instead of `build`. This is
+          # what stops a merge from redoing the work its own PR just did.
+          #
+          # Probed on push ONLY. On a PR nothing writes the stable tag, and the
+          # assemble job reads a skipped target from that stable tag -- so letting
+          # a PR "promote" would have it assemble the PREVIOUS content instead of
+          # what the PR actually produced. force=1 likewise never promotes: the
+          # kill-switch means rebuild, not re-tag.
           : > registry_oids.txt
           for arch in amd64 arm64; do
-            for t in $(sh shvr.sh buildset); do
+            SHVR_ARCH="$arch" sh shvr.sh build_identities > "desired_${arch}.txt"
+            while read -r t desired; do
               if [ "$force" = 1 ]; then
-                printf '%s %s FORCE\n' "$t" "$arch" >> registry_oids.txt
+                printf '%s %s FORCE no\n' "$t" "$arch" >> registry_oids.txt
                 continue
               fi
-              oid=$(docker buildx imagetools inspect --raw "ghcr.io/${REPO}:${t}-${arch}" 2>/dev/null \
+              # </dev/null on every docker call: this loop reads the target list on
+              # stdin, and a child that consumes stdin would eat it and silently cut
+              # the plan short -- a truncated plan means targets are never built.
+              oid=$(docker buildx imagetools inspect --raw "ghcr.io/${REPO}:${t}-${arch}" </dev/null 2>/dev/null \
                     | jq -r '.annotations["org.shvr.oid"] // empty' 2>/dev/null || true)
-              printf '%s %s %s\n' "$t" "$arch" "${oid:-MISSING}" >> registry_oids.txt
-            done
+              oid="${oid:-MISSING}"
+              promotable=no
+              if [ "${{ github.event_name }}" = "push" ] \
+                 && [ "$desired" != MISSING ] && [ "$oid" != "$desired" ] \
+                 && docker buildx imagetools inspect --raw "ghcr.io/${REPO}:oid-${arch}-${desired}" </dev/null >/dev/null 2>&1
+              then
+                promotable=yes
+              fi
+              printf '%s %s %s %s\n' "$t" "$arch" "$oid" "$promotable" >> registry_oids.txt
+            done < "desired_${arch}.txt"
           done
 
           # plan_matrix runs once per arch (SHVR_ARCH selects the fingerprint and
           # checksum dir); each emits a separate {include:[...]} consumed by that
           # arch's build job. Kept separate (not merged) to stay under the 256
           # configurations-per-matrix limit on a full rebuild.
-          amd=$(SHVR_ARCH=amd64 sh shvr.sh plan_matrix registry_oids.txt)
-          arm=$(SHVR_ARCH=arm64 sh shvr.sh plan_matrix registry_oids.txt)
+          amd=$(SHVR_ARCH=amd64 sh shvr.sh plan_matrix registry_oids.txt build)
+          arm=$(SHVR_ARCH=arm64 sh shvr.sh plan_matrix registry_oids.txt build)
           count_amd64=$(printf '%s' "$amd" | jq '.include | length')
           count_arm64=$(printf '%s' "$arm" | jq '.include | length')
+          # The promote half: same rows-that-need-work set, disjoint from the build
+          # half. Both arches share one matrix -- re-tagging is a registry-side
+          # metadata copy, so it needs no native runner and cannot approach the
+          # 256-configuration cap the build matrices are sharded for.
+          pro=$(printf '%s\n%s' \
+            "$(SHVR_ARCH=amd64 sh shvr.sh plan_matrix registry_oids.txt promote)" \
+            "$(SHVR_ARCH=arm64 sh shvr.sh plan_matrix registry_oids.txt promote)" \
+            | jq -c -s '{include: [.[].include[]]}')
+          count_promote=$(printf '%s' "$pro" | jq '.include | length')
           # "<target>-<arch>" list of rows built this run, for the assemble job to
           # tell apart freshly-built (run-scoped) from reused (stable) images.
+          # Promoted rows are deliberately NOT here: they are not built this run,
+          # and by the time assemble runs they resolve from the stable tag the
+          # promote job wrote -- which is exactly the non-built path.
           built=$(printf '%s\n%s' "$amd" "$arm" | jq -r -s '[.[].include[] | (.target + "-" + .arch)] | join(" ")')
           # Shard each arch's matrix into <=250-entry slices so no build job's
           # matrix exceeds GitHub's 256-configuration cap (a full toolchain-bump
@@ -269,9 +311,11 @@ jobs:
           printf 'shards_arm64=%s\n' "$(printf '%s' "$shardmap_arm64" | jq -c 'keys')" >> "$GITHUB_OUTPUT"
           printf 'count_amd64=%s\n'  "$count_amd64" >> "$GITHUB_OUTPUT"
           printf 'count_arm64=%s\n'  "$count_arm64" >> "$GITHUB_OUTPUT"
+          printf 'matrix_promote=%s\n' "$pro"          >> "$GITHUB_OUTPUT"
+          printf 'count_promote=%s\n'  "$count_promote" >> "$GITHUB_OUTPUT"
           printf 'built=%s\n'        "$built"       >> "$GITHUB_OUTPUT"
-          printf '%s amd64 + %s arm64 of %s target(s) need building\n' \
-            "$count_amd64" "$count_arm64" "$(sh shvr.sh buildset | wc -l)" >> "$GITHUB_STEP_SUMMARY"
+          printf '%s amd64 + %s arm64 of %s target(s) need building; %s promoted from an existing build\n' \
+            "$count_amd64" "$count_arm64" "$(sh shvr.sh buildset | wc -l)" "$count_promote" >> "$GITHUB_STEP_SUMMARY"
 
   # Fetch the shared build-dependency SOURCES (ncurses, readline, libedit, pcre)
   # ONCE, before the build fan-out, and cache them. They live outside any target's
@@ -322,8 +366,79 @@ jobs:
       buildkit_ref: ${{ needs.mirror.outputs.buildkit_ref }}
     secrets: inherit
 
+  # Adopt an image that was already built, instead of building it again.
+  #
+  # Every build publishes its output twice: under an event-dependent tag, and
+  # under the content-addressed oid-<arch>-<oid>. So when a PR builds a target,
+  # the artifact for that exact OID is already in the registry by the time the PR
+  # merges -- the merge used to rebuild it purely because the stable tag had not
+  # moved yet. This job moves the stable tag onto the existing image instead.
+  #
+  # push-only, by construction: only main may move a stable tag, and the plan job
+  # never marks anything promotable on a PR (see the probe there).
+  #
+  # Trust: main adopts bytes produced during a PR run. That is sound rather than
+  # convenient -- the OID folds in the committed checksums and the whole recipe
+  # closure, so an image published as oid-<arch>-<oid> cannot be the output of
+  # different sources; only same-repo runs can push at all (a fork PR gets no
+  # packages:write); and the checksums are re-verified below before the tag moves.
+  promote:
+    needs: [plan]
+    if: needs.plan.outputs.count_promote != '0' && github.event_name == 'push'
+    # Native runner per arch, like assemble. The re-tag itself is arch-neutral
+    # registry metadata, but the verify step below extracts the image with
+    # `docker create` + `docker cp`, and pointing that at a foreign-arch image is
+    # asking for a platform-mismatch failure. Matching the runner keeps it the
+    # same same-arch extraction the build job already does.
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix_promote) }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Re-verify before adopting. The PR run already did this, but that was a
+      # different run against a different checkout; this makes the stable tag's
+      # contents provably match the checksums committed on main.
+      - name: Verify build checksums
+        uses: ./.github/actions/verify-build-checksums
+        with:
+          arch: ${{ matrix.arch }}
+          image: ghcr.io/${{ github.repository }}:oid-${{ matrix.arch }}-${{ matrix.oid }}
+          targets: ${{ matrix.target }}
+
+      # crane copy, NOT `buildx imagetools create`: imagetools rewraps the source
+      # into a fresh manifest list, which drops the top-level org.shvr.oid
+      # annotation the plan job reads -- the next run would then see MISSING and
+      # rebuild, silently undoing this job. crane copies the manifest byte-for-byte,
+      # so the digest and the annotation both survive.
+      - name: Install crane
+        uses: imjasonh/setup-crane@v0.4
+      - name: Promote to the stable tag
+        run: |
+          set -eu
+          src="ghcr.io/${{ github.repository }}:oid-${{ matrix.arch }}-${{ matrix.oid }}"
+          dst="ghcr.io/${{ github.repository }}:${{ matrix.target }}-${{ matrix.arch }}"
+          crane copy "$src" "$dst"
+
+          # The whole point is that the next plan reads this back and skips. If the
+          # annotation did not survive the copy, fail loudly here rather than let
+          # the run "succeed" into a permanent rebuild loop.
+          got=$(crane manifest "$dst" | jq -r '.annotations["org.shvr.oid"] // empty')
+          if [ "$got" != "${{ matrix.oid }}" ]; then
+            echo "promote: $dst carries OID '${got:-<none>}', expected '${{ matrix.oid }}'" >&2
+            exit 1
+          fi
+          printf 'promoted %s -> %s\n' "$src" "$dst" >> "$GITHUB_STEP_SUMMARY"
+
   assemble:
-    needs: [plan, build-amd64, build-arm64, mirror]
+    needs: [plan, build-amd64, build-arm64, promote, mirror]
     # Run even when build was skipped (0 changed targets): flavors are
     # reassembled from the per-target images (rebuilt this run or reused from a
     # prior push) and the full-set checksum verify still guards every binary.
@@ -336,6 +451,8 @@ jobs:
       && needs['build-amd64'].result != 'cancelled'
       && needs['build-arm64'].result != 'failure'
       && needs['build-arm64'].result != 'cancelled'
+      && needs.promote.result != 'failure'
+      && needs.promote.result != 'cancelled'
     # Each (flavor, arch) is assembled on its native runner: the final stage's
     # RUN (manifest.txt generation) and the COPY --from of per-arch images both
     # execute under the matching arch with no emulation.
@@ -1189,7 +1306,10 @@ jobs:
   # build was skipped (0 changed): unchanged targets keep both arch images from a
   # prior push and re-fusing is idempotent (identical source digests).
   target-manifest:
-    needs: [plan, build-amd64, build-arm64]
+    # promote is a dependency because it MOVES the stable per-arch tags this job
+    # fuses. Fusing before it runs would publish the previous digest for every
+    # promoted target.
+    needs: [plan, build-amd64, build-arm64, promote]
     if: >-
       always()
       && github.event_name == 'push'
@@ -1198,6 +1318,8 @@ jobs:
       && needs['build-amd64'].result != 'cancelled'
       && needs['build-arm64'].result != 'failure'
       && needs['build-arm64'].result != 'cancelled'
+      && needs.promote.result != 'failure'
+      && needs.promote.result != 'cancelled'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7

@@ -25,6 +25,13 @@ jobs:
   cleanup-ephemeral-images:
     runs-on: ubuntu-24.04
     steps:
+      # `all(...)` is doing real work here, not just matching a prefix: a version
+      # is only ephemeral if EVERY tag on it is ephemeral. That is what makes the
+      # oid- prefix safe to reap. An oid- image that was promoted also carries its
+      # stable <target>-<arch> tag, so all() is false and it is kept; only an oid-
+      # image that never became anything -- an abandoned PR's build -- is deleted.
+      # Losing one costs nothing but a rebuild: the next run finds no oid- tag to
+      # promote from and simply builds the target, which is the old behaviour.
       - name: Delete ephemeral GHCR versions older than 7 days
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -34,7 +41,7 @@ jobs:
             --jq '
               .[]
               | select(.metadata.container.tags | length > 0)
-              | select(.metadata.container.tags | all(startswith("run-") or startswith("test-")))
+              | select(.metadata.container.tags | all(startswith("run-") or startswith("test-") or startswith("oid-")))
               | select((now - (.updated_at | fromdateiso8601)) > (7 * 86400))
               | .id
             ' | while read -r version_id; do
