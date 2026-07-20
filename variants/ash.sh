@@ -84,12 +84,27 @@ shvr_build_ash ()
 	# Includes ash features, static linking, and individual applet support.
 	#
 	# Renamed-symbol handling: BusyBox renamed several symbols over time
-	# (e.g. ASH_BUILTIN_ECHO -> ASH_ECHO at 1.27.2, SH_MATH_SUPPORT ->
-	# FEATURE_SH_MATH, FEATURE_SH_IS_ASH -> SH_IS_ASH). allnoconfig + sed +
-	# oldconfig silently drops symbols absent from a given version, so we list
-	# BOTH the modern and legacy names; whichever exists is applied. Without
-	# the legacy names, old ash (<=1.26.2 and the 1.2.x island) ships with no
-	# echo/printf/test builtin and no arithmetic.
+	# (e.g. ASH_BUILTIN_ECHO -> ASH_ECHO at 1.27.2, FEATURE_SH_IS_ASH ->
+	# SH_IS_ASH). allnoconfig + sed + oldconfig silently drops symbols absent
+	# from a given version, so we list EVERY historical name; whichever exists
+	# is applied. Without the legacy names, old ash (<=1.26.2 and the 1.2.x
+	# island) ships with no echo/printf/test builtin and no arithmetic.
+	#
+	# Arithmetic went through THREE names, so all three are listed:
+	#   ASH_MATH_SUPPORT(_64)      1.2.2 .. 1.13.4
+	#   SH_MATH_SUPPORT(_64)       1.16.2 .. 1.25.1
+	#   FEATURE_SH_MATH(_64)       1.26.2 ..   (plus _BASE from 1.37.0)
+	# The oldest name was missing here, which silently left $(( )) disabled
+	# across the whole 1.2.2..1.13.4 band -- those builds answered arithmetic
+	# examples with "We unsupport $((arith))" / "you disabled math support",
+	# which reads as a shell limitation but was ours. 1.2.2's kconfig declares
+	# the symbol as `config CONFIG_ASH_MATH_SUPPORT` and writes "%s=y" with no
+	# added prefix, so the .config key is CONFIG_ASH_MATH_SUPPORT there too --
+	# one line covers both kconfig eras.
+	#
+	# hush is deliberately NOT given a math alias: hush.c has no arithmetic at
+	# all before 1.19.4 (zero `arith` references; $(( )) expands to nothing),
+	# so there is no symbol to enable and nothing we could restore.
 	# Note: the "which shell is aliased to sh" choice (SH_IS_ASH/HUSH/NONE) is
 	# left at allnoconfig's default and never set here. Forcing a choice member
 	# via sed leaves two members =y, which makes oldconfig re-prompt the choice
@@ -121,8 +136,10 @@ shvr_build_ash ()
 		CONFIG_TEST=y
 		CONFIG_FEATURE_SH_MATH=y
 		CONFIG_SH_MATH_SUPPORT=y
+		CONFIG_ASH_MATH_SUPPORT=y
 		CONFIG_FEATURE_SH_MATH_64=y
 		CONFIG_SH_MATH_SUPPORT_64=y
+		CONFIG_ASH_MATH_SUPPORT_64=y
 		CONFIG_FEATURE_SH_MATH_BASE=y
 		CONFIG_FEATURE_SH_READ_FRAC=y
 		CONFIG_FEATURE_SH_HISTFILESIZE=y
