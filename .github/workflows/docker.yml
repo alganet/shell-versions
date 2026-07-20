@@ -164,11 +164,21 @@ jobs:
           # recompiled every run. It is no longer load-bearing for the build jobs:
           # they consume the image above, so a cache miss here costs one job per
           # arch rather than a musl-cross-make compile in all ~250 of them.
+          #
+          # The registry export used to be push-only, which left a PR that moved
+          # the toolchain fingerprint with nothing main could reuse: the type=gha
+          # entry below does not cross the PR->main boundary, because GitHub scopes
+          # a feature branch's cache away from the default branch (main can never
+          # read a PR branch's entries). So main recompiled musl-cross-make even
+          # though the PR had just done it. A PR now exports to its own `-pr` ref,
+          # which the push build reads too. Separate ref for the same reason as the
+          # per-target buildcache: a PR must not displace the authoritative one.
           cache-to: |
             type=gha,scope=toolchain-${{ matrix.arch }}-v3,mode=max
-            ${{ github.event_name == 'push' && format('type=registry,ref=ghcr.io/{0}:cache-toolchain-{1},mode=max', github.repository, matrix.arch) || '' }}
+            ${{ github.event_name == 'push' && format('type=registry,ref=ghcr.io/{0}:cache-toolchain-{1},mode=max,ignore-error=true', github.repository, matrix.arch) || format('type=registry,ref=ghcr.io/{0}:cache-toolchain-pr-{1},mode=max,ignore-error=true', github.repository, matrix.arch) }}
           cache-from: |
             type=registry,ref=ghcr.io/${{ github.repository }}:cache-toolchain-${{ matrix.arch }}
+            type=registry,ref=ghcr.io/${{ github.repository }}:cache-toolchain-pr-${{ matrix.arch }}
             type=gha,scope=toolchain-${{ matrix.arch }}-v3
 
   # Decide which targets actually need building. Each pushed per-target image
