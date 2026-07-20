@@ -78,8 +78,21 @@ jobs:
           target: artifacts
           push: true
           platforms: linux/${{ matrix.arch }}
+          # Two tags. The first is the event-dependent one: a push writes the
+          # stable :<target>-<arch> that users and the plan job read; a PR writes
+          # a run-scoped tag instead, so PR content can never mutate a
+          # user-facing tag.
+          #
+          # The second is content-addressed, and is written on BOTH events. Its
+          # name IS the build identity, so it cannot collide with a user-facing
+          # tag and cannot be wrong about what it holds: an image published as
+          # oid-<arch>-<oid> is by construction the output for that OID. This is
+          # what lets a merge skip work the PR already did -- the plan job probes
+          # this tag and promotes the existing image instead of rebuilding it.
+          # See the promote job in docker.yml.
           tags: |
             ghcr.io/${{ github.repository }}:${{ github.event_name == 'push' && format('{0}-{1}', matrix.target, matrix.arch) || format('run-{0}-{1}-{2}', github.run_id, matrix.target, matrix.arch) }}
+            ghcr.io/${{ github.repository }}:oid-${{ matrix.arch }}-${{ matrix.oid }}
           build-args: |
             TARGETS=${{ matrix.target }}
             TOOLCHAIN_BASE=${{ inputs.toolchain_ref }}
