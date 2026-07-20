@@ -1,0 +1,72 @@
+# SPDX-FileCopyrightText: 2026 Alexandre Gomes Gaigalas <alganet@gmail.com>
+# SPDX-License-Identifier: ISC
+
+Description: drop 'const' from the two file-local globals pointers
+ 1.10.4 stores the globals of test.c and lineedit.c behind a pointer declared
+ `static struct statics *const ptr_to_statics`, forced into .data, and assigns it
+ by casting the const away:
+ .
+     (*(struct statics**)&ptr_to_statics) = xzalloc(sizeof(S));
+     barrier();
+ .
+ Writing an object defined with a const-qualified type is undefined behaviour, and
+ gcc takes the declaration at its word: because the object is const, file-local and
+ has no initialiser, every *read* of it is folded to its initial value, 0. The store
+ above really happens, but the loads that follow never observe it. At -O0:
+ .
+     mov  %rax,(%rbx)        # the cast-away-const store
+     mov  $0x0,%eax          # ptr_to_statics folded to the constant 0
+     movl $0x0,0x8(%rax)     # first use of S -> writes through NULL -> SIGSEGV
+ .
+ This is not an optimisation artefact -- it reproduces at -O0, -O1, -O2 and -Os --
+ so `barrier()` cannot help: gcc emits no load to reorder. The result is that the
+ test/[ builtin of ash and hush segfaults on *every* invocation, including a bare
+ `test`, and lineedit would fault the same way on its first use.
+ .
+ busybox's general globals mechanism is unaffected: include/libbb.h declares
+ `extern struct globals *const ptr_to_globals`, and an extern object has no
+ value the compiler may assume, so the same '*const' trick is safe there. Only
+ these two file-local copies are miscompiled. Upstream reached the same place from
+ the other side: 1.11.3 moved test.c's pointer to an `extern` declaration, and the
+ crash is gone from 1.11.3 on. 1.8.3, which keeps plain writable statics with no
+ pointer indirection, is likewise fine -- 1.10.4 is the only affected release.
+ .
+ Dropping `const` is the smallest change that removes both the undefined behaviour
+ and gcc's licence to assume the value: the pointer stays in .data, the cast in
+ INIT_S stays valid (now redundant), and the loads become real loads. The comment
+ above each declaration is updated so it no longer claims what is no longer true.
+Origin: vendor, shell-versions
+Forwarded: not-needed
+
+--- coreutils/test.c
++++ coreutils/test.c
+@@ -167,9 +167,10 @@
+ 	jmp_buf leaving;
+ };
+ 
+-/* Make it reside in writable memory, yet make compiler understand
+- * that it is not going to change. */
+-static struct statics *const ptr_to_statics __attribute__ ((section (".data")));
++/* Make it reside in writable memory. NOT const: this pointer is assigned at
++ * runtime, and a const object gcc may fold to its initialiser (0) on every read.
++ */
++static struct statics *ptr_to_statics __attribute__ ((section (".data")));
+ 
+ #define S (*ptr_to_statics)
+ #define t_wp            (S.t_wp         )
+--- libbb/lineedit.c
++++ libbb/lineedit.c
+@@ -120,9 +120,10 @@
+ #endif
+ };
+ 
+-/* Make it reside in writable memory, yet make compiler understand
+- * that it is not going to change. */
+-static struct statics *const ptr_to_statics __attribute__ ((section (".data")));
++/* Make it reside in writable memory. NOT const: this pointer is assigned at
++ * runtime, and a const object gcc may fold to its initialiser (0) on every read.
++ */
++static struct statics *ptr_to_statics __attribute__ ((section (".data")));
+ 
+ #define S (*ptr_to_statics)
+ #define state            (S.state           )

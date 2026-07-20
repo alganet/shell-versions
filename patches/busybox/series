@@ -35,3 +35,10 @@ platform-h-musl-1.15.3.diff  1.15.3
 platform-h-musl-1.16.2.diff  1.16.2
 platform-h-musl-1.17.4.diff  1.17.4
 platform-h-musl-1.18.5.diff  1.18.5
+
+# 1.10.4 alone declares test.c's and lineedit.c's globals pointer as a file-local
+# `static ... *const`, then assigns it through a cast. gcc folds every read of that
+# const object back to its initialiser (0) -- at every -O level, so barrier() cannot
+# help -- and the test/[ builtin segfaults on any invocation. 1.8.3 uses plain
+# statics and 1.11.3 moved the pointer to `extern`, so neither needs this.
+test-static-globals-1.10.4.diff  1.10.4
