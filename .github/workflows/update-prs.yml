@@ -1,0 +1,120 @@
+# SPDX-FileCopyrightText: 2026 Alexandre Gomes Gaigalas <alganet@gmail.com>
+# SPDX-License-Identifier: ISC
+
+# Discover upstream version bumps and open ONE pull request per source-group,
+# each carrying that group's versions/ bump plus regenerated source and both-arch
+# build checksums (so its CI goes green — new versions have no committed build
+# checksums, and the assemble job fails closed on that).
+#
+# Dispatch-only for now. Run it by hand (dry_run first) until it is trusted, THEN
+# add a `schedule:` trigger. The design already tolerates cron: on a scheduled run
+# workflow_dispatch inputs do not exist, so `inputs.shells` is empty (= every
+# changed group) and inputs.dry_run is false — exactly the "one PR per group"
+# behaviour, with no code path that depends on the inputs being present.
+name: Open per-group update PRs
+
+on:
+  workflow_dispatch:
+    inputs:
+      shells:
+        description: "Restrict to these shells (space-separated); empty = all changed groups"
+        required: false
+        default: ""
+        type: string
+      dry_run:
+        description: "Plan and build, but do not open PRs"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+  packages: read
+  pull-requests: write
+
+# Serialize whole runs: the plan job mutates versions/ and each group races its
+# own branch. One run at a time keeps discovery and branch state coherent.
+concurrency:
+  group: update-prs
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    runs-on: ubuntu-24.04
+    outputs:
+      # matrix = {"include":[{"group":..,"shells":".."}]} over changed groups.
+      matrix: ${{ steps.plan.outputs.matrix }}
+      count: ${{ steps.plan.outputs.count }}
+    steps:
+      # Full history so shvr update's git-based snapshot discovery works.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # Bring versions/ up to date. This mutates the working tree only; nothing is
+      # committed here — the per-group jobs turn slices of it into PRs.
+      - name: Discover new versions
+        run: sh shvr.sh update
+
+      # Grouping is arch-neutral (a new version is missing on both arches, and
+      # .current/.snapshot are identical across them), so amd64 is representative.
+      # inputs.shells is empty on cron -> no filter -> every changed group.
+      - name: Plan changed groups
+        id: plan
+        env:
+          SHELLS: ${{ inputs.shells }}
+        run: |
+          set -eu
+          # shellcheck disable=SC2086
+          groups="$(SHVR_ARCH=amd64 sh shvr.sh updated_groups $SHELLS)"
+
+          # Fold "<group> <shell...>" lines into a GH matrix. jq -R/-s reads the
+          # whole text; each non-empty line becomes one include entry.
+          matrix="$(printf '%s\n' "$groups" \
+            | jq -R -s -c '
+                {include:
+                  [ split("\n")[]
+                    | select(length > 0)
+                    | (split(" ")) as $f
+                    | {group: $f[0], shells: ($f[1:] | join(" "))} ]}')"
+          count="$(printf '%s' "$matrix" | jq '.include | length')"
+
+          printf 'matrix=%s\n' "$matrix" >> "$GITHUB_OUTPUT"
+          printf 'count=%s\n'  "$count"  >> "$GITHUB_OUTPUT"
+          {
+            echo "### Update plan"
+            if [ "$count" = 0 ]; then echo "No new versions."; else
+              printf '%s\n' "$groups" | sed 's/^/- /'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # The exact versions/ this run discovered, so every group job slices from the
+      # same snapshot instead of re-running update and racing a newer upstream.
+      - name: Upload planned versions
+        if: steps.plan.outputs.count != '0'
+        uses: actions/upload-artifact@v6
+        with:
+          name: shvr-planned-versions
+          path: versions
+          include-hidden-files: false
+
+  # One reusable-workflow call per changed group. max-parallel is the queue: it
+  # bounds how many groups build/PR at once so a big update wave does not fire N
+  # full CI runs simultaneously. Durable per-group branches mean a throttled or
+  # re-run group refreshes its existing PR rather than spawning another.
+  group:
+    needs: plan
+    if: needs.plan.outputs.count != '0'
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    uses: ./.github/workflows/update-group.yml
+    with:
+      group: ${{ matrix.group }}
+      shells: ${{ matrix.shells }}
+      versions_artifact: shvr-planned-versions
+      # `|| false` so a scheduled run (where inputs.dry_run is null) passes a real
+      # boolean, not null, to the reusable workflow's typed input.
+      dry_run: ${{ inputs.dry_run || false }}
+    secrets: inherit
