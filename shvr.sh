@@ -1531,69 +1531,12 @@ shvr_github_regen_downloads ()
 }
 
 
-shvr_github_regen_docker_workflow ()
-{
-	local yml_file="${SHVR_DIR_SELF}/.github/workflows/docker.yml"
-	# The :all image is released + pre-release. Deliberately composed here instead of
-	# reusing shvr_buildset, so a later lane (snapshots) can join the build set -- and
-	# get built and tagged -- without ever leaking into :all.
-	local all_targets="$(printf '%s ' $( { shvr_targets; shvr_prerelease; } | sort -t'_' -k1,1 -k2Vr))"
-	local current_targets="$(printf '%s ' $(shvr_current | sort -t'_' -k1,1 -k2Vr))"
-	cp -f "$yml_file" "${yml_file}.bak"
-	cat "$yml_file.bak" |
-	{
-		# The per-target build matrix is no longer generated here: it is
-		# dynamic (the plan job emits it via shvr_plan_matrix from each image's
-		# OID annotation). This function only maintains the static assembly
-		# flavor lists, so echo straight through to the assemblies marker.
-		while IFS= read -r yml_line
-		do
-			printf '%s\n' "${yml_line}"
-			case ${yml_line} in
-				*'# AUTO-GENERATED ASSEMBLIES. DO NOT EDIT MANUALLY.'*)
-					break
-					;;
-			esac
-		done
-		# Emit assembly matrix entries, fully specified (flavor + arch +
-		# targets) per arch so the matrix needs no axis/include cross-product
-		# (which GitHub Actions resolves ambiguously). One (flavor, arch) per
-		# row; the assemble-manifest job fuses the two arches afterwards.
-		for arch in amd64 arm64
-		do
-			echo "          - flavor: latest"
-			echo "            arch: ${arch}"
-			echo "            targets: >"
-			for target in $current_targets
-			do
-				echo "              $target"
-			done
-			echo "          - flavor: all"
-			echo "            arch: ${arch}"
-			echo "            targets: >"
-			for target in $all_targets
-			do
-				echo "              $target"
-			done
-		done
-		# Skip old assembly entries until steps:
-		while IFS= read -r yml_line
-		do
-			case ${yml_line} in
-				'    steps:'*)
-					break
-					;;
-			esac
-		done
-		# Echo steps and remaining content
-		printf '%s\n' "${yml_line}"
-		while IFS= read -r yml_line
-		do
-			printf '%s\n' "${yml_line}"
-		done
-	} > "$yml_file"
-	rm "$yml_file.bak"
-}
+# NOTE: shvr_github_regen_docker_workflow was removed. The docker.yml assembly
+# matrix it used to bake in (the "# AUTO-GENERATED ASSEMBLIES" block) is now
+# emitted at run time by the plan job from shvr_current / shvr_targets +
+# shvr_prerelease (see plan.outputs.assembly_matrix), so there is no static block
+# to regenerate and a version bump never edits that workflow file -- which is what
+# lets the per-shell update PRs stay disjoint and not conflict on docker.yml.
 
 shvr_toolchain_download ()
 {
@@ -1632,8 +1575,12 @@ shvr_musl_build ()
 
 shvr_github_regen_all ()
 {
+	# The docker.yml assembly matrix is no longer generated: the plan job computes
+	# it at run time from shvr_current / shvr_targets (see plan.outputs.assembly_matrix
+	# in .github/workflows/docker.yml), so there is no static block to regenerate and
+	# a version bump never edits that workflow. Only the downloads action list, which
+	# warm-sources.yml still consumes statically, is regenerated here.
 	(shvr_github_regen_downloads)
-	(shvr_github_regen_docker_workflow)
 }
 
 # Toolchain fingerprint: a hash of the globally-pinned reproducibility inputs
