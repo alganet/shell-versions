@@ -504,13 +504,27 @@ shvr_update ()
 	then set -- $(printf '%s ' $(shvr_interpreters))
 	fi
 
+	# One shell's upstream being unreachable must not sink the whole run: with a
+	# dozen sources (flaky mirrors, a host that blocks GitHub's runner IPs, a
+	# transient TLS timeout), an abort would strand every OTHER shell's genuine
+	# updates and, in the update-PR workflow, open no PRs at all. So every network
+	# step below is caught and turned into a warning + skip; the discovery helpers
+	# and shvr_merge_* already refuse-to-overwrite on empty input, so a skip keeps
+	# the committed versions intact rather than corrupting them. Skipped shells are
+	# summarised at the end; the run still exits 0 so partial progress lands.
+	update_skipped=""
+
 	while test $# -gt 0
 	do
 		interpreter="$1"
 		. "${SHVR_DIR_SELF}/variants/${interpreter}.sh"
 		if command -v "shvr_update_${interpreter}" >/dev/null 2>&1
 		then
-			"shvr_update_${interpreter}"
+			if ! "shvr_update_${interpreter}"
+			then
+				echo "update: ${interpreter}: release discovery failed; keeping committed versions" >&2
+				update_skipped="${update_skipped} ${interpreter}"
+			fi
 			# Roll the snapshot lane for any shell that declares a channel. Central, so
 			# a variant only names its repo/ref and never repeats the discovery dance.
 			# `update` re-resolves the head every run, so the token rolls whenever
@@ -526,15 +540,24 @@ shvr_update ()
 			then snapshot_src="$("shvr_versionsource_${interpreter}")"
 			fi
 			if command -v "shvr_snapshotsource_${snapshot_src}" >/dev/null 2>&1
-			then shvr_discover_snapshot "${snapshot_src}" | shvr_merge_snapshots "${snapshot_src}"
+			then
+				if ! shvr_discover_snapshot "${snapshot_src}" | shvr_merge_snapshots "${snapshot_src}"
+				then echo "update: ${snapshot_src}: snapshot roll failed; keeping committed snapshot" >&2
+				fi
 			fi
 			# Refresh versions/<shell>.current from the just-merged .all
 			# (no-op for shells without their own .all, e.g. ash/hush).
-			shvr_regen_current_one "${interpreter}"
+			if ! shvr_regen_current_one "${interpreter}"
+			then echo "update: ${interpreter}: regen_current failed" >&2
+			fi
 		else echo "skip: ${interpreter} has no updater yet" >&2
 		fi
 		shift
 	done
+
+	if test -n "$update_skipped"
+	then echo "update: skipped (kept committed versions):${update_skipped}" >&2
+	fi
 }
 
 # Regenerate versions/<shell>.current from versions/<shell>.all by keeping the newest

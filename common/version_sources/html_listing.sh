@@ -38,7 +38,14 @@ shvr_versions_from_html_listing ()
 	out="${base}/out"
 	trap 'rm -rf "$base"' EXIT INT TERM
 
-	if ! curl -fsSL "$url" > "$raw" 2> "$err"
+	# Fail fast on a host that blackholes us (e.g. one that blocks GitHub's runner
+	# IP range) rather than hanging ~2min: a bounded connect-timeout, and only ONE
+	# retry -- curl retries connect timeouts, so a large retry count would just
+	# re-stack the timeout back toward the original hang. Worst case here is ~2
+	# connect attempts (~40s), after which the caller (shvr_update) skips this
+	# shell and keeps its committed versions; a transient blip is caught by the
+	# single retry or by the next scheduled run.
+	if ! curl -fsSL --connect-timeout 20 --retry 1 --retry-delay 3 "$url" > "$raw" 2> "$err"
 	then
 		echo "shvr_versions_from_html_listing: curl failed for ${url}" >&2
 		sed 's/^/  /' "$err" >&2
