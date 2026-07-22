@@ -4,14 +4,14 @@
 # Reusable: build one SOURCE-GROUP's new versions for both arches and open/update
 # a single PR for it. Called once per changed group by update-prs.yml. A group is
 # a source (shvr_group_of): busybox = ash+hush share one tree and one PR; every
-# other shell is its own group. One call -> one durable PR on branch update/<group>.
+# other shell is its own group. One call -> one durable PR on branch update-<group>.
 name: Update a source-group
 
 on:
   workflow_call:
     inputs:
       group:
-        description: "Source-group key (e.g. busybox, dash) — names the branch update/<group>"
+        description: "Source-group key (e.g. busybox, dash) — names the branch update-<group>"
         required: true
         type: string
       shells:
@@ -34,7 +34,7 @@ permissions:
   pull-requests: write
 
 # One in-flight run per group: two overlapping runs would race the shared
-# update/<group> branch. Newer wins; the older is cancelled before it pushes.
+# update-<group> branch. Newer wins; the older is cancelled before it pushes.
 concurrency:
   group: update-group-${{ inputs.group }}
   cancel-in-progress: true
@@ -179,8 +179,16 @@ jobs:
             versions/${{ inputs.group }}.*
             checksums
 
-      # Real run: one durable PR per group. Stable branch update/<group> means a
+      # Real run: one durable PR per group. Stable branch update-<group> means a
       # re-run refreshes the same PR instead of opening a new one (no spam).
+      #
+      # FLAT name (update-<group>, not update/<group>) on purpose. Git stores refs
+      # as paths, so a hierarchical update/<group> needs refs/heads/update/ to be a
+      # DIRECTORY -- and the instant any single-segment ref named `update` exists
+      # on the remote, every update/<group> push is "remote rejected ... (directory
+      # file conflict)". A flat name has no `/`, so it can never collide with a
+      # sibling ref or with an `update` branch; the auto-PR push always succeeds.
+      #
       # NOTE: a PR opened with the default GITHUB_TOKEN does NOT trigger the
       # pull_request build (docker.yml) — GitHub blocks token-created events from
       # cascading. Set repo secret UPDATE_PR_TOKEN to a PAT to have the update PR
@@ -190,7 +198,7 @@ jobs:
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.UPDATE_PR_TOKEN || secrets.GITHUB_TOKEN }}
-          branch: update/${{ inputs.group }}
+          branch: update-${{ inputs.group }}
           base: main
           add-paths: |
             versions
