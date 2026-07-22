@@ -106,28 +106,42 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # Resolve the dash target at runtime instead of hardcoding a version. The
+      # test needs a dash version that is committed (has a source checksum) and
+      # fetchable upstream; `current dash` is exactly that and it tracks version
+      # bumps, so an `update` that rotates dash (e.g. 0.5.13.4 -> 0.5.13.5) no
+      # longer strands this job on a version whose tarball has 404'd.
+      - name: 'Resolve a stable dash target'
+        run: |
+          set -eu
+          ver="$(sh shvr.sh current dash | head -n1)"   # e.g. dash_0.5.13.5
+          ver="${ver#dash_}"
+          test -n "$ver"
+          test -f "checksums/sources/dash/${ver}.tar.gz.sha256sums"
+          echo "DASH_VER=${ver}" >> "$GITHUB_ENV"
+
       - name: 'Download Verification'
         run: |
           set -ex
           # ensure clean state and perform an initial download (should succeed)
-          rm -f build/dash/0.5.13.4.tar.gz
-          sh shvr.sh download dash_0.5.13.4
+          rm -f "build/dash/${DASH_VER}.tar.gz"
+          sh shvr.sh download "dash_${DASH_VER}"
 
       - name: 'Corrupt checksum and assert download fails'
         run: |
           set -ex
           # backup checksum file
-          cp checksums/sources/dash/0.5.13.4.tar.gz.sha256sums checksums/sources/dash/0.5.13.4.tar.gz.sha256sums.bak
+          cp "checksums/sources/dash/${DASH_VER}.tar.gz.sha256sums" "checksums/sources/dash/${DASH_VER}.tar.gz.sha256sums.bak"
           # corrupt checksum: replace hash with ones; keep filename
-          printf '1111111111111111111111111111111111111111111111111111111111111111  %s\n' "0.5.13.4.tar.gz" > checksums/sources/dash/0.5.13.4.tar.gz.sha256sums
+          printf '1111111111111111111111111111111111111111111111111111111111111111  %s\n' "${DASH_VER}.tar.gz" > "checksums/sources/dash/${DASH_VER}.tar.gz.sha256sums"
           # remove any existing artifact to force re-download
-          rm -f build/dash/0.5.13.4.tar.gz
+          rm -f "build/dash/${DASH_VER}.tar.gz"
           set +e
           # attempt download once; if the worker network is flaky this may fail
           # for reasons other than checksum mismatch. Capture logs and RC so we
           # can differentiate mismatch from other failures.
           # run the download and capture the exit code; write logs to file
-          sh shvr.sh download dash_0.5.13.4 > download.log 2>&1
+          sh shvr.sh download "dash_${DASH_VER}" > download.log 2>&1
           rc=$?
           # show the log to the step output so it appears in CI
           cat download.log
@@ -147,6 +161,6 @@ jobs:
       - name: 'Restore checksum and verify success'
         run: |
           set -ex
-          mv checksums/sources/dash/0.5.13.4.tar.gz.sha256sums.bak checksums/sources/dash/0.5.13.4.tar.gz.sha256sums
-          rm -f build/dash/0.5.13.4.tar.gz
-          sh shvr.sh download dash_0.5.13.4
+          mv "checksums/sources/dash/${DASH_VER}.tar.gz.sha256sums.bak" "checksums/sources/dash/${DASH_VER}.tar.gz.sha256sums"
+          rm -f "build/dash/${DASH_VER}.tar.gz"
+          sh shvr.sh download "dash_${DASH_VER}"

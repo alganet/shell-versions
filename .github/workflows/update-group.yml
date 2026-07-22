@@ -1,0 +1,195 @@
+# SPDX-FileCopyrightText: 2026 Alexandre Gomes Gaigalas <alganet@gmail.com>
+# SPDX-License-Identifier: ISC
+
+# Reusable: build one SOURCE-GROUP's new versions for both arches and open/update
+# a single PR for it. Called once per changed group by update-prs.yml. A group is
+# a source (shvr_group_of): busybox = ash+hush share one tree and one PR; every
+# other shell is its own group. One call -> one durable PR on branch update/<group>.
+name: Update a source-group
+
+on:
+  workflow_call:
+    inputs:
+      group:
+        description: "Source-group key (e.g. busybox, dash) — names the branch update/<group>"
+        required: true
+        type: string
+      shells:
+        description: "Space-separated shells in this group to build (e.g. \"ash hush\")"
+        required: true
+        type: string
+      versions_artifact:
+        description: "Artifact holding the planned versions/ tree (uploaded by the plan job)"
+        required: true
+        type: string
+      dry_run:
+        description: "Build and diff, but do not push a branch or open a PR"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+  packages: read
+  pull-requests: write
+
+# One in-flight run per group: two overlapping runs would race the shared
+# update/<group> branch. Newer wins; the older is cancelled before it pushes.
+concurrency:
+  group: update-group-${{ inputs.group }}
+  cancel-in-progress: true
+
+jobs:
+  # Build the group's new versions natively per arch and hand its regenerated
+  # checksums (+ the group's versions files) up as an artifact. Native runners so
+  # arm64 is not emulated, matching docker.yml.
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64, arm64]
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
+    steps:
+      - uses: actions/checkout@v7
+
+      # Overlay ONLY this group's version files. They are named by source
+      # (versions/<group>.*; ash/hush carry none of their own — they read
+      # busybox's), so restoring just these means build_updated's global prune
+      # drops only THIS group's removed versions and never another group's,
+      # keeping the PR scoped. The rest of versions/ stays at main's state.
+      - name: Restore this group's planned versions
+        uses: actions/download-artifact@v6
+        with:
+          name: ${{ inputs.versions_artifact }}
+          path: planned-versions
+      - name: Overlay versions/${{ inputs.group }}.*
+        run: |
+          set -eu
+          cp -a "planned-versions/${{ inputs.group }}".* versions/
+          rm -rf planned-versions
+          echo "versions/${{ inputs.group }}.* after overlay:" >&2
+          ls -1 "versions/${{ inputs.group }}".* >&2
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/setup-buildx-action@v4
+
+      # build_updated fetches this group's new sources (skip-verify) + mints their
+      # SOURCE checksums, then builds the arch's missing targets and writes its
+      # BUILD checksums, then prunes the group's dropped versions. SHVR_BUILD_ARCHES
+      # pins it to this runner's arch; SHVR_BUILD_CACHE_FROM warms the toolchain
+      # from the committed registry cache so musl-cross-make is a cache hit, not a
+      # ~30-min recompile per job.
+      - name: Build updated versions and regenerate checksums (${{ matrix.arch }})
+        env:
+          SHVR_BUILD_ARCHES: ${{ matrix.arch }}
+          SHVR_BUILD_CACHE_FROM: ghcr.io/${{ github.repository }}:cache-toolchain-${{ matrix.arch }}
+          # Via env, never interpolated into the command text: build_updated takes
+          # a word-split shell list, so SHELLS is expanded unquoted (SC2086), but
+          # a ${{ }} splice into `run:` would be a script-injection surface. Same
+          # safe pattern the plan job uses (update-prs.yml).
+          SHELLS: ${{ inputs.shells }}
+        # shellcheck disable=SC2086
+        run: sh shvr.sh build_updated $SHELLS
+
+      # Hand up exactly what this group changed: its versions files, its source
+      # checksums, and this arch's build checksums. The collate job fuses the two
+      # arches. A build that produced nothing is caught by the build step's
+      # non-zero exit above, not here: versions/ and checksums/sources always
+      # exist, so if-no-files-found stays a cheap backstop for a mis-typed path,
+      # not a build-empty detector.
+      - name: Upload this group's changes (${{ matrix.arch }})
+        uses: actions/upload-artifact@v6
+        with:
+          name: update-${{ inputs.group }}-${{ matrix.arch }}
+          if-no-files-found: error
+          path: |
+            versions/${{ inputs.group }}.*
+            checksums/sources
+            checksums/build/${{ matrix.arch }}
+
+  # Fuse both arches' checksums, commit, and open/refresh one PR for the group.
+  collate-and-pr:
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      # Both arch artifacts unpack onto the clean checkout. versions/ and
+      # checksums/sources are identical across arches (arch-neutral); each arch
+      # contributes its own checksums/build/<arch>. Later extraction wins on the
+      # shared paths, which is a no-op since they match.
+      - uses: actions/download-artifact@v6
+        with:
+          name: update-${{ inputs.group }}-amd64
+          path: .
+      - uses: actions/download-artifact@v6
+        with:
+          name: update-${{ inputs.group }}-arm64
+          path: .
+
+      # Artifacts overlay ADDITIVELY — they add the new version's files but cannot
+      # express a deletion. A version this bump DROPS (e.g. dash 0.5.13.4 -> .5)
+      # still has its build-checksum dirs in the checked-out main tree. prune
+      # removes exactly those: it keeps the buildset, and only this group's
+      # versions are overlaid, so only this group's dropped versions are reaped —
+      # other groups stay at main's state and are untouched. (Source checksums are
+      # not pruned by design, matching the rest of the repo.)
+      - name: Prune dropped versions' build checksums
+        run: sh shvr.sh prune_build_checksums
+
+      - name: Show the group's diff
+        run: |
+          set -eu
+          git add -A versions checksums
+          git --no-pager diff --cached --stat
+          if git diff --cached --quiet; then
+            echo "No changes for group ${{ inputs.group }} — nothing to PR." >&2
+            echo "changed=no" >> "$GITHUB_ENV"
+          else
+            echo "changed=yes" >> "$GITHUB_ENV"
+          fi
+
+      # dry-run stops here: the staged diff above is the artifact to inspect, and
+      # the tree is uploaded so a reviewer can see exactly what a real run would
+      # commit — without a branch or PR existing.
+      - name: Upload proposed changes (dry-run)
+        if: ${{ inputs.dry_run && env.changed == 'yes' }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: proposed-${{ inputs.group }}
+          path: |
+            versions/${{ inputs.group }}.*
+            checksums
+
+      # Real run: one durable PR per group. Stable branch update/<group> means a
+      # re-run refreshes the same PR instead of opening a new one (no spam).
+      # NOTE: a PR opened with the default GITHUB_TOKEN does NOT trigger the
+      # pull_request build (docker.yml) — GitHub blocks token-created events from
+      # cascading. Set repo secret UPDATE_PR_TOKEN to a PAT to have the update PR
+      # run CI automatically; otherwise re-run CI once by hand (e.g. close/reopen).
+      - name: Create or update the group PR
+        if: ${{ !inputs.dry_run && env.changed == 'yes' }}
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.UPDATE_PR_TOKEN || secrets.GITHUB_TOKEN }}
+          branch: update/${{ inputs.group }}
+          base: main
+          add-paths: |
+            versions
+            checksums
+          commit-message: "update: ${{ inputs.group }} new version(s)"
+          title: "update: ${{ inputs.group }} new version(s)"
+          body: |
+            Automated version bump for the **${{ inputs.group }}** source-group
+            (shells: `${{ inputs.shells }}`), opened by the `update-prs` workflow.
+
+            Contains the group's `versions/` bump plus regenerated source and
+            per-arch build checksums (amd64 + arm64). If CI did not start
+            automatically, this PR was created with the default token; re-run it
+            by hand or configure `UPDATE_PR_TOKEN`.
+          delete-branch: false

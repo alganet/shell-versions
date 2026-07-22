@@ -59,6 +59,60 @@ shvr_updated_targets ()
 	done
 }
 
+# The update-PR unit for a shell: its SOURCE, so shells built from one tree share
+# one PR (and one build). ash and hush both declare busybox via
+# shvr_versionsource_<shell> (see variants/ash.sh), so both map to "busybox";
+# every other shell owns its source and maps to itself. This is the same hook the
+# version machinery already keys off, so groups never drift from how trees build.
+# Subshell: the variant is sourced on demand (like every other generic command
+# here) so the hook is visible, without leaking its definitions to the caller.
+shvr_group_of ()
+(
+	if test -f "${SHVR_DIR_SELF}/variants/$1.sh"
+	then . "${SHVR_DIR_SELF}/variants/$1.sh"
+	fi
+	if command -v "shvr_versionsource_$1" >/dev/null 2>&1
+	then "shvr_versionsource_$1"
+	else echo "$1"
+	fi
+)
+
+# One line per source-group that has a new version for the current SHVR_ARCH:
+#   <group> <shell> [<shell>...]
+# The shells are those in the group with at least one updated target; the group
+# key is shvr_group_of. Drives the per-group matrix of the update-PR workflow:
+# one line -> one PR. A shell's released bump and its snapshot bump are both
+# <shell> targets, so they collapse into the same group (one PR carries both).
+# Optional <shell> args narrow the scan (a manual, single-group run); no args =
+# every changed group (the cron default). Groups and their shells come out in
+# first-seen order, so the output is stable for a given updated-target set.
+shvr_updated_groups ()
+{
+	# Reduce the updated targets to their DISTINCT shells first (a shell with
+	# both a release and a snapshot bump appears twice), so shvr_group_of -- which
+	# sources the shell's variant and its common/*.sh -- runs once per shell, not
+	# once per target. Then emit "<group> <shell>" and let awk fold shells into
+	# their group in first-seen order.
+	shells_seen=" "
+	for t in $(shvr_updated_targets "$@")
+	do
+		sh_name="${t%%_*}"
+		case "$shells_seen" in *" $sh_name "*) continue ;; esac
+		shells_seen="${shells_seen}${sh_name} "
+		printf '%s %s\n' "$(shvr_group_of "$sh_name")" "$sh_name"
+	done | awk '
+		{
+			# Shells are already distinct, so each group accumulates its members
+			# in first-seen order. Test membership BEFORE assigning shells[$1]:
+			# referencing it on a statement LHS vivifies it, so a same-statement
+			# (in) test would always be true and prepend a stray leading space.
+			if ($1 in shells) { shells[$1] = shells[$1] " " $2 }
+			else { order[++n] = $1; shells[$1] = $2 }
+		}
+		END { for (i = 1; i <= n; i++) print order[i] " " shells[order[i]] }
+	'
+}
+
 # Remove committed build-checksum dirs for targets no longer supported. The keep set is
 # always the full current build set — shvr_buildset (released + pre-release), plus
 # shvr_testing when that command exists. Keying off shvr_buildset rather than
@@ -118,6 +172,21 @@ shvr_build_updated_arch ()
 (
 	arch="$1"
 	shift
+
+	# Require explicit targets. Without this guard an empty list flows into
+	# `docker build --build-arg TARGETS=""`, and inside the container
+	# `shvr.sh build` with no args falls back to the WHOLE buildset (~300
+	# targets, toolchain included) -- a full from-scratch rebuild masquerading
+	# as "build the new versions". The intended entry point is shvr_build_updated
+	# (no arch), which computes the targets; this helper is only ever called with
+	# them. Fail loudly rather than silently rebuild everything.
+	if test -z "$*"
+	then
+		echo "shvr_build_updated_arch: no targets given (usage: build_updated_arch <arch> <target>...)." >&2
+		echo "  To build every new version, use: shvr.sh build_updated" >&2
+		return 2
+	fi
+
 	tag="shvr-build-updated-${arch}"
 	# Scratch dir for the extracted /opt, outside the repo so nothing is polluted.
 	# Subshell function (parens) so this EXIT trap is scoped to the call.
@@ -127,9 +196,21 @@ shvr_build_updated_arch ()
 	echo "build_updated[${arch}]: docker build (linux/${arch}) for: $*" >&2
 
 	# Single-platform build loaded into the local engine so we can extract from it.
+	# Optional layer-cache sources, one registry ref per line/word in
+	# SHVR_BUILD_CACHE_FROM. Unset locally (podman/buildah ignores registry cache
+	# anyway), so the local build is unchanged. CI sets it to the committed
+	# toolchain cache ref (ghcr.io/<repo>:cache-toolchain-<arch>) so the ~30-min
+	# musl-cross-make compile is a cache hit instead of running in every job.
+	cache_from_args=""
+	for _ref in ${SHVR_BUILD_CACHE_FROM:-}
+	do cache_from_args="${cache_from_args} --cache-from=${_ref}"
+	done
+
+	# shellcheck disable=SC2086
 	docker buildx build \
 		--platform "linux/${arch}" \
 		--build-arg TARGETS="$*" \
+		$cache_from_args \
 		--load \
 		-t "$tag" \
 		"${SHVR_DIR_SELF}"
