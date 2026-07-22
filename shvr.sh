@@ -196,14 +196,25 @@ shvr_build_updated_arch ()
 	echo "build_updated[${arch}]: docker build (linux/${arch}) for: $*" >&2
 
 	# Single-platform build loaded into the local engine so we can extract from it.
-	# Optional layer-cache sources, one registry ref per line/word in
+	# Optional layer-cache sources, one registry ref per word in
 	# SHVR_BUILD_CACHE_FROM. Unset locally (podman/buildah ignores registry cache
-	# anyway), so the local build is unchanged. CI sets it to the committed
-	# toolchain cache ref (ghcr.io/<repo>:cache-toolchain-<arch>) so the ~30-min
-	# musl-cross-make compile is a cache hit instead of running in every job.
+	# anyway), so the local build is unchanged.
 	cache_from_args=""
 	for _ref in ${SHVR_BUILD_CACHE_FROM:-}
 	do cache_from_args="${cache_from_args} --cache-from=${_ref}"
+	done
+
+	# Optional named build contexts, one `name=value` per word in
+	# SHVR_BUILD_CONTEXTS. The load-bearing use is
+	# `toolchain=docker-image://<ref>`: the Dockerfile's `FROM ... AS toolchain`
+	# stage is REPLACED by that image, so musl-cross-make is never re-derived --
+	# the same contract build-images.yml relies on, and the reason a cold
+	# --cache-from is not enough (a cache miss silently recompiles the whole
+	# toolchain in every build, ~15 min each). Unset locally, so the from-source
+	# toolchain build is unchanged there.
+	build_context_args=""
+	for _ctx in ${SHVR_BUILD_CONTEXTS:-}
+	do build_context_args="${build_context_args} --build-context=${_ctx}"
 	done
 
 	# shellcheck disable=SC2086
@@ -211,6 +222,7 @@ shvr_build_updated_arch ()
 		--platform "linux/${arch}" \
 		--build-arg TARGETS="$*" \
 		$cache_from_args \
+		$build_context_args \
 		--load \
 		-t "$tag" \
 		"${SHVR_DIR_SELF}"

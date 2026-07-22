@@ -81,13 +81,19 @@ jobs:
       # build_updated fetches this group's new sources (skip-verify) + mints their
       # SOURCE checksums, then builds the arch's missing targets and writes its
       # BUILD checksums, then prunes the group's dropped versions. SHVR_BUILD_ARCHES
-      # pins it to this runner's arch; SHVR_BUILD_CACHE_FROM warms the toolchain
-      # from the committed registry cache so musl-cross-make is a cache hit, not a
-      # ~30-min recompile per job.
+      # pins it to this runner's arch.
+      #
+      # SHVR_BUILD_CONTEXTS replaces the Dockerfile's toolchain stage with the
+      # image the toolchain job published for this run, so musl-cross-make is
+      # consumed, not recompiled -- the same build-context contract as
+      # build-images.yml, and the fix for build jobs that used to spend ~15 min
+      # re-deriving the toolchain from source. github.run_id here is the caller's
+      # run id (reusable workflows share it), so this resolves to the exact image
+      # the toolchain job pushed.
       - name: Build updated versions and regenerate checksums (${{ matrix.arch }})
         env:
           SHVR_BUILD_ARCHES: ${{ matrix.arch }}
-          SHVR_BUILD_CACHE_FROM: ghcr.io/${{ github.repository }}:cache-toolchain-${{ matrix.arch }}
+          SHVR_BUILD_CONTEXTS: toolchain=docker-image://ghcr.io/${{ github.repository }}:run-${{ github.run_id }}-toolchain-${{ matrix.arch }}
           # Via env, never interpolated into the command text: build_updated takes
           # a word-split shell list, so SHELLS is expanded unquoted (SC2086), but
           # a ${{ }} splice into `run:` would be a script-injection surface. Same
@@ -117,7 +123,14 @@ jobs:
     needs: build
     runs-on: ubuntu-24.04
     steps:
+      # fetch-depth: 0 (full history) is required by create-pull-request below:
+      # it pushes the branch with --force-with-lease, which needs the remote
+      # -tracking refs a shallow (default depth-1) checkout lacks. Without it the
+      # push git subcommand exits 1 immediately -- the "git failed exit code 1"
+      # the first run hit even with a correctly-scoped token.
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
 
       # Both arch artifacts unpack onto the clean checkout. versions/ and
       # checksums/sources are identical across arches (arch-neutral); each arch

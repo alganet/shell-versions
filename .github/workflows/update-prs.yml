@@ -98,12 +98,55 @@ jobs:
           path: versions
           include-hidden-files: false
 
+  # Build the toolchain ONCE per arch for this run and publish it as a run-scoped
+  # image the group builds consume as a build context. Without this each group's
+  # build re-derived the toolchain stage from source -- a ~15-min musl-cross-make
+  # recompile in every job (and the likely cause of the first run's build
+  # failures). cache-from the committed registry cache makes this a cache hit, so
+  # the job is fast; the group builds then never touch the toolchain stage. Same
+  # run-<run_id>-toolchain-<arch> tag build-images.yml uses, and github.run_id is
+  # shared with the reusable update-group workflow, so it reads the same ref.
+  toolchain:
+    needs: plan
+    if: needs.plan.outputs.count != '0'
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [amd64, arm64]
+    runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/toolchain-downloads
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/setup-buildx-action@v4
+      - name: Build and push the toolchain image
+        uses: ./.github/actions/build-push-retry
+        with:
+          context: .
+          target: toolchain
+          push: "true"
+          tags: ghcr.io/${{ github.repository }}:run-${{ github.run_id }}-toolchain-${{ matrix.arch }}
+          platforms: linux/${{ matrix.arch }}
+          provenance: false
+          # Read every ref docker.yml writes so an unchanged toolchain is a cache
+          # hit rather than a recompile; do not write cache from here (this is a
+          # consumer workflow, and only docker.yml owns the authoritative refs).
+          cache-from: |
+            type=registry,ref=ghcr.io/${{ github.repository }}:cache-toolchain-${{ matrix.arch }}
+            type=registry,ref=ghcr.io/${{ github.repository }}:cache-toolchain-pr-${{ matrix.arch }}
+            type=gha,scope=toolchain-${{ matrix.arch }}-v3
+
   # One reusable-workflow call per changed group. max-parallel is the queue: it
   # bounds how many groups build/PR at once so a big update wave does not fire N
   # full CI runs simultaneously. Durable per-group branches mean a throttled or
   # re-run group refreshes its existing PR rather than spawning another.
   group:
-    needs: plan
+    needs: [plan, toolchain]
     if: needs.plan.outputs.count != '0'
     strategy:
       fail-fast: false
