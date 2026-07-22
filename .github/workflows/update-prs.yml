@@ -29,7 +29,10 @@ on:
 
 permissions:
   contents: write
-  packages: read
+  # write, not read: the toolchain job PUSHES run-<run_id>-toolchain-<arch> to
+  # GHCR (a read-only token fails with "installation not allowed to Write
+  # organization package"). Same grant docker.yml uses to publish its toolchain.
+  packages: write
   pull-requests: write
 
 # Serialize whole runs: the plan job mutates versions/ and each group races its
