@@ -445,7 +445,7 @@ jobs:
       # rebuild, silently undoing this job. crane copies the manifest byte-for-byte,
       # so the digest and the annotation both survive.
       - name: Install crane
-        uses: imjasonh/setup-crane@v0.4
+        uses: imjasonh/setup-crane@v0.7
       - name: Promote to the stable tag
         run: |
           set -eu
