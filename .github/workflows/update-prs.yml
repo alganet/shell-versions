@@ -95,7 +95,7 @@ jobs:
       # same snapshot instead of re-running update and racing a newer upstream.
       - name: Upload planned versions
         if: steps.plan.outputs.count != '0'
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: shvr-planned-versions
           path: versions
