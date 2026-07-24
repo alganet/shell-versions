@@ -58,7 +58,7 @@ jobs:
       # drops only THIS group's removed versions and never another group's,
       # keeping the PR scoped. The rest of versions/ stays at main's state.
       - name: Restore this group's planned versions
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v8
         with:
           name: ${{ inputs.versions_artifact }}
           path: planned-versions
@@ -136,11 +136,11 @@ jobs:
       # checksums/sources are identical across arches (arch-neutral); each arch
       # contributes its own checksums/build/<arch>. Later extraction wins on the
       # shared paths, which is a no-op since they match.
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v8
         with:
           name: update-${{ inputs.group }}-amd64
           path: .
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v8
         with:
           name: update-${{ inputs.group }}-arm64
           path: .
