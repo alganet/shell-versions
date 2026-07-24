@@ -195,7 +195,7 @@ jobs:
       # run CI automatically; otherwise re-run CI once by hand (e.g. close/reopen).
       - name: Create or update the group PR
         if: ${{ !inputs.dry_run && env.changed == 'yes' }}
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ secrets.UPDATE_PR_TOKEN || secrets.GITHUB_TOKEN }}
           branch: update-${{ inputs.group }}
