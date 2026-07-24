@@ -109,7 +109,7 @@ jobs:
       # exist, so if-no-files-found stays a cheap backstop for a mis-typed path,
       # not a build-empty detector.
       - name: Upload this group's changes (${{ matrix.arch }})
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: update-${{ inputs.group }}-${{ matrix.arch }}
           if-no-files-found: error
@@ -172,7 +172,7 @@ jobs:
       # commit — without a branch or PR existing.
       - name: Upload proposed changes (dry-run)
         if: ${{ inputs.dry_run && env.changed == 'yes' }}
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: proposed-${{ inputs.group }}
           path: |
