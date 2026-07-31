@@ -71,7 +71,7 @@ jobs:
           ls -1 "versions/${{ inputs.group }}".* >&2
 
       - name: Log in to GHCR
-        uses: docker/login-action@v4
+        uses: docker/login-action@v4.5.2
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
