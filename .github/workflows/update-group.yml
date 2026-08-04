@@ -123,14 +123,21 @@ jobs:
     needs: build
     runs-on: ubuntu-24.04
     steps:
-      # fetch-depth: 0 (full history) is required by create-pull-request below:
-      # it pushes the branch with --force-with-lease, which needs the remote
-      # -tracking refs a shallow (default depth-1) checkout lacks. Without it the
-      # push git subcommand exits 1 immediately -- the "git failed exit code 1"
-      # the first run hit even with a correctly-scoped token.
+      # fetch-depth: 0 (full history) is required by the PR step below: it pushes
+      # the branch with --force-with-lease, which needs the remote-tracking refs a
+      # shallow (default depth-1) checkout lacks. Without it the push exits 1
+      # immediately -- the "git failed exit code 1" the first run hit even with a
+      # correctly-scoped token.
+      #
+      # The token is persisted as the origin credential and reused for the push,
+      # so branch updates come from the SAME identity that opens the PR. That
+      # matters: a push authenticated with the default GITHUB_TOKEN cannot trigger
+      # the PR's `synchronize` CI run, so the refresh below would silently stop
+      # re-running CI on an existing PR.
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          token: ${{ secrets.UPDATE_PR_TOKEN || secrets.GITHUB_TOKEN }}
 
       # Both arch artifacts unpack onto the clean checkout. versions/ and
       # checksums/sources are identical across arches (arch-neutral); each arch
@@ -155,17 +162,105 @@ jobs:
       - name: Prune dropped versions' build checksums
         run: sh shvr.sh prune_build_checksums
 
-      - name: Show the group's diff
+      # Stage the group's changes and turn them into the PR body. The body is
+      # generated rather than static so a reader sees WHICH versions moved without
+      # opening the diff: one bullet per changed versions/ file, listing the
+      # version tokens this run added and removed.
+      #
+      # Group/shells come in via env, never spliced into the script text: every
+      # ${{ }} in a `run:` is a script-injection surface, and this is the same safe
+      # pattern the build and plan steps use.
+      - name: Stage the group's changes and summarize them
+        env:
+          GROUP: ${{ inputs.group }}
+          SHELLS: ${{ inputs.shells }}
         run: |
           set -eu
+
           git add -A versions checksums
           git --no-pager diff --cached --stat
-          if git diff --cached --quiet; then
-            echo "No changes for group ${{ inputs.group }} — nothing to PR." >&2
+
+          if git diff --cached --quiet
+          then
+            echo "No changes for group ${GROUP} — nothing to PR." >&2
             echo "changed=no" >> "$GITHUB_ENV"
-          else
-            echo "changed=yes" >> "$GITHUB_ENV"
+            exit 0
           fi
+          echo "changed=yes" >> "$GITHUB_ENV"
+
+          # One file's staged diff -> the sentence for its bullet. Field 1 is the
+          # version token in every versions/ file shape (".all" carries a date in
+          # field 2, ".snapshot" the full sha), so that is what gets reported.
+          #
+          # NET change, not raw diff sides: a token on both sides only had a later
+          # field move (a date correction upstream, say) and is not a version
+          # change at all, so it cancels out and the bullet reads "changed". The
+          # +++/--- deletes drop the diff's file headers, which would otherwise
+          # read as bogus tokens.
+          version_delta () {
+            awk '
+              /^(\+\+\+|---)/ { next }
+              /^\+/ { sub(/^\+/, ""); if (!($1 in add)) { add[$1] = 1; addv[++na] = $1 }; next }
+              /^-/  { sub(/^-/,  ""); if (!($1 in del)) { del[$1] = 1; delv[++nd] = $1 }; next }
+              function join(v, n, other,   i, out, sep) {
+                out = ""; sep = ""
+                for (i = 1; i <= n; i++) {
+                  if (!(v[i] in other)) { out = out sep "`" v[i] "`"; sep = ", " }
+                }
+                return out
+              }
+              END {
+                a = join(addv, na, del)
+                d = join(delv, nd, add)
+                if (a != "" && d != "") { print "added " a "; removed " d }
+                else if (a != "")       { print "added " a }
+                else if (d != "")       { print "removed " d }
+                else                    { print "changed" }
+              }
+            '
+          }
+
+          # -U0 so only changed lines reach version_delta.
+          versions_md="${RUNNER_TEMP}/versions.md"
+          : > "$versions_md"
+          for f in $(git diff --cached --name-only -- versions)
+          do
+            printf -- '- `%s`: %s\n' \
+              "$(basename "$f")" \
+              "$(git diff --cached -U0 -- "$f" | version_delta)" >> "$versions_md"
+          done
+
+          n_sources="$(git diff --cached --name-only -- checksums/sources | wc -l)"
+          n_build="$(git diff --cached --name-only -- checksums/build | wc -l)"
+
+          # Written to RUNNER_TEMP (stable across steps in a job), never into the
+          # work tree: `git add -A versions checksums` above has already staged
+          # everything this PR commits, and a stray file at the repo root would
+          # show up as untracked noise in the branch.
+          body="${RUNNER_TEMP}/pr-body.md"
+          {
+            printf 'Automated version bump for the **%s** source-group (shells: `%s`), opened by the `update-prs` workflow.\n\n' "$GROUP" "$SHELLS"
+            printf '### Versions\n\n'
+            cat "$versions_md"
+            printf '\n### Checksums\n\n'
+            printf -- '- %s source checksum file(s) regenerated\n' "$n_sources"
+            printf -- '- %s build checksum file(s) regenerated (amd64 + arm64)\n' "$n_build"
+            printf '\n'
+            printf 'New versions carry no committed build checksums, and the assemble job fails closed on that — so the bump and its checksums land together, in one PR.\n\n'
+            printf -- '---\n\n'
+            printf 'Last refreshed by [run %s](%s/%s/actions/runs/%s), started by @%s on %s.\n' \
+              "$GITHUB_RUN_ID" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" \
+              "$GITHUB_ACTOR" "$(date -u '+%Y-%m-%d %H:%M UTC')"
+            printf 'The commit is re-dated on every run, so its date is when this PR was last verified against upstream — not when the bump was first found.\n\n'
+            printf 'If CI did not start automatically, this PR was created with the default token; re-run it by hand or configure `UPDATE_PR_TOKEN`.\n'
+          } > "$body"
+
+          # Same text in the run summary, so a dry-run shows the body a real run
+          # would post without any PR existing.
+          {
+            printf '### PR body for `%s`\n\n' "$GROUP"
+            cat "$body"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       # dry-run stops here: the staged diff above is the artifact to inspect, and
       # the tree is uploaded so a reviewer can see exactly what a real run would
@@ -193,24 +288,71 @@ jobs:
       # pull_request build (docker.yml) — GitHub blocks token-created events from
       # cascading. Set repo secret UPDATE_PR_TOKEN to a PAT to have the update PR
       # run CI automatically; otherwise re-run CI once by hand (e.g. close/reopen).
-      - name: Create or update the group PR
+      #
+      # Plain git + gh rather than create-pull-request, because of the refresh
+      # contract: the branch is ALWAYS re-committed and re-pushed, even when the
+      # tree is byte-identical to what the PR already carries. That keeps the
+      # commit date equal to the last time this workflow verified the group
+      # against upstream — create-pull-request compares content and skips the push
+      # when it matches, leaving a PR that reads as stale (and never re-runs CI)
+      # however recently it was actually checked.
+      - name: Create or refresh the group PR
         if: ${{ !inputs.dry_run && env.changed == 'yes' }}
-        uses: peter-evans/create-pull-request@v8
-        with:
-          token: ${{ secrets.UPDATE_PR_TOKEN || secrets.GITHUB_TOKEN }}
-          branch: update-${{ inputs.group }}
-          base: main
-          add-paths: |
-            versions
-            checksums
-          commit-message: "update: ${{ inputs.group }} new version(s)"
-          title: "update: ${{ inputs.group }} new version(s)"
-          body: |
-            Automated version bump for the **${{ inputs.group }}** source-group
-            (shells: `${{ inputs.shells }}`), opened by the `update-prs` workflow.
+        env:
+          GH_TOKEN: ${{ secrets.UPDATE_PR_TOKEN || secrets.GITHUB_TOKEN }}
+          GROUP: ${{ inputs.group }}
+        run: |
+          set -eu
+          branch="update-${GROUP}"
+          title="update: ${GROUP} new version(s)"
+          body="${RUNNER_TEMP}/pr-body.md"
 
-            Contains the group's `versions/` bump plus regenerated source and
-            per-arch build checksums (amd64 + arm64). If CI did not start
-            automatically, this PR was created with the default token; re-run it
-            by hand or configure `UPDATE_PR_TOKEN`.
-          delete-branch: false
+          # Author is whoever started this run; committer is the bot that actually
+          # made and pushed the commit. Git models exactly this split, so use it
+          # rather than claiming the person ran the push: GitHub renders it as
+          # "<actor> authored, github-actions[bot] committed".
+          #
+          # GITHUB_ACTOR / GITHUB_ACTOR_ID are default runner env vars, so no
+          # workflow-expression splice is needed here (and no injection surface is
+          # opened), and in a reusable workflow they carry the CALLER's actor — the
+          # human who dispatched update-prs, or on a cron the account the schedule
+          # runs as. The <id>+<login>@users.noreply.github.com form is what GitHub
+          # maps back to an account, so the commit is attributed (avatar,
+          # contribution graph) even when the actor keeps their address private.
+          #
+          # This is the commit author only. The PR's *opener* is a property of the
+          # credential that calls the API — UPDATE_PR_TOKEN's owner, else
+          # github-actions[bot] — and cannot be set to a third party.
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          author="${GITHUB_ACTOR} <${GITHUB_ACTOR_ID}+${GITHUB_ACTOR}@users.noreply.github.com>"
+
+          # The branch is always exactly "main's tip + one commit": the changes are
+          # staged on top of the checked-out main, so committing here and force
+          # -pushing HEAD replaces whatever the branch held. That is the amend —
+          # the old single commit is discarded rather than added to, so the branch
+          # never accumulates a chain of no-op bumps, and its one commit is dated
+          # now.
+          git commit --quiet -m "$title" --author="$author"
+
+          # --force-with-lease needs the remote's current tip, so fetch it first
+          # (|| true: the branch legitimately does not exist on the first run).
+          # The lease is what makes the force safe — a push racing another writer
+          # is rejected instead of clobbering it.
+          git fetch --quiet origin "+refs/heads/${branch}:refs/remotes/origin/${branch}" || true
+          if remote_tip="$(git rev-parse --quiet --verify "refs/remotes/origin/${branch}")"
+          then git push --force-with-lease="refs/heads/${branch}:${remote_tip}" origin "HEAD:refs/heads/${branch}"
+          else git push origin "HEAD:refs/heads/${branch}"
+          fi
+
+          # One durable PR per group on the stable branch: refresh the open one if
+          # it is there, else open it. Body and title are rewritten every run so
+          # the summary always describes the commit the branch currently carries.
+          pr="$(gh pr list --head "$branch" --base main --state open --json number --jq '.[0].number // empty')"
+          if test -n "$pr"
+          then
+            gh pr edit "$pr" --title "$title" --body-file "$body"
+            echo "refreshed PR #${pr} (branch ${branch})" >&2
+          else
+            gh pr create --base main --head "$branch" --title "$title" --body-file "$body"
+          fi
