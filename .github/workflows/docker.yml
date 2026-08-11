@@ -46,6 +46,10 @@ jobs:
   # (warm-sources.yml) keeps every source cache warm so skipped targets stay
   # rebuildable even if upstream later removes a tarball.
   mirror:
+    # Three imagetools calls; anything longer is a hung registry, not slow work.
+    # Every job below carries a timeout for the same reason: the GitHub default
+    # is 6 hours, which turns a stalled fetch into a silent six-hour job.
+    timeout-minutes: 15
     runs-on: ubuntu-24.04
     outputs:
       toolchain_ref: ${{ steps.resolve.outputs.toolchain_ref }}
@@ -92,12 +96,32 @@ jobs:
       - name: Resolve digest-pinned refs
         id: resolve
         run: |
-          toolchain_digest=$(docker buildx imagetools inspect \
-            --format '{{.Manifest.Digest}}' "${TOOLCHAIN_TAG}")
-          runtime_digest=$(docker buildx imagetools inspect \
-            --format '{{.Manifest.Digest}}' "${RUNTIME_TAG}")
-          buildkit_digest=$(docker buildx imagetools inspect \
-            --format '{{.Manifest.Digest}}' "${BUILDKIT_TAG}")
+          set -eu
+          # Named, retried reads. These are three bare command substitutions whose
+          # failure aborts the job via the runner's implicit `bash -e` -- and this
+          # job is a hard dependency of toolchain, both builds and assemble, so one
+          # transient GHCR read used to kill the whole run before anything started,
+          # with only "Resolve digest-pinned refs" and a raw imagetools error to say
+          # which of the three it was.
+          # Sets $r_digest rather than printing it. A `digest=$(resolve ...)` form
+          # would capture the function's stdout -- and GitHub parses ::error::
+          # annotations from the STEP's stdout, so the annotation would vanish into
+          # the command substitution and never render.
+          resolve() {
+            r_name="$1"; r_tag="$2"
+            for r_try in 1 2 3; do
+              if r_digest=$(docker buildx imagetools inspect --format '{{.Manifest.Digest}}' "$r_tag" 2>/dev/null); then
+                return 0
+              fi
+              echo "attempt ${r_try} failed to resolve ${r_name} (${r_tag})" >&2
+              sleep 5
+            done
+            echo "::error::mirror: could not resolve the ${r_name} digest from ${r_tag} after 3 attempts"
+            return 1
+          }
+          resolve toolchain "${TOOLCHAIN_TAG}"; toolchain_digest="$r_digest"
+          resolve runtime   "${RUNTIME_TAG}";   runtime_digest="$r_digest"
+          resolve buildkit  "${BUILDKIT_TAG}";  buildkit_digest="$r_digest"
           {
             echo "toolchain_ref=ghcr.io/${{ github.repository }}@${toolchain_digest}"
             echo "runtime_ref=ghcr.io/${{ github.repository }}@${runtime_digest}"
@@ -123,6 +147,8 @@ jobs:
       fail-fast: false
       matrix:
         arch: [amd64, arm64]
+    # cold musl-cross-make compile is ~15-40 min per arch
+    timeout-minutes: 90
     runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
     env:
       # Run-scoped, like the mirror job's tags: written by exactly one job in this
@@ -133,6 +159,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/toolchain-downloads
+      # This job COMPILES the toolchain stage, so it needs the sources it
+      # compiles from. Build jobs do not (they consume the published image).
+      - uses: ./.github/actions/musl-sources
 
       - name: Log in to GHCR
         uses: docker/login-action@v4.6.0
@@ -186,6 +215,8 @@ jobs:
   # a target whose published OID still matches the freshly computed one cannot
   # have changed and is skipped. Emits a dynamic build matrix consumed below.
   plan:
+    # ~644 sequential imagetools inspects; observed 8 min
+    timeout-minutes: 30
     runs-on: ubuntu-24.04
     outputs:
       # Per-arch matrices: GitHub caps a job's matrix at 256 configurations, and a
@@ -225,13 +256,31 @@ jobs:
         env:
           REPO: ${{ github.repository }}
           FORCE_ALL: ${{ github.event.inputs.force_all }}
+          # Same-repo PRs only, and via env rather than inlined into the script.
+          #
+          # A PR title is attacker-controlled text on two axes. Inlining it would be
+          # a shell injection, hence the env var. And honouring it from a FORK would
+          # hand any outside contributor a switch that schedules two toolchain
+          # compiles plus ~640 build jobs -- a resource-exhaustion lever, from a
+          # string, with no review. The head-repo check keeps the rehearsal useful
+          # for branches in this repo and closes that.
+          PR_TITLE: ${{ github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.title || '' }}
         run: |
           set -eu
-          # Kill-switch: rebuild everything on manual force_all or a
-          # [rebuild-all] commit-message flag.
+          # Kill-switch: rebuild everything on manual force_all, a [rebuild-all]
+          # commit-message flag, or a [rebuild-all] PR title.
+          #
+          # The PR title matters because `git log -1` CANNOT see the flag on a
+          # pull_request run: actions/checkout resolves refs/pull/<n>/merge, whose
+          # message is GitHub's synthetic "Merge <sha> into <sha>". So a PR carrying
+          # [rebuild-all] in its commits planned zero targets, looked green, and the
+          # flag first took effect on the push to main -- the one place it is most
+          # expensive and least validated. Reading PR_TITLE makes the rehearsal
+          # possible; a squash merge then carries the same title into the push.
           force=0
           if [ "${FORCE_ALL:-}" = "true" ]; then force=1; fi
           if git log -1 --pretty=%B | grep -qiF '[rebuild-all]'; then force=1; fi
+          if printf '%s' "${PR_TITLE:-}" | grep -qiF '[rebuild-all]'; then force=1; fi
 
           # Read each target+arch's published OID from the arch-suffixed
           # :<target>-<arch> tag's manifest annotation, without pulling layers.
@@ -253,6 +302,7 @@ jobs:
           # what the PR actually produced. force=1 likewise never promotes: the
           # kill-switch means rebuild, not re-tag.
           : > registry_oids.txt
+          unreadable=0
           for arch in amd64 arm64; do
             SHVR_ARCH="$arch" sh shvr.sh build_identities > "desired_${arch}.txt"
             while read -r t desired; do
@@ -263,9 +313,19 @@ jobs:
               # </dev/null on every docker call: this loop reads the target list on
               # stdin, and a child that consumes stdin would eat it and silently cut
               # the plan short -- a truncated plan means targets are never built.
-              oid=$(docker buildx imagetools inspect --raw "ghcr.io/${REPO}:${t}-${arch}" </dev/null 2>/dev/null \
-                    | jq -r '.annotations["org.shvr.oid"] // empty' 2>/dev/null || true)
-              oid="${oid:-MISSING}"
+              # Split the read from the parse so a registry ERROR is distinguishable
+              # from an image that simply is not published yet. Both still collapse
+              # to MISSING -> rebuild (safe by default), but they are counted apart
+              # and reported below: a GHCR outage and a genuine first build used to
+              # produce the identical "N targets need building" line, which made a
+              # ~640-job accidental rebuild indistinguishable from a real one.
+              if raw=$(docker buildx imagetools inspect --raw "ghcr.io/${REPO}:${t}-${arch}" </dev/null 2>/dev/null); then
+                oid=$(printf '%s' "$raw" | jq -r '.annotations["org.shvr.oid"] // empty' 2>/dev/null || true)
+                oid="${oid:-MISSING}"
+              else
+                oid=MISSING
+                unreadable=$((unreadable + 1))
+              fi
               promotable=no
               if [ "${{ github.event_name }}" = "push" ] \
                  && [ "$desired" != MISSING ] && [ "$oid" != "$desired" ] \
@@ -330,6 +390,23 @@ jobs:
                 . + { (($i / $n | floor) | tostring): { include: $all[$i:$i+$n] } })'; }
           shardmap_amd64=$(printf '%s' "$amd" | shard)
           shardmap_arm64=$(printf '%s' "$arm" | shard)
+
+          # Every downstream gate is a string compare against '0' -- including the
+          # ones that decide whether :latest/:all and the Docker Hub per-target
+          # lists get republished. An EMPTY output therefore reads as "non-zero"
+          # and opens every gate it was meant to close. jq emitting nothing (or a
+          # renamed output) must fail the plan, not silently unlock publishing.
+          for c in count_amd64 count_arm64 count_promote; do
+            eval "v=\$$c"
+            case "$v" in
+              ''|*[!0-9]*)
+                # stdout, not stderr: GitHub parses workflow commands from stdout.
+                echo "::error::plan: $c is not a number (got '${v}'); refusing to emit a plan that would open the publish gates"
+                exit 1
+                ;;
+            esac
+          done
+
           printf 'shardmap_amd64=%s\n' "$shardmap_amd64" >> "$GITHUB_OUTPUT"
           printf 'shardmap_arm64=%s\n' "$shardmap_arm64" >> "$GITHUB_OUTPUT"
           printf 'shards_amd64=%s\n' "$(printf '%s' "$shardmap_amd64" | jq -c 'keys')" >> "$GITHUB_OUTPUT"
@@ -340,8 +417,25 @@ jobs:
           printf 'count_promote=%s\n'  "$count_promote" >> "$GITHUB_OUTPUT"
           printf 'built=%s\n'        "$built"       >> "$GITHUB_OUTPUT"
           printf 'assembly_matrix=%s\n' "$assembly_matrix" >> "$GITHUB_OUTPUT"
-          printf '%s amd64 + %s arm64 of %s target(s) need building; %s promoted from an existing build\n' \
-            "$count_amd64" "$count_arm64" "$(sh shvr.sh buildset | wc -l)" "$count_promote" >> "$GITHUB_STEP_SUMMARY"
+          # Say WHY, not just how many. A forced rebuild, a recipe change and a GHCR
+          # read outage all produce a large count and used to be indistinguishable.
+          if [ "$force" = 1 ]; then
+            reason='forced ([rebuild-all] or force_all): every target replanned, nothing promotable'
+          else
+            reason='OID mismatch against the published per-target images'
+          fi
+          {
+            printf '%s amd64 + %s arm64 of %s target(s) need building; %s promoted from an existing build\n' \
+              "$count_amd64" "$count_arm64" "$(sh shvr.sh buildset | wc -l)" "$count_promote"
+            printf 'reason: %s\n' "$reason"
+            if [ "$unreadable" -gt 0 ]; then
+              printf 'WARNING: %s registry read(s) failed and were counted as MISSING -- part of this rebuild may be a GHCR outage, not real work\n' \
+                "$unreadable"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ "$unreadable" -gt 0 ]; then
+            echo "::warning::plan: ${unreadable} registry read(s) failed; those targets were planned as MISSING and will rebuild"
+          fi
 
   # Fetch the shared build-dependency SOURCES (ncurses, readline, libedit, pcre)
   # ONCE, before the build fan-out, and cache them. They live outside any target's
@@ -352,6 +446,8 @@ jobs:
   common-sources:
     needs: [plan]
     if: needs.plan.outputs.count_amd64 != '0' || needs.plan.outputs.count_arm64 != '0'
+    # five source fetches
+    timeout-minutes: 20
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
@@ -424,6 +520,8 @@ jobs:
     # `docker create` + `docker cp`, and pointing that at a foreign-arch image is
     # asking for a platform-mismatch failure. Matching the runner keeps it the
     # same same-arch extraction the build job already does.
+    # crane re-tag plus a checksum verify
+    timeout-minutes: 30
     runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
     strategy:
       fail-fast: false
@@ -474,22 +572,31 @@ jobs:
   assemble:
     needs: [plan, build-amd64, build-arm64, promote, mirror]
     # Run even when build was skipped (0 changed targets): flavors are
-    # reassembled from the per-target images (rebuilt this run or reused from a
-    # prior push) and the full-set checksum verify still guards every binary.
-    # Only bail if a build actually failed or was cancelled.
+    # reassembled from the per-target images (reused from a prior push) and the
+    # full-set checksum verify still guards every binary.
+    #
+    # The gate keys on the PLAN COUNTS, not on "the build did not fail". A build
+    # job reports `skipped` for two very different reasons -- its own `if` was
+    # false (nothing to do), or one of its dependencies died and GitHub never ran
+    # it -- and `skipped != 'failure'` cannot tell them apart. It read as "nothing
+    # to do" either way, so a failed `toolchain` skipped both builds and this job
+    # went on to reassemble :latest/:all from LAST push's images. That is how a
+    # run whose conclusion was `failure` still republished user-facing tags.
+    #
+    # The counts are the discriminator this job was missing: if the plan wanted
+    # work for an arch, that arch's build must have actually succeeded.
     if: >-
-      always()
+      !cancelled()
       && needs.mirror.result == 'success'
       && needs.plan.result == 'success'
-      && needs['build-amd64'].result != 'failure'
-      && needs['build-amd64'].result != 'cancelled'
-      && needs['build-arm64'].result != 'failure'
-      && needs['build-arm64'].result != 'cancelled'
-      && needs.promote.result != 'failure'
-      && needs.promote.result != 'cancelled'
+      && (needs.plan.outputs.count_amd64 == '0' || needs['build-amd64'].result == 'success')
+      && (needs.plan.outputs.count_arm64 == '0' || needs['build-arm64'].result == 'success')
+      && (needs.plan.outputs.count_promote == '0' || needs.promote.result == 'success')
     # Each (flavor, arch) is assembled on its native runner: the final stage's
     # RUN (manifest.txt generation) and the COPY --from of per-arch images both
     # execute under the matching arch with no emulation.
+    # ~500 COPY --from layers per flavor
+    timeout-minutes: 60
     runs-on: ${{ matrix.arch == 'arm64' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
     env:
       ALL_TARGETS: ${{ matrix.targets }}
@@ -625,7 +732,7 @@ jobs:
           ls ./bundled_checksums | sort > bundled.txt
           printf '%s\n' ${ALL_TARGETS} | sort > expected.txt
           if ! diff -u expected.txt bundled.txt; then
-            echo "::error::bundled checksums do not match the assembled target set" >&2
+            echo "::error::bundled checksums do not match the assembled target set"
             exit 1
           fi
           printf 'bundled checksums: %s target(s), exact match\n' \
@@ -647,7 +754,13 @@ jobs:
   # so no buildx container is booted (same pattern as the mirror job).
   assemble-manifest:
     needs: [assemble]
-    if: always() && needs.assemble.result == 'success'
+    # !cancelled(), not always(): on push `cancel-in-progress` is false, so a
+    # manual cancel after assemble finished would otherwise still push :latest and
+    # :all to Docker Hub. Cancelling a run must stop it publishing.
+    # Quoted: a bare leading `!` is a YAML tag, not an expression.
+    if: "!cancelled() && needs.assemble.result == 'success'"
+    # two imagetools fuses
+    timeout-minutes: 20
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
@@ -707,17 +820,27 @@ jobs:
     # promote is a dependency because it MOVES the stable per-arch tags this job
     # fuses. Fusing before it runs would publish the previous digest for every
     # promoted target.
-    needs: [plan, build-amd64, build-arm64, promote]
+    #
+    # mirror is a dependency for the same reason assemble has one: without it this
+    # job would publish in a run where `mirror` failed, `toolchain` was therefore
+    # skipped, and nothing was built at all. It was the only publishing job that
+    # did not require the mirror to have worked, and the only one that actually
+    # SUCCEEDED in the run that exposed this -- re-fusing every Docker Hub
+    # per-target list from images nothing had rebuilt.
+    #
+    # See the assemble gate above for why this keys on the plan counts rather than
+    # on `result != 'failure'`.
+    needs: [plan, build-amd64, build-arm64, promote, mirror]
     if: >-
-      always()
+      !cancelled()
       && github.event_name == 'push'
+      && needs.mirror.result == 'success'
       && needs.plan.result == 'success'
-      && needs['build-amd64'].result != 'failure'
-      && needs['build-amd64'].result != 'cancelled'
-      && needs['build-arm64'].result != 'failure'
-      && needs['build-arm64'].result != 'cancelled'
-      && needs.promote.result != 'failure'
-      && needs.promote.result != 'cancelled'
+      && (needs.plan.outputs.count_amd64 == '0' || needs['build-amd64'].result == 'success')
+      && (needs.plan.outputs.count_arm64 == '0' || needs['build-arm64'].result == 'success')
+      && (needs.plan.outputs.count_promote == '0' || needs.promote.result == 'success')
+    # ~640 fuses at -P 8
+    timeout-minutes: 30
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
@@ -775,9 +898,28 @@ jobs:
               if docker buildx imagetools create --tag "${dest}:${tag}" "$amd" "$arm"; then return 0; fi
               echo "retry $a: ${dest}:${tag}" >&2; sleep 5
             done
-            echo "FAILED ${dest}:${tag}" >&2; return 1
+            # ::error:: and a durable record, not just stderr. With -P 8 across
+            # ~640 fuses, this line used to be interleaved with seven other
+            # workers' output and xargs reported only "exited with status 255" --
+            # so the run said something failed but never which ref.
+            echo "::error::target-manifest: failed to fuse ${dest}:${tag} after 3 attempts"
+            echo "${dest}:${tag}" >> /tmp/fuse_failed
+            return 1
           }
           export -f fuse_one
-          xargs -P 8 -a /tmp/fuse_jobs -I {} bash -c 'fuse_one "$@"' _ {}
-          printf 'fused %s manifest list(s) across 2 registries (sources: GHCR)\n' \
-            "$(( $(wc -l < /tmp/fuse_jobs) / 2 ))" >> "$GITHUB_STEP_SUMMARY"
+          : > /tmp/fuse_failed
+          planned=$(( $(wc -l < /tmp/fuse_jobs) / 2 ))
+          if xargs -P 8 -a /tmp/fuse_jobs -I {} bash -c 'fuse_one "$@"' _ {}; then
+            printf 'fused %s manifest list(s) across 2 registries (sources: GHCR)\n' \
+              "$planned" >> "$GITHUB_STEP_SUMMARY"
+          else
+            # Report on the failure path too. Every summary in this workflow used
+            # to be written only after success, so a failed run's summary was
+            # blank -- the one place a reader looks first.
+            {
+              printf 'target-manifest FAILED: %s of %s planned fuse(s) did not complete\n' \
+                "$(wc -l < /tmp/fuse_failed)" "$planned"
+              sed 's/^/  /' /tmp/fuse_failed
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi

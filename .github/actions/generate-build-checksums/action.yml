@@ -35,9 +35,12 @@ runs:
       uses: actions/upload-artifact@v6
       with:
         name: ${{ inputs.artifact_name }}
+        # image_out/shvr/build-env.log used to be listed here, but nothing in the
+        # repo has ever written that path -- and upload-artifact only warns when
+        # NO path matches, so the checksums dir always matched and the missing
+        # diagnostic was never noticed. Dropped rather than faked.
         path: |
           checksums/build/${{ inputs.arch }}
-          image_out/shvr/build-env.log
 
 inputs:
   image:

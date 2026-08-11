@@ -1,0 +1,35 @@
+# SPDX-FileCopyrightText: 2026 Alexandre Gomes Gaigalas <alganet@gmail.com>
+# SPDX-License-Identifier: ISC
+
+name: musl-cross-make sources
+description: Downloads and caches the gcc/binutils/musl/gmp/mpc/mpfr/linux-headers tarballs the toolchain compiles from
+
+# Separate from toolchain-downloads on purpose, and NOT used by build jobs.
+#
+# These seven tarballs are ~146MB. toolchain-downloads runs in every one of the
+# ~640 per-target build jobs (build-images.yml), and the builder stage does
+# `COPY "build/" "/usr/src/shvr"` -- so folding these into that action would pull
+# 146MB into every build job and bake it into every per-target builder layer and
+# buildcache ref, for files those jobs cannot use: they replace the toolchain
+# stage wholesale with a build context, so it is never compiled there.
+#
+# Only jobs that actually BUILD the toolchain stage need these. Keep it that way.
+runs:
+  using: composite
+  steps:
+    - name: Restore musl-cross-make source cache
+      uses: actions/cache/restore@v5
+      id: restore-musl-sources
+      with:
+        path: |
+          build/musl-sources/**
+        key: build-musl-sources-${{ hashFiles('common/musl-cross-make.sh') }}
+    - name: Download musl-cross-make sources
+      shell: sh
+      run: sh shvr.sh musl-sources-download
+    - uses: actions/cache/save@v5
+      if: steps.restore-musl-sources.outputs.cache-hit != 'true'
+      with:
+        path: |
+          build/musl-sources/**
+        key: build-musl-sources-${{ hashFiles('common/musl-cross-make.sh') }}

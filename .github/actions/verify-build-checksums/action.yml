@@ -22,7 +22,14 @@ runs:
         SHVR_CHECKSUMS_DIR: ${{ github.workspace }}/checksums
       run: |
         set -ex
-        sh shvr.sh verify_build_checksums ${{ inputs.targets }}
+        # Annotate on failure: shvr_verify_build_checksums already reports every
+        # mismatch with expected/actual, but only to stderr -- so on a 640-job run
+        # the run page showed a red X and nothing else. The details stay in the
+        # log; this puts the target and arch where a reader will actually see it.
+        if ! sh shvr.sh verify_build_checksums ${{ inputs.targets }}; then
+          echo "::error::build checksum verification failed for arch=${{ inputs.arch }} targets='${{ inputs.targets }}' (image ${{ inputs.image }}); see the log above for per-binary expected/actual"
+          exit 1
+        fi
 
 inputs:
   image:

@@ -24,9 +24,10 @@ shvr_download_readline ()
 
 	if ! test -f "${SHVR_DIR_SRC}/readline/readline-${SHVR_READLINE_VERSION}.tar.gz"
 	then
-		shvr_fetch \
-			"https://ftp.gnu.org/gnu/readline/readline-${SHVR_READLINE_VERSION}.tar.gz" \
-			"${SHVR_DIR_SRC}/readline/readline-${SHVR_READLINE_VERSION}.tar.gz"
+		# Mirrored for the same reason as ncurses: common-sources gates both builds.
+		shvr_fetch_mirrors \
+			"${SHVR_DIR_SRC}/readline/readline-${SHVR_READLINE_VERSION}.tar.gz" \
+			$(shvr_gnu_mirrors "readline/readline-${SHVR_READLINE_VERSION}.tar.gz")
 	fi
 
 	# readline links the terminal library; it uses our in-tree static ncurses.

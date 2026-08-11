@@ -24,9 +24,20 @@ permissions:
 
 jobs:
   warm:
+    timeout-minutes: 60
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
+      # The shared and toolchain caches need the same treatment as the per-target
+      # ones, and were not getting it: this job only ran ./downloads, which emits
+      # single-download entries. The build-common-* and build-toolchain-* keys are
+      # refreshed only when a build actually runs, so a quiet week evicted them --
+      # silently, since a miss just re-fetches from the flaky upstreams this whole
+      # workflow exists to avoid depending on. The toolchain key now also covers
+      # the ~146MB of musl-cross-make sources.
+      - uses: ./.github/actions/common-downloads
+      - uses: ./.github/actions/toolchain-downloads
+      - uses: ./.github/actions/musl-sources
       # Restores every per-target source cache (refreshing its TTL) and
       # re-fetches+saves any that have been evicted.
       - uses: ./.github/actions/downloads

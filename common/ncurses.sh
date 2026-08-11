@@ -13,9 +13,12 @@ shvr_download_ncurses ()
 
 	if ! test -f "${SHVR_DIR_SRC}/ncurses/ncurses-${SHVR_NCURSES_VERSION}.tar.gz"
 	then
-		shvr_fetch \
-			"https://ftp.gnu.org/gnu/ncurses/ncurses-${SHVR_NCURSES_VERSION}.tar.gz" \
-			"${SHVR_DIR_SRC}/ncurses/ncurses-${SHVR_NCURSES_VERSION}.tar.gz"
+		# Mirrored, not single-origin: this runs in `common-sources`, a hard
+		# dependency of BOTH build jobs, so one bad minute at ftp.gnu.org used to
+		# kill an entire run's build phase before the fan-out even started.
+		shvr_fetch_mirrors \
+			"${SHVR_DIR_SRC}/ncurses/ncurses-${SHVR_NCURSES_VERSION}.tar.gz" \
+			$(shvr_gnu_mirrors "ncurses/ncurses-${SHVR_NCURSES_VERSION}.tar.gz")
 	fi
 }
 

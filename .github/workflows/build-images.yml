@@ -37,6 +37,11 @@ permissions:
 
 jobs:
   build:
+    # No job in the build path had a timeout, so the GitHub default of 6 HOURS
+    # applied. A stalled (as opposed to failed) upstream fetch inside a RUN layer
+    # therefore produced a silent six-hour job. The slowest real target is well
+    # under an hour with a warm toolchain context.
+    timeout-minutes: 60
     runs-on: ${{ inputs.runner }}
     strategy:
       fail-fast: ${{ github.event_name == 'push' }}

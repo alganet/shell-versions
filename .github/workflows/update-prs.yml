@@ -120,6 +120,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/toolchain-downloads
+      - uses: ./.github/actions/musl-sources
       - name: Log in to GHCR
         uses: docker/login-action@v4.6.0
         with:

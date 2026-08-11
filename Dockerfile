@@ -40,7 +40,8 @@ FROM ${TOOLCHAIN_BASE} AS toolchain
             -e "s|http://deb.debian.org/debian-security|http://snapshot.debian.org/archive/debian-security/${DEBIAN_SNAPSHOT}|" \
             -e "s|http://deb.debian.org/debian|http://snapshot.debian.org/archive/debian/${DEBIAN_SNAPSHOT}|" \
             /etc/apt/sources.list.d/debian.sources && \
-        echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99no-check-valid-until
+        echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99no-check-valid-until && \
+        printf 'Acquire::Retries "5";\n' > /etc/apt/apt.conf.d/99retries
 
     # Update distro
     RUN apt-get -y update
@@ -49,6 +50,17 @@ FROM ${TOOLCHAIN_BASE} AS toolchain
     COPY "build/musl-cross-make-*" "/usr/src/shvr/"
     COPY "checksums/sources/musl-cross-make-*" "/shvr/checksums/sources/"
     COPY "common/musl-cross-make.sh" "/shvr/common/musl-cross-make.sh"
+
+    # gcc, binutils, musl, gmp, mpc, mpfr and the kernel headers, fetched and
+    # verified on the runner by `shvr.sh toolchain-download` and cached there.
+    # musl-cross-make would otherwise pull ~146MB from ftp.gnu.org and friends in
+    # the middle of the RUN below, where a flaky mirror is an opaque build failure
+    # and nothing is cached between runs.
+    #
+    # The directory is `musl-sources`, not `musl-cross-make-sources`: the glob
+    # above would match the latter and flatten it into the wrong place.
+    COPY "build/musl-sources/" "/usr/src/shvr/musl-sources/"
+    COPY "checksums/sources/musl-sources/" "/shvr/checksums/sources/musl-sources/"
 
     # shvr.sh sources common/patches.sh unconditionally, so it is part of the
     # entry point rather than of any one variant: without it even `musl-build`,

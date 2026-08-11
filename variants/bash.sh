@@ -161,11 +161,19 @@ shvr_download_bash ()
 		return 0
 	fi
 
+	# Mirrored, with ocf.berkeley.edu kept first because it is the mirror this
+	# recipe has always used and its bash layout is known-good.
 	if ! test -f "${build_srcdir}.tar.gz"
 	then
-		shvr_fetch "https://mirrors.ocf.berkeley.edu/gnu/bash/bash-${version_baseline}.tar.gz" "${build_srcdir}.tar.gz"
+		shvr_fetch_mirrors "${build_srcdir}.tar.gz" \
+			"https://mirrors.ocf.berkeley.edu/gnu/bash/bash-${version_baseline}.tar.gz" \
+			$(shvr_gnu_mirrors "bash/bash-${version_baseline}.tar.gz")
 	fi
 
+	# The patch loop is the worst single-origin amplifier in the repo: a late 5.2
+	# needs 38 SEQUENTIAL fetches, every one of which had to succeed on the first
+	# try or the target failed. Same mirror list, so a mirror that drops out
+	# mid-series costs a retry rather than the build.
 	mkdir -p "${build_srcdir}-patches"
 	patch_i=0
 	while test $patch_i -lt $version_patch
@@ -174,8 +182,10 @@ shvr_download_bash ()
 		patch_n="$(printf '%03d' "$patch_i")"
 		if ! test -f "${build_srcdir}-patches/$patch_n"
 		then
-			url="https://mirrors.ocf.berkeley.edu/gnu/bash/bash-${version_baseline}-patches/bash${version_major}${version_minor}-${patch_n}"
-			shvr_fetch "$url" "${build_srcdir}-patches/$patch_n"
+			patch_rel="bash/bash-${version_baseline}-patches/bash${version_major}${version_minor}-${patch_n}"
+			shvr_fetch_mirrors "${build_srcdir}-patches/$patch_n" \
+				"https://mirrors.ocf.berkeley.edu/gnu/${patch_rel}" \
+				$(shvr_gnu_mirrors "${patch_rel}")
 		fi
 	done
 

@@ -1252,7 +1252,30 @@ shvr_fetch()
 	then
 		if command -v curl >/dev/null 2>&1
 		then
-			curl -sSL -o "$dest" "$url" || return 1
+			# -f is load-bearing, not cosmetic. Without it curl writes the SERVER'S
+			# ERROR PAGE to $dest and exits 0, so a 404 or a 503 sails past this
+			# check and surfaces below as "sha256sum mismatch" -- i.e. a mirror
+			# having a bad minute is reported as a supply-chain integrity failure.
+			# With -f the transport error stays a transport error.
+			#
+			# The retry/timeout flags matter for the same reason the caches exist:
+			# these upstreams (ftp.gnu.org, sourceforge, thrysoee.dk) are flaky, and
+			# a single unretried GET used to fail a whole target. --max-time bounds
+			# a STALLED transfer, which no job timeout below 6h would otherwise
+			# catch, because curl will happily sit on a 1-byte/minute connection.
+			if ! curl -fsSL \
+				--retry 5 --retry-delay 5 --retry-all-errors \
+				--connect-timeout 30 --max-time 1800 \
+				-o "$dest" "$url"
+			then
+				# Leave nothing behind: the `test -f` guard above would otherwise
+				# make every later call reuse a truncated or half-written file and
+				# fail verification identically, with no hint that the real problem
+				# was the first fetch.
+				rm -f "$dest"
+				echo "download failed: $url -> $dest" >&2
+				return 1
+			fi
 		else
 			echo "curl is required to download $url" >&2
 			return 1
@@ -1284,7 +1307,12 @@ shvr_fetch()
 	if ! test -f "$checksum_file"
 	then
 		echo "checksum missing for $dest, expected at $checksum_file" >&2
-		return 1
+		# Exit 2, not 1: this is a REPO problem (a version bumped without its
+		# committed checksum), not a mirror problem. shvr_fetch_mirrors keys on it
+		# to stop rather than re-downloading the same bytes from every mirror in
+		# turn -- which for gcc is 3 x 88MB before reporting a cause that no
+		# amount of retrying could fix.
+		return 2
 	fi
 
 	# Run verification: change to dest dir so relative filenames match
@@ -1292,12 +1320,80 @@ shvr_fetch()
 	cd "$(dirname "$dest")"
 	if ! sha256sum -c "$checksum_file" >/dev/null 2>&1
 	then
-		echo "sha256sum mismatch for $dest (checksum file: $checksum_file)" >&2
+		# Print what actually differs, the way shvr_verify_build_checksums does.
+		# A bare "mismatch" left three very different causes indistinguishable --
+		# a mirror serving an error page, an upstream that re-rolled a tarball, and
+		# a stale committed checksum -- so the size and both hashes go in the log.
+		echo "sha256sum mismatch for $dest" >&2
+		echo "  checksum file: $checksum_file" >&2
+		echo "  expected:      $(cat "$checksum_file")" >&2
+		echo "  actual:        $(sha256sum "$(basename "$dest")")" >&2
+		echo "  size:          $(wc -c < "$(basename "$dest")") bytes" >&2
 		cd "$savedir"
 		return 1
 	fi
 	cd "$savedir"
 	return 0
+}
+
+# shvr_fetch against an ordered list of mirrors: try each until one downloads AND
+# verifies, so a single flaky origin cannot fail a target on its own.
+#
+# Usage: shvr_fetch_mirrors <dest> <url> [<url>...]
+#
+# Trying another mirror is safe precisely because verification is unchanged: every
+# candidate is checked against the same committed sha256, so a bad or hostile
+# mirror can only get itself skipped -- it can never introduce bytes we accept.
+shvr_fetch_mirrors ()
+{
+	fm_dest="$1"
+	shift
+
+	for fm_url in "$@"
+	do
+		# Captured explicitly, not read from $? after an `if`: the exit status of
+		# an if-compound whose condition failed and that has no else branch is
+		# ZERO, so `if shvr_fetch ...; fi; test "$?" = 2` can never be true.
+		fm_rc=0
+		shvr_fetch "$fm_url" "$fm_dest" || fm_rc=$?
+
+		if test "$fm_rc" = 0
+		then
+			return 0
+		fi
+
+		# 2 means "no committed checksum for this file" -- a repo problem no
+		# mirror can solve. Stop immediately and keep the real message visible
+		# instead of burying it under "all mirrors failed".
+		if test "$fm_rc" = 2
+		then
+			return 2
+		fi
+		# Drop the failed file before the next mirror. shvr_fetch skips the
+		# download when $dest exists, so without this a file that is present but
+		# does NOT verify -- a truncated or poisoned cache entry -- would be
+		# re-verified against every mirror in turn and never re-fetched, turning
+		# the fallback into three identical failures. Removing it makes the next
+		# URL a real attempt, so a bad cache entry self-heals.
+		rm -f "$fm_dest"
+		echo "mirror failed, trying next: $fm_url" >&2
+	done
+
+	echo "all mirrors failed for $fm_dest" >&2
+	return 1
+}
+
+# The GNU mirror list, most-available first. ftpmirror.gnu.org is GNU's official
+# redirector across the worldwide mirror network; ftp.gnu.org is the single
+# canonical origin and the most rate-limited host of the three, so it is the LAST
+# resort rather than the default it used to be.
+shvr_gnu_mirrors ()
+{
+	gm_path="$1"
+	printf '%s\n' \
+		"https://ftpmirror.gnu.org/gnu/${gm_path}" \
+		"https://mirrors.kernel.org/gnu/${gm_path}" \
+		"https://ftp.gnu.org/gnu/${gm_path}"
 }
 
 shvr_generate_checksums()
@@ -1546,6 +1642,22 @@ shvr_toolchain_download ()
 	shvr_download_rustup
 }
 
+# gcc/binutils/musl/gmp/mpc/mpfr/linux-headers -- the ~146MB the toolchain
+# actually compiles from, so `make` inside the image downloads nothing. Fetched
+# on the runner, where it is cached, retried, mirrored and checksum-verified,
+# rather than mid-RUN inside Docker where a flaky mirror becomes an opaque
+# "exit code: 2".
+#
+# Deliberately NOT part of shvr_toolchain_download: that runs in every per-target
+# build job, and these bytes are useless there (those jobs consume a prebuilt
+# toolchain image) while being large enough to bloat every builder layer. See
+# .github/actions/musl-sources/action.yml.
+shvr_musl_sources_download ()
+{
+	. "${SHVR_DIR_SELF}/common/musl-cross-make.sh"
+	shvr_download_musl_sources
+}
+
 # Fetch the shared build-dependency SOURCES (ncurses, readline, libedit, pcre1/2)
 # that many shells link but that live outside any single target's cache_path, so
 # per-target single-download never caches them and every build job would otherwise
@@ -1567,9 +1679,16 @@ shvr_common_download ()
 
 shvr_musl_build ()
 {
+	# set -x like shvr_build/shvr_deps/shvr_download. This is the longest and
+	# least-often-exercised command in the pipeline (the toolchain layer is
+	# normally a cache hit, so the compile can sit unrun for months), and it had no
+	# command trace at all -- a failure surfaced as a bare BuildKit exit code with
+	# nothing in the log to say which step produced it.
+	set -x
 	. "${SHVR_DIR_SELF}/common/musl-cross-make.sh"
 	apt-get -y install gcc g++ make curl patch xz-utils
 	shvr_download_musl_cross_make
+	shvr_download_musl_sources
 	shvr_build_musl_cross_make
 }
 

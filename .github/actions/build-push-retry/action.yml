@@ -76,6 +76,21 @@ runs:
         labels: ${{ inputs.labels }}
         annotations: ${{ inputs.annotations }}
         provenance: ${{ inputs.provenance }}
+    # Wait before retrying. This used to retry INSTANTLY, which is the one thing
+    # that cannot help against the failure it exists to absorb: a rate-limited or
+    # briefly-unavailable upstream gets hit twice within seconds and fails twice.
+    # The toolchain failure that prompted this had two identical annotations 90
+    # seconds apart for exactly that reason.
+    #
+    # The warning matters too -- attempt 1's failure is only a soft annotation, so
+    # a build that succeeded on the second try was previously indistinguishable
+    # from one that succeeded outright, and flakiness stayed invisible.
+    - name: Back off before retry
+      if: steps.attempt1.outcome == 'failure'
+      shell: bash
+      run: |
+        echo "::warning::build-push: attempt 1 failed for '${{ inputs.tags }}'; retrying after backoff"
+        sleep 45
     - name: Build and push (retry)
       if: steps.attempt1.outcome == 'failure'
       uses: docker/build-push-action@v7
