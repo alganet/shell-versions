@@ -646,10 +646,20 @@ jobs:
           # (~500 for "all") exceeds both. Chunk targets into shallow
           # stages, then merge the chunks.
           set -eu
-          # Per-target images are arch-suffixed (:<target>-<arch>). On a PR, a
-          # target+arch built this run is at run-<id>-<target>-<arch>; one skipped
-          # this run is reused from its stable :<target>-<arch> image (a prior push
-          # to main). On push everything resolves to the stable :<target>-<arch>.
+          # Per-target images are arch-suffixed (:<target>-<arch>). Which tag holds
+          # this run's output is decided by the EVENT, and this must mirror
+          # build-images.yml exactly: it writes the stable :<target>-<arch> only on
+          # push, and run-<id>-<target>-<arch> on every other event.
+          #
+          # So the test is `!= push`, not `== pull_request`. It used to name only
+          # pull_request, which left workflow_dispatch in the else branch: a
+          # force_all dispatch built every target into run-scoped tags and then
+          # assembled from the STABLE tags it had not written -- i.e. from the last
+          # push's content, silently. That made the dispatch rehearsal (the only way
+          # to force a full rebuild off main) assemble the wrong images entirely.
+          #
+          # A target not built this run still resolves to its stable tag, which is
+          # correct: it was not rebuilt, so the prior push's image is current.
           is_built () { case " ${BUILT_TARGETS} " in *" $1-${ARCH} "*) return 0 ;; *) return 1 ;; esac ; }
           chunk_size=8
           i=0
@@ -660,7 +670,7 @@ jobs:
                 last_chunk=$((i / chunk_size))
                 echo "FROM scratch AS chunk_${last_chunk}"
               fi
-              if [ "${{ github.event_name }}" = "pull_request" ] && is_built "$target"; then
+              if [ "${{ github.event_name }}" != "push" ] && is_built "$target"; then
                 src="ghcr.io/${{ github.repository }}:run-${{ github.run_id }}-${target}-${ARCH}"
               else
                 src="ghcr.io/${{ github.repository }}:${target}-${ARCH}"
