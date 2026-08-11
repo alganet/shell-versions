@@ -200,7 +200,7 @@ jobs:
       shards_arm64: ${{ steps.plan.outputs.shards_arm64 }}
       count_amd64: ${{ steps.plan.outputs.count_amd64 }}
       count_arm64: ${{ steps.plan.outputs.count_arm64 }}
-      # Targets whose exact OID is already published under oid-<arch>-<oid> and so
+      # Targets whose exact OID is already published under oid-<arch>-<target>-<oid> and so
       # only need re-tagging. Disjoint from the build matrices; both arches share
       # one matrix (see the promote job).
       matrix_promote: ${{ steps.plan.outputs.matrix_promote }}
@@ -241,7 +241,7 @@ jobs:
           # two arches are planned independently.
           #
           # A target that does NOT match still might not need compiling: the
-          # content-addressed oid-<arch>-<oid> tag is written by every build,
+          # content-addressed oid-<arch>-<target>-<oid> tag is written by every build,
           # including a PR's, so when a PR built this exact OID the image already
           # exists and only needs re-tagging. The 4th column records that, and
           # plan_matrix routes those rows to `promote` instead of `build`. This is
@@ -269,7 +269,7 @@ jobs:
               promotable=no
               if [ "${{ github.event_name }}" = "push" ] \
                  && [ "$desired" != MISSING ] && [ "$oid" != "$desired" ] \
-                 && docker buildx imagetools inspect --raw "ghcr.io/${REPO}:oid-${arch}-${desired}" </dev/null >/dev/null 2>&1
+                 && docker buildx imagetools inspect --raw "ghcr.io/${REPO}:oid-${arch}-${t}-${desired}" </dev/null >/dev/null 2>&1
               then
                 promotable=yes
               fi
@@ -395,7 +395,7 @@ jobs:
   # Adopt an image that was already built, instead of building it again.
   #
   # Every build publishes its output twice: under an event-dependent tag, and
-  # under the content-addressed oid-<arch>-<oid>. So when a PR builds a target,
+  # under the content-addressed oid-<arch>-<target>-<oid>. So when a PR builds a target,
   # the artifact for that exact OID is already in the registry by the time the PR
   # merges -- the merge used to rebuild it purely because the stable tag had not
   # moved yet. This job moves the stable tag onto the existing image instead.
@@ -404,10 +404,18 @@ jobs:
   # never marks anything promotable on a PR (see the probe there).
   #
   # Trust: main adopts bytes produced during a PR run. That is sound rather than
-  # convenient -- the OID folds in the committed checksums and the whole recipe
-  # closure, so an image published as oid-<arch>-<oid> cannot be the output of
+  # convenient -- the tag names the target, and the OID folds in that target's
+  # committed checksums and the whole recipe closure, so an image published as
+  # oid-<arch>-<target>-<oid> cannot be the output of a different target or of
   # different sources; only same-repo runs can push at all (a fork PR gets no
   # packages:write); and the checksums are re-verified below before the tag moves.
+  #
+  # The target belongs in that tag: an OID alone does not identify one, because
+  # two targets whose recipes and committed output checksums are identical hash
+  # the same (a snapshot pinned at the release it tracks, loksh_7.4/7.5,
+  # ash_1.2.2/1.2.2.1). Keyed on the OID alone this job promoted whichever of the
+  # colliding pair had written the shared tag last, and the verify below caught
+  # it as a missing binary rather than letting the wrong image take a stable tag.
   promote:
     needs: [plan]
     if: needs.plan.outputs.count_promote != '0' && github.event_name == 'push'
@@ -436,7 +444,7 @@ jobs:
         uses: ./.github/actions/verify-build-checksums
         with:
           arch: ${{ matrix.arch }}
-          image: ghcr.io/${{ github.repository }}:oid-${{ matrix.arch }}-${{ matrix.oid }}
+          image: ghcr.io/${{ github.repository }}:oid-${{ matrix.arch }}-${{ matrix.target }}-${{ matrix.oid }}
           targets: ${{ matrix.target }}
 
       # crane copy, NOT `buildx imagetools create`: imagetools rewraps the source
@@ -449,7 +457,7 @@ jobs:
       - name: Promote to the stable tag
         run: |
           set -eu
-          src="ghcr.io/${{ github.repository }}:oid-${{ matrix.arch }}-${{ matrix.oid }}"
+          src="ghcr.io/${{ github.repository }}:oid-${{ matrix.arch }}-${{ matrix.target }}-${{ matrix.oid }}"
           dst="ghcr.io/${{ github.repository }}:${{ matrix.target }}-${{ matrix.arch }}"
           crane copy "$src" "$dst"
 

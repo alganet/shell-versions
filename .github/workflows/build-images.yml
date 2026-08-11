@@ -83,16 +83,28 @@ jobs:
           # a run-scoped tag instead, so PR content can never mutate a
           # user-facing tag.
           #
-          # The second is content-addressed, and is written on BOTH events. Its
-          # name IS the build identity, so it cannot collide with a user-facing
-          # tag and cannot be wrong about what it holds: an image published as
-          # oid-<arch>-<oid> is by construction the output for that OID. This is
-          # what lets a merge skip work the PR already did -- the plan job probes
-          # this tag and promotes the existing image instead of rebuilding it.
-          # See the promote job in docker.yml.
+          # The second is content-addressed, and is written on BOTH events. It
+          # names the target as well as the OID, so it cannot collide with a
+          # user-facing tag and cannot be wrong about what it holds: an image
+          # published as oid-<arch>-<target>-<oid> is by construction the output
+          # built for that target at that OID. This is what lets a merge skip
+          # work the PR already did -- the plan job probes this tag and promotes
+          # the existing image instead of rebuilding it. See the promote job in
+          # docker.yml.
+          #
+          # <target> is in the name because an OID is NOT unique across targets.
+          # It hashes the recipe closure and the committed output checksums, so
+          # two targets that build byte-identical binaries from the same recipe
+          # share one. That is not exotic: <shell>_snapshot-<commit> collides with
+          # the release it currently points at, and loksh_7.4/7.5 and
+          # ash_1.2.2/1.2.2.1 collide as well. Keyed on the OID alone, both
+          # targets push to a single tag and the last writer wins, so a promote
+          # moves a stable tag onto an image holding /opt/<the other target>.
+          # Keeping the target in the tag is what makes each build's output
+          # addressable as its own.
           tags: |
             ghcr.io/${{ github.repository }}:${{ github.event_name == 'push' && format('{0}-{1}', matrix.target, matrix.arch) || format('run-{0}-{1}-{2}', github.run_id, matrix.target, matrix.arch) }}
-            ghcr.io/${{ github.repository }}:oid-${{ matrix.arch }}-${{ matrix.oid }}
+            ghcr.io/${{ github.repository }}:oid-${{ matrix.arch }}-${{ matrix.target }}-${{ matrix.oid }}
           build-args: |
             TARGETS=${{ matrix.target }}
             TOOLCHAIN_BASE=${{ inputs.toolchain_ref }}
