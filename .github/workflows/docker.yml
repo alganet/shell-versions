@@ -558,9 +558,13 @@ jobs:
               else
                 src="ghcr.io/${{ github.repository }}:${target}-${ARCH}"
               fi
+              # No separate checksums COPY: a per-target image carries its own
+              # (and ONLY its own) under /opt/shvr/checksums, so the union that
+              # lands here is exactly the set of shells being assembled. The
+              # chunk stays FROM scratch and takes only these two paths, so the
+              # per-target images' busybox userland never enters a flavor image.
               echo "COPY --from=${src} --chown=0:0 /opt /opt"
               echo "COPY --from=${src} --chown=0:0 /deps /deps"
-              echo "COPY --from=${src} --chown=0:0 /shvr/checksums/build /shvr/checksums/build"
               i=$((i + 1))
             done
             echo 'FROM scratch AS collected'
@@ -570,12 +574,16 @@ jobs:
               c=$((c + 1))
             done
             echo "FROM ${RUNTIME_REF}"
-            echo 'COPY "entrypoint.sh" "/opt/shvr/entrypoint.sh"'
             echo 'ENV SHVR_DIR_OUT=/opt'
             echo 'WORKDIR /'
             echo 'COPY --from=collected --chown=0:0 /opt /opt'
             echo 'COPY --from=collected --chown=0:0 /deps /'
-            echo 'COPY --from=collected --chown=0:0 /shvr/checksums/build /opt/shvr/checksums/build'
+            # AFTER the /opt copy, not before. Per-target images ship their own
+            # /opt/shvr/entrypoint.sh, built from whatever checkout produced them
+            # -- which for a reused image is an older commit. Copying this
+            # checkout's copy last is what guarantees the assembled image runs
+            # the current entrypoint.
+            echo 'COPY "entrypoint.sh" "/opt/shvr/entrypoint.sh"'
             echo "RUN find /opt \( -type l -o -type f \) -not -path '*/shvr/*' | sort > /opt/shvr/manifest.txt"
             echo 'ENTRYPOINT [ "/bin/sh", "/opt/shvr/entrypoint.sh" ]'
           } > Dockerfile.assembly
@@ -595,6 +603,33 @@ jobs:
           arch: ${{ matrix.arch }}
           image: ${{ env.ASSEMBLY_TAG }}
           targets: ${{ env.ALL_TARGETS }}
+
+      # The step above proves the BINARIES are right; it reads the checksums from
+      # this checkout, not from the image. This one proves the attestation the
+      # image CARRIES is right -- that it describes exactly the shells inside it.
+      #
+      # Two failure modes, both silent without this. Too many: a flavor used to
+      # ship every target's checksums regardless of what it held, so :latest
+      # attested to ~320 shells while holding 28. Too few: the per-target images
+      # are the source of the bundled copies, so any that predates the move to
+      # /opt/shvr/checksums contributes nothing and COPY does not complain --
+      # which is exactly the state of every published image until the rebuild
+      # that lands this change. Fail the run instead of publishing an image whose
+      # attestation is a lie.
+      - name: Verify bundled checksums describe exactly this image
+        run: |
+          set -eu
+          container=$(docker create "${ASSEMBLY_TAG}")
+          docker cp "${container}:/opt/shvr/checksums/build/${ARCH}" ./bundled_checksums
+          docker rm "$container" >/dev/null
+          ls ./bundled_checksums | sort > bundled.txt
+          printf '%s\n' ${ALL_TARGETS} | sort > expected.txt
+          if ! diff -u expected.txt bundled.txt; then
+            echo "::error::bundled checksums do not match the assembled target set" >&2
+            exit 1
+          fi
+          printf 'bundled checksums: %s target(s), exact match\n' \
+            "$(wc -l < bundled.txt)" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Generate and upload build checksums
         if: github.event_name == 'push' && matrix.flavor == 'all'

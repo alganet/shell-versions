@@ -6,6 +6,9 @@
 # resolved by the `mirror` job) to avoid docker.io pull rate limits.
 # Bump these (and regenerate build checksums) when refreshing the base.
 # Keep in sync with .github/workflows/docker.yml MIRROR_*_SOURCE.
+# RUNTIME_BASE is not part of the build identity (see shvr_toolchain_fingerprint),
+# yet the per-version images are now built on it — so land a RUNTIME_BASE bump
+# with `[rebuild-all]` in the commit message or those tags keep the old userland.
 ARG TOOLCHAIN_BASE=debian:trixie-slim@sha256:cedb1ef40439206b673ee8b33a46a03a0c9fa90bf3732f54704f99cb061d2c5a
 ARG RUNTIME_BASE=busybox:stable-musl@sha256:3c6ae8008e2c2eedd141725c30b20d9c36b026eb796688f88205845ef17aa213
 
@@ -108,6 +111,15 @@ FROM toolchain AS builder
     RUN bash "/shvr/shvr.sh" deps $TARGETS
     RUN bash "/shvr/shvr.sh" build $TARGETS
 
+    # Scope the bundled checksums to what this image actually contains. The COPY
+    # above brought in the whole committed tree (every target, both arches), so
+    # without this a single-shell image ships an attestation for ~300 shells it
+    # does not have. Driven off /opt rather than $TARGETS so it is exactly "what
+    # got packaged", which also covers a local multi-target build. Only this
+    # arch's dir is pruned; the other arch is dropped by the COPY below.
+    RUN cd "/shvr/checksums/build/${SHVR_ARCH}" && \
+        for d in */; do test -d "/opt/${d%/}" || rm -rf "$d"; done
+
     # Extract unique library dependencies
     RUN mkdir -p /deps/bin && \
         find /opt -type f -executable -exec ldd {} \; 2>/dev/null | \
@@ -115,26 +127,22 @@ FROM toolchain AS builder
         xargs -I {} cp --parents {} /deps/
 
 
-# Minimal stage for per-version CI images (scratch + build artifacts only)
-FROM scratch AS artifacts
-    # Carry only the built arch's checksums (the builder also copied the
-    # committed checksums/build/amd64 from the repo; an arm64 image must not
-    # ship them). TARGETARCH is BuildKit's automatic platform arch.
-    ARG TARGETARCH
-    COPY --from=builder /opt /opt
-    COPY --from=builder /deps /deps
-    COPY --from=builder /shvr/checksums/build/${TARGETARCH} /shvr/checksums/build/${TARGETARCH}
-    CMD ["/nonexistent"]
-
-
-FROM ${RUNTIME_BASE}
+# The published image, for one shell or for many: the per-version CI image
+# (`--target artifacts`, TARGETS=<one target>) and the local multi-shell image
+# are the same stage, differing only in how many targets went into /opt.
+#
+# It used to be two: a `FROM scratch` data-only `artifacts` stage for CI, plus
+# this runtime stage for local builds. That made every per-version tag
+# unrunnable -- no /bin/sh, no entrypoint -- when what a user pulling
+# :bash_5.3.15 wants is that bash. One runtime stage serves both, and the
+# assemble job still consumes it as a COPY --from source, which is why /deps
+# survives as a directory as well as being merged into /.
+FROM ${RUNTIME_BASE} AS artifacts
 
     # Built arch (BuildKit's automatic platform arch), used to scope the bundled
-    # checksums to this image's arch.
+    # checksums to this image's arch. The builder holds both; an arm64 image
+    # must not ship amd64's.
     ARG TARGETARCH
-
-    # Copy helper script
-    COPY "entrypoint.sh" "/opt/shvr/entrypoint.sh"
 
     # Setup environment
     ENV SHVR_DIR_OUT=/opt
@@ -143,9 +151,29 @@ FROM ${RUNTIME_BASE}
     WORKDIR /
     COPY --from=builder --chown=0:0 "$SHVR_DIR_OUT" "$SHVR_DIR_OUT"
     COPY --from=builder --chown=0:0 /shvr/checksums/build/${TARGETARCH} /opt/shvr/checksums/build/${TARGETARCH}
+    COPY --from=builder --chown=0:0 /deps /deps
     COPY --from=builder --chown=0:0 /deps /
 
-    # Generate manifest of all built shells
-    RUN find /opt \( -type l -o -type f \) -not -path '*/shvr/*' | sort > /opt/shvr/manifest.txt
+    # Copy helper script. Baked in, and NOT part of the build identity (see
+    # shvr_toolchain_fingerprint) -- so an edit here reaches :latest and :all on
+    # the next run (assemble re-copies it from the checkout) but reaches the
+    # per-version tags only when they are rebuilt. Land entrypoint changes with
+    # `[rebuild-all]` in the commit message.
+    COPY "entrypoint.sh" "/opt/shvr/entrypoint.sh"
+
+    # Generate manifest of all built shells, and -- when there is exactly one --
+    # mark the image as that shell so the entrypoint execs it instead of running
+    # the multi-shell wrapper (see entrypoint.sh).
+    #
+    # The marker lives OUTSIDE /opt on purpose: the assemble job builds :latest
+    # and :all by copying /opt out of these images, and a marker under /opt would
+    # ride along and leave the assembled image exec'ing one arbitrary shell.
+    RUN find /opt \( -type l -o -type f \) -not -path '*/shvr/*' | sort > /opt/shvr/manifest.txt && \
+        if test "$(wc -l < /opt/shvr/manifest.txt)" -eq 1; then \
+            mkdir -p /etc/shvr /usr/local/bin && \
+            : > /etc/shvr/single && \
+            shell_path="$(cat /opt/shvr/manifest.txt)" && \
+            ln -sf "$shell_path" "/usr/local/bin/$(basename "$shell_path")"; \
+        fi
 
     ENTRYPOINT [ "/bin/sh", "/opt/shvr/entrypoint.sh" ]

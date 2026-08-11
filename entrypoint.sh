@@ -5,6 +5,28 @@
 
 # Script intended to be ran from inside the docker container
 
+# Single-shell image: be that shell. A per-version tag holds exactly one shell,
+# and the wrapper below only means anything across several -- worse, its option
+# parsing would swallow the shell's own --posix, --login and --help. So hand the
+# arguments straight over: `docker run -it IMAGE` is a REPL, `docker run IMAGE
+# -c 'echo hi'` runs the command, `--version` is the shell's own.
+#
+# Two conditions, not one. /etc/shvr/single is stamped at build time (outside
+# /opt, so it cannot ride into an assembled :all -- see the Dockerfile), and the
+# manifest must still hold exactly one shell. That second test is what makes
+# derived images behave: build FROM a per-version tag, copy more shells in,
+# regenerate the manifest, and the wrapper comes back on its own. The path is
+# read from the manifest rather than the marker so a bind-mounted one-line
+# manifest still selects the shell, and so $0 inside is the real /opt path.
+#
+# SHVR_ENTRYPOINT=multi forces the wrapper anyway.
+if test -f /etc/shvr/single &&
+	test "${SHVR_ENTRYPOINT:-single}" = single &&
+	test "$(wc -l < /opt/shvr/manifest.txt)" -eq 1
+then
+	exec "$(cat /opt/shvr/manifest.txt)" "$@"
+fi
+
 # Keep compatibility with direct shell execution
 if test -f "$1"
 then

@@ -37,11 +37,53 @@ on Apple Silicon macOS you get native `arm64` binaries with no Rosetta/QEMU
 emulation. The same `<shell>_<version>` set is published for every architecture.
 
 Every individual shell is published as its own multi-arch tag too, so you can
-pull a single shell instead of the whole image and still get your native arch:
+pull a single shell instead of the whole image and still get your native arch.
+A per-version tag *is* that shell — it runs directly, and its arguments are the
+shell's own:
 
 ```sh
-$ docker pull alganet/shell-versions:bash_5.3.9
+$ docker run -it --rm alganet/shell-versions:bash_5.3.15
+bash-5.3$ echo "$BASH_VERSION"
+5.3.15(1)-release
+
+$ docker run --rm alganet/shell-versions:dash_0.5.12 -c 'echo Hello World'
+Hello World
 ```
+
+These images are built on the same busybox userland as `latest` and `all`, so
+scripts that reach for `grep`, `sed` or `ls` still work, and
+`--entrypoint /bin/sh` is there when you want to look around. The shell is also
+on `PATH` under its own name. The multi-shell helpers below do not apply to a
+single-shell image; `-e SHVR_ENTRYPOINT=multi` brings them back if you want them.
+
+### Checksums
+
+Every image carries the sha256 of the binaries it contains, and only those:
+
+```sh
+$ docker run --rm --entrypoint /bin/sh alganet/shell-versions:bash_5.3.15 \
+    -c 'cat /opt/shvr/checksums/build/*/bash_5.3.15/bin/bash.sha256sums'
+```
+
+The same holds for `latest` and `all` — each attests to exactly the shells inside
+it, under `/opt/shvr/checksums/build/<arch>/<shell>_<version>/`.
+
+### Building Your Own Collection
+
+Per-version tags are ordinary `COPY --from` sources, so you can assemble a set
+containing only the shells you care about:
+
+```dockerfile
+FROM busybox:stable-musl
+COPY --from=alganet/shell-versions:bash_5.3.15 /opt /opt
+COPY --from=alganet/shell-versions:dash_0.5.12 /opt /opt
+COPY --from=alganet/shell-versions:zsh_5.9.2   /opt /opt
+RUN find /opt \( -type l -o -type f \) -not -path '*/shvr/*' | sort > /opt/shvr/manifest.txt
+ENTRYPOINT [ "/bin/sh", "/opt/shvr/entrypoint.sh" ]
+```
+
+The `find` regenerates the manifest the entrypoint reads, so the resulting image
+gets the multi-shell helpers described below.
 
 ## Basic Usage
 

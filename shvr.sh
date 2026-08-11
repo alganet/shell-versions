@@ -1589,8 +1589,17 @@ shvr_github_regen_all ()
 # from the Dockerfile). The musl and ncurses pins live inside
 # common/musl-cross-make.sh / common/ncurses.sh, which are folded into per-target
 # recipes instead (see shvr_recipe_files), so they need not be repeated here.
-# RUNTIME_BASE is deliberately excluded: it does not affect the per-target
-# `artifacts` stage. Folded into every build identity, so a pin bump forces a
+# RUNTIME_BASE is deliberately excluded, but no longer because it is irrelevant:
+# `artifacts` is now FROM ${RUNTIME_BASE} (a per-version tag is a runnable image,
+# not a scratch data layer), so a busybox pin bump DOES change what those images
+# hold. It stays out because the alternative is worse — folding it in would turn
+# every base refresh into a full rebuild of all ~320 targets on both arches, when
+# what actually changed is a 4MB userland layer. The cost of that choice is a
+# manual step: a RUNTIME_BASE bump must be landed with `[rebuild-all]` in the
+# commit message, or the published per-version tags keep the old base while
+# :latest/:all (reassembled every run) move to the new one. entrypoint.sh is
+# baked into those images on the same terms and needs the same treatment.
+# Folded into every build identity, so a pin bump forces a
 # full rebuild; bump the OIDV scheme tag to force a rebuild without a pin change.
 # SHVR_ARCH is folded in so the two arches occupy disjoint OID namespaces even
 # though their recipe files are byte-identical (the arch is selected by env var,
