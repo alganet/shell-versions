@@ -25,7 +25,7 @@ runs:
           build/${{ inputs.cache_path }}**
         key: build-${{ env.cache-name }}-${{ inputs.shvr_shell }}-${{ inputs.shvr_version }}
     - shell: sh
-      run: sh shvr.sh download "${{ inputs.shvr_shell }}_${{ inputs.shvr_version }}"
+      run: sh .github/retry.sh 3 30 sh shvr.sh download "${{ inputs.shvr_shell }}_${{ inputs.shvr_version }}"
     - uses: actions/cache/save@v5
       if: steps.restore-shell.outputs.cache-hit != 'true'
       id: cache-shell

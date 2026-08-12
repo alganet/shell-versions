@@ -20,9 +20,19 @@ shvr_download_pcre1 ()
 	mkdir -p "${SHVR_DIR_SRC}/pcre"
 	if ! test -f "${SHVR_DIR_SRC}/pcre/pcre-${SHVR_PCRE1_VERSION}.tar.gz"
 	then
-		shvr_fetch \
-			"https://downloads.sourceforge.net/project/pcre/pcre/${SHVR_PCRE1_VERSION}/pcre-${SHVR_PCRE1_VERSION}.tar.gz" \
-			"${SHVR_DIR_SRC}/pcre/pcre-${SHVR_PCRE1_VERSION}.tar.gz"
+		# exim.org first: it is an official PCRE distribution host serving the
+		# byte-identical tarball (verified against our committed sha256), and it is
+		# a direct fetch. downloads.sourceforge.net is a redirector to whichever
+		# regional mirror it feels like, which is the flakiest hop in this file --
+		# kept as the fallback rather than the default.
+		#
+		# pcre2 gets no equivalent: exim does not carry 10.47, and GitHub releases
+		# is already the reliable origin. Do not add a mirror without checking it
+		# actually serves the same bytes.
+		shvr_fetch_mirrors \
+			"${SHVR_DIR_SRC}/pcre/pcre-${SHVR_PCRE1_VERSION}.tar.gz" \
+			"https://ftp.exim.org/pub/pcre/pcre-${SHVR_PCRE1_VERSION}.tar.gz" \
+			"https://downloads.sourceforge.net/project/pcre/pcre/${SHVR_PCRE1_VERSION}/pcre-${SHVR_PCRE1_VERSION}.tar.gz"
 	fi
 }
 

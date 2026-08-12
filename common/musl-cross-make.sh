@@ -180,7 +180,7 @@ shvr_build_musl_cross_make ()
 TARGET = ${SHVR_MCM_TARGET}
 OUTPUT = ${SHVR_MCM_OUTPUT}
 GCC_VER = ${SHVR_MCM_GCC_VER}
-DL_CMD = curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors --connect-timeout 30 --max-time 1800 -o
+DL_CMD = curl -fsSL --retry 5 --retry-all-errors --retry-max-time 180 --connect-timeout 30 --max-time 1800 -o
 MCMEOF
 		# Pin the parallelism to a FIXED value, not $(nproc). GCC's build is not
 		# reproducible across different -j (parallel codegen ordering leaks into

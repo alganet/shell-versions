@@ -1263,8 +1263,15 @@ shvr_fetch()
 			# a single unretried GET used to fail a whole target. --max-time bounds
 			# a STALLED transfer, which no job timeout below 6h would otherwise
 			# catch, because curl will happily sit on a 1-byte/minute connection.
+			#
+			# No --retry-delay on purpose: it REPLACES curl's exponential backoff
+			# with a flat wait ("changes the default backoff time algorithm"), and
+			# flat is the wrong shape for the failure that actually happens here --
+			# a rate-limited host wants progressively more room, not five evenly
+			# spaced knocks. Default backoff is 1,2,4,8,16s; --retry-max-time caps
+			# the whole sequence so a dead host cannot eat the job's timeout.
 			if ! curl -fsSL \
-				--retry 5 --retry-delay 5 --retry-all-errors \
+				--retry 5 --retry-all-errors --retry-max-time 180 \
 				--connect-timeout 30 --max-time 1800 \
 				-o "$dest" "$url"
 			then

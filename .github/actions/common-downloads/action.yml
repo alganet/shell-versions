@@ -24,9 +24,24 @@ runs:
           build/pcre/*.tar.*
           build/pcre2/*.tar.*
         key: build-common-${{ hashFiles('common/ncurses.sh', 'common/readline.sh', 'common/libedit.sh', 'common/pcre.sh') }}
+        # Fall back to the newest previous entry when the key moves. Without this
+        # the cache was exact-match only, so ANY edit to one of those four files --
+        # a comment, a mirror list -- discarded every cached tarball and sent this
+        # job to five flaky upstreams cold. That is not hypothetical: the commit
+        # that added mirrors to ncurses.sh and readline.sh moved this key and the
+        # toolchain key in the same push, both jobs went to the network at once,
+        # and both lost.
+        #
+        # Safe by construction: every cached filename embeds its version
+        # (ncurses-6.5.tar.gz), so a restored older entry can never satisfy a
+        # bumped version -- that file simply is not there and gets downloaded.
+        # Stale entries for retired versions cost a little cache space, nothing
+        # more, and everything restored is still checksum-verified below.
+        restore-keys: |
+          build-common-
     - name: Download common dependencies
       shell: sh
-      run: sh shvr.sh common-download
+      run: sh .github/retry.sh 3 30 sh shvr.sh common-download
     - uses: actions/cache/save@v5
       if: steps.restore-common.outputs.cache-hit != 'true'
       with:

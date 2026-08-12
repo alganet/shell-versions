@@ -24,9 +24,15 @@ runs:
         path: |
           build/musl-sources/**
         key: build-musl-sources-${{ hashFiles('common/musl-cross-make.sh') }}
+        # Especially important here: this is ~146MB, and the key hashes a file
+        # that changes for reasons having nothing to do with which tarballs are
+        # needed. Filenames embed versions, so an older entry cannot mis-satisfy
+        # a bumped SHVR_MCM_*_VER.
+        restore-keys: |
+          build-musl-sources-
     - name: Download musl-cross-make sources
       shell: sh
-      run: sh shvr.sh musl-sources-download
+      run: sh .github/retry.sh 3 30 sh shvr.sh musl-sources-download
     - uses: actions/cache/save@v5
       if: steps.restore-musl-sources.outputs.cache-hit != 'true'
       with:

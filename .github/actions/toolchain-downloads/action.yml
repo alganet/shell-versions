@@ -14,9 +14,15 @@ runs:
           build/musl-cross-make-*
           build/rustup-init-*
         key: build-toolchain-${{ hashFiles('common/musl-cross-make.sh', 'common/rustup.sh') }}
+        # See the note in common-downloads: exact-match-only meant a comment edit
+        # to musl-cross-make.sh discarded these tarballs and re-fetched cold.
+        # Filenames embed their commit/version, so an older entry can never
+        # satisfy a bumped pin.
+        restore-keys: |
+          build-toolchain-
     - name: Download toolchain dependencies
       shell: sh
-      run: sh shvr.sh toolchain-download
+      run: sh .github/retry.sh 3 30 sh shvr.sh toolchain-download
     - uses: actions/cache/save@v5
       if: steps.restore-toolchain.outputs.cache-hit != 'true'
       with:
